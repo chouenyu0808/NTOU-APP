@@ -5,7 +5,7 @@
     "login 區塊已用 probe.py 對 ais.ntou.edu.tw 實測填好（2026-08-25）。",
     "pages 區塊要等登入後才能填。"
   ],
-  "version": 4,
+  "version": 5,
   "base_url": "https://ais.ntou.edu.tw/",
   "min_interval_seconds": 1.0,
   "login": {
@@ -77,6 +77,23 @@
         "三",
         "四",
         "五"
+      ],
+      "query": {
+        "year_field": "Q_AYEAR",
+        "semester_field": "Q_SMS",
+        "list_button": "QUERY_BTN1",
+        "timetable_button": "QUERY_BTN3",
+        "_comment": [
+          "onclick 的 doQuery() 只做欄位驗證，不會偷塞值，直接 postback 即可。",
+          "查無資料時回「查無符合資料!!」，狀態碼一樣是 200 —— 見 parsers.is_empty_result()。",
+          "課表那顆掛在 __CRYSTALSTATECrystalReportViewer 上（Crystal Reports），",
+          "輸出格式還沒驗證過，有可能不是 HTML 表格。"
+        ]
+      },
+      "_data_status": [
+        "2026-08-25 實測：這個帳號 113-1 ~ 115-2 六個學期全部「查無符合資料」",
+        "（轉學生，尚未在本校選課）。查詢參數確認有生效（回應各自帶回對應學年學期）。",
+        "所以個人課表要等選課後才有資料可測，parser 先拿全校課程查詢來調。"
       ]
     },
     "course_search": {
@@ -105,5 +122,11 @@
         "成績可能在別的系統，要另外確認入口再處理。"
       ]
     }
-  }
+  },
+  "_session_notes": [
+    "登入後**必須先載完 MainFrame 的四個 frame**（title/MenuTree/portal/timeout），",
+    "否則功能頁會被導到 ConfirmInOrOut.aspx，錯誤訊息是「一次僅許可一個帳號登入」——",
+    "那個訊息會誤導人往「舊 session 沒登出」的方向查，實際上是握手沒做完。",
+    "見 ais.enter_portal()。"
+  ]
 }
