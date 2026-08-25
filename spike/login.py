@@ -19,6 +19,7 @@ import _console  # noqa: F401  # 必須最先 import
 
 import argparse
 import getpass
+import itertools
 import json
 import os
 import re
@@ -40,6 +41,7 @@ from ais import (
 )
 from parsers import (
     MenuNode,
+    is_empty_result,
     hidden_field_value,
     parse_callback_response,
     parse_menu,
@@ -72,6 +74,26 @@ class FormSubmit:
     def slug(self) -> str:
         """給 fixture 檔名用 —— 不同查詢條件不能互相覆蓋。"""
         return "_".join([self.button, *self.values.values()])
+
+
+def expand_sweep(button: str, fixed: dict[str, str],
+                 sweep: dict[str, list[str]]) -> list[FormSubmit]:
+    """
+    把 --sweep 的多值欄位展開成所有組合。
+
+    每次登入都要人工打驗證碼，所以「一次猜一個學期、猜錯再重登入」很貴。
+    一次登入掃完 114-1 / 114-2 / 115-1 / 115-2 只多幾個 request。
+    """
+    if not sweep:
+        return [FormSubmit(button=button, values=dict(fixed))]
+
+    keys = list(sweep)
+    out = []
+    for combo in itertools.product(*(sweep[k] for k in keys)):
+        values = dict(fixed)
+        values.update(dict(zip(keys, combo, strict=True)))
+        out.append(FormSubmit(button=button, values=values))
+    return out
 
 
 def save_fixture(page: Page, filename: str, who: Identity = NOBODY) -> Path:
@@ -199,7 +221,7 @@ def menu_paths() -> list[str]:
 
 def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
                 quiet: bool = False, who: Identity = NOBODY,
-                submit: FormSubmit | None = None) -> list[Page]:
+                submits: list[FormSubmit] | None = None) -> list[Page]:
     """
     在已登入的 session 內依序抓多個頁面。
 
@@ -209,7 +231,7 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
     一頁失敗不中斷後面的：每次登入都要手打驗證碼，重跑很貴。
     """
     out: list[Page] = []
-    for path in paths:
+    for path, submit in itertools.product(paths, submits or [None]):
         print(f"\n抓取 {path} ...")
         try:
             page = sess.check_session(sess.follow_js_redirect(sess.get(path)))
@@ -233,7 +255,9 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
             print(f"  失敗：{type(e).__name__}: {e}", file=sys.stderr)
             continue
 
-        if quiet:
+        if is_empty_result(page.html):
+            print("  查無符合資料")
+        elif quiet:
             print(f"  {len(page.html)}B  {page_title(page)}")
         else:
             probe.describe(page)
@@ -396,6 +420,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="抓到頁面後按這顆按鈕送出（例如 QUERY_BTN3）")
     ap.add_argument("--set", metavar="K=V", action="append", default=[],
                     help="送出前設定欄位值，可重複（例如 --set Q_AYEAR=115）")
+    ap.add_argument("--sweep", metavar="K=V1,V2", action="append", default=[],
+                    help="同一次登入內掃過多個值，可重複"
+                         "（例如 --sweep Q_AYEAR=113,114,115 --sweep Q_SMS=1,2）")
     ap.add_argument("--quiet", action="store_true",
                     help="--fetch-all 時只印標題和大小，不印完整欄位表")
     ap.add_argument("--user", help="學號（不給就互動輸入）")
@@ -428,14 +455,21 @@ def run_session(sess: AisSession, page: Page, args, who: Identity) -> int:
     targets = list(args.fetch)
     if args.fetch_all:
         targets = menu_paths() + targets
-    submit = None
+    submits = None
     if args.submit:
-        submit = FormSubmit(
-            button=args.submit,
-            values=dict(kv.split("=", 1) for kv in args.set),
+        sweep = {}
+        for kv in args.sweep:
+            key, _, csv = kv.partition("=")
+            sweep[key] = [v.strip() for v in csv.split(",") if v.strip()]
+        submits = expand_sweep(
+            args.submit,
+            dict(kv.split("=", 1) for kv in args.set),
+            sweep,
         )
+        if len(submits) > 1:
+            print(f"\n將掃過 {len(submits)} 組查詢條件（同一次登入）")
     fetch_pages(sess, targets, save=args.save, quiet=args.quiet, who=who,
-                submit=submit)
+                submits=submits)
 
     if args.goto:
         print(f"\n前往 {args.goto} ...")

@@ -536,3 +536,13 @@ def grid_text(grid: list[list]) -> list[list[str]]:
     """格線轉純文字，方便肉眼比對。跨格的內容會在每一格重複出現。"""
     return [[clean(c.get_text(" ")) if c is not None else "" for c in row]
             for row in grid]
+
+
+# 查詢頁沒資料時回的訊息。頁面結構完全正常、狀態碼 200，
+# 只有這一行字不一樣 —— 不認得的話會以為是 parser 壞了。
+EMPTY_RESULT_MARKERS = ("查無符合資料", "There is no matching data")
+
+
+def is_empty_result(html: str) -> bool:
+    """查詢有沒有結果。空結果和「解析失敗」要分得開，否則會白白 debug parser。"""
+    return any(m in html for m in EMPTY_RESULT_MARKERS)

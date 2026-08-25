@@ -20,6 +20,7 @@ from parsers import (
     extract_tables,
     grid_text,
     hidden_field_value,
+    is_empty_result,
     parse_callback_response,
     parse_grades,
     parse_menu,
@@ -374,3 +375,23 @@ def test_parse_timetable_does_not_duplicate_slots():
     c = parse_timetable(html)[0]
     assert sorted(c.slots) == [(0, 1), (0, 2), (1, 1), (1, 2)]
     assert len(c.slots) == len(set(c.slots))
+
+
+def test_empty_query_result_is_recognised():
+    """
+    查無資料時頁面結構完全正常、狀態碼 200，只有一行字不同。
+    不認得的話會以為是 parser 壞了，然後去 debug 錯的東西。
+    """
+    assert is_empty_result("<td>查無符合資料!! There is no matching data</td>")
+    assert is_empty_result("<td>There is no matching data for your query!!</td>")
+
+
+def test_populated_result_is_not_empty():
+    assert not is_empty_result("<table><tr><td>微積分</td></tr></table>")
+
+
+def test_real_empty_result_fixture():
+    p = FIXTURES / "Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_115_1.html"
+    if not p.exists():
+        pytest.skip("還沒有 115-1 的查詢結果")
+    assert is_empty_result(p.read_text(encoding="utf-8"))

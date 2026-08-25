@@ -114,3 +114,43 @@ def test_dispatcher_shell_redirect_is_detected():
     page = Page(url="https://ais.ntou.edu.tw/Application/TKE/TKE22/TKE2240_.aspx",
                 status=200, html=shell)
     assert AisSession.js_redirect_target(page) == "TKE2240_01.aspx"
+
+
+# ---------- 查詢條件掃描 ----------
+
+def test_expand_sweep_makes_cartesian_product():
+    """
+    每次登入都要人工打驗證碼，一次猜一個學期很貴。
+    一次登入掃完所有組合只多幾個 request。
+    """
+    from login import expand_sweep
+    combos = expand_sweep("QUERY_BTN1", {},
+                          {"Q_AYEAR": ["114", "115"], "Q_SMS": ["1", "2"]})
+    assert [c.values for c in combos] == [
+        {"Q_AYEAR": "114", "Q_SMS": "1"},
+        {"Q_AYEAR": "114", "Q_SMS": "2"},
+        {"Q_AYEAR": "115", "Q_SMS": "1"},
+        {"Q_AYEAR": "115", "Q_SMS": "2"},
+    ]
+
+
+def test_expand_sweep_keeps_fixed_values():
+    from login import expand_sweep
+    combos = expand_sweep("B", {"Q_STNO": "X"}, {"Q_SMS": ["1", "2"]})
+    assert all(c.values["Q_STNO"] == "X" for c in combos)
+
+
+def test_expand_sweep_without_sweep_is_single():
+    from login import expand_sweep
+    combos = expand_sweep("B", {"A": "1"}, {})
+    assert len(combos) == 1
+    assert combos[0].values == {"A": "1"}
+
+
+def test_submit_slugs_are_unique_per_combo():
+    """fixture 檔名要能區分條件，否則四組查詢會互相覆蓋成一個檔。"""
+    from login import expand_sweep
+    combos = expand_sweep("QUERY_BTN1", {},
+                          {"Q_AYEAR": ["114", "115"], "Q_SMS": ["1", "2"]})
+    slugs = [c.slug() for c in combos]
+    assert len(set(slugs)) == len(slugs)
