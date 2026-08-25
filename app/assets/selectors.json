@@ -1,0 +1,269 @@
+{
+  "_comment": [
+    "這個檔案之後會放到 GitHub raw / Firebase Remote Config，App 開機拉一次。",
+    "學校改版時你只改這裡，不用發新版 App、不用等審核。",
+    "login 區塊已用 probe.py 對 ais.ntou.edu.tw 實測填好（2026-08-25）。",
+    "pages 區塊要等登入後才能填。"
+  ],
+  "version": 8,
+  "base_url": "https://ais.ntou.edu.tw/",
+  "min_interval_seconds": 1.0,
+  "login": {
+    "path": "Default.aspx",
+    "_queue_comment": [
+      "AIS 在登入前有虛擬排隊（DefaultQ.aspx）。實測：直接 GET Default.aspx 拿到的",
+      "頁面驗證碼 <img> 沒有 src，必須先走一次 DefaultQ.aspx 再回來，src 才會出現。",
+      "排隊是選課尖峰保護伺服器用的，照著走，不要繞過。"
+    ],
+    "queue_path": "DefaultQ.aspx",
+    "queue_redirect_marker": "DefaultQ.aspx",
+    "username_field": "M_PORTAL_LOGIN_ACNT",
+    "password_field": "LoginPWD",
+    "captcha_field": "M_PW2",
+    "captcha_img_id": "importantImg",
+    "_captcha_comment": [
+      "4 碼、區分大小寫（maxlength=4, ime-mode:disabled）。",
+      "圖片是伺服器產的實體檔：/Temp/Captcha/<每個 session 隨機>.png?t=<timestamp>",
+      "檔名每次都不同，一定要從頁面 <img id=importantImg> 的 src 抓，不能寫死。",
+      "不要做 OCR —— 顯示給使用者自己打，體驗差不了多少，也不會踩到繞過防護的線。"
+    ],
+    "submit_field": "LGOIN_BTN",
+    "submit_value": "登入/Login",
+    "submit_event_target": "",
+    "submit_event_argument": "",
+    "extra_fields": {},
+    "_marker_comment": "success/failure markers 還沒驗證過，要登入成功一次才能確定。",
+    "success_markers": [],
+    "failure_markers": [
+      "密碼錯誤",
+      "帳號或密碼",
+      "驗證碼錯誤",
+      "請重新登入"
+    ],
+    "_success_comment": [
+      "登入成功時伺服器不回 302，而是回一頁 JS：top.location.href = 'MainFrame.aspx'。",
+      "成功的回應長得跟登入頁幾乎一模一樣（22101B vs 21988B），只差那一行導向指令，",
+      "所以判斷成功要看導向、不能找「登出」這種字串。ais.js_redirect_target() 負責這件事。",
+      "失敗時系統不給任何錯誤訊息，只是重畫登入頁配一張新驗證碼。"
+    ],
+    "success_redirect": "MainFrame.aspx",
+    "_security_warning": [
+      "警告：登入回應會把密碼明文回吐兩次 —— keyObj={LoginPWD:'...'} 以及",
+      "_i(0,'LoginPWD').value='...'。這是校方系統的行為，不是我們造成的。",
+      "任何存下來的回應都含明文密碼，scrub.py 已針對這兩個模式做清除。"
+    ]
+  },
+  "pages": {
+    "_comment": [
+      "路徑由 login.py --menu 遞迴展開 MenuTree.aspx 取得（2026-08-25 實測）。",
+      "格式：Application/<模組>/<子模組>/<代碼>_.aspx?progcd=<功能代碼>",
+      "整份選單（50 個功能）存在 fixtures/menu_tree.json。"
+    ],
+    "home": {
+      "path": "MainFrame.aspx",
+      "_comment": "登入後的落地頁，是 frameset；選單在 MenuTree.aspx"
+    },
+    "menu": {
+      "path": "MenuTree.aspx",
+      "callback_id": "Menu_TreeView"
+    },
+    "timetable": {
+      "path": "Application/TKE/TKE22/TKE2240_.aspx?progcd=STU1220",
+      "_menu_trail": "教務系統 > 選課系統 > 學生個人選課清單課表列印",
+      "_comment": "個人課表。還沒抓過內容，parser 要對著 fixture 調。",
+      "table_header_keywords": [
+        "一",
+        "二",
+        "三",
+        "四",
+        "五"
+      ],
+      "query": {
+        "year_field": "Q_AYEAR",
+        "semester_field": "Q_SMS",
+        "list_button": "QUERY_BTN1",
+        "timetable_button": "QUERY_BTN3",
+        "_comment": [
+          "onclick 的 doQuery() 只做欄位驗證，不會偷塞值，直接 postback 即可。",
+          "查無資料時回「查無符合資料!!」，狀態碼一樣是 200 —— 見 parsers.is_empty_result()。",
+          "課表那顆掛在 __CRYSTALSTATECrystalReportViewer 上（Crystal Reports），",
+          "輸出格式還沒驗證過，有可能不是 HTML 表格。"
+        ]
+      },
+      "_data_status": [
+        "2026-08-25 實測：這個帳號 113-1 ~ 115-2 六個學期全部「查無符合資料」",
+        "（轉學生，尚未在本校選課）。查詢參數確認有生效（回應各自帶回對應學年學期）。",
+        "所以個人課表要等選課後才有資料可測，parser 先拿全校課程查詢來調。"
+      ]
+    },
+    "course_search": {
+      "path": "Application/TKE/TKE22/TKE2211_.aspx?progcd=STU1250",
+      "_menu_trail": "教務系統 > 選課系統 > 課程課表查詢",
+      "_comment": [
+        "全校課程查詢。**跟使用者有沒有選課無關，一定有資料** ——",
+        "個人課表還沒資料時，parser 拿這個調。",
+        "這頁是多分頁查詢，hdnSelectedTab 決定用哪一組條件："
+      ],
+      "tabs": {
+        "faculty": {
+          "_label": "系所查詢",
+          "fields": [
+            "Q_DEGREE_CODE",
+            "Q_FACULTY_CODE",
+            "Q_GRADE",
+            "Q_CLASSID"
+          ],
+          "button": "QUERY_BTN1"
+        },
+        "lesson_name": {
+          "_label": "課程名稱查詢",
+          "fields": [
+            "Q_CH_LESSON",
+            "radioButtonClass",
+            "radioButtonQuery"
+          ],
+          "button": "QUERY_BTN7"
+        },
+        "teacher": {
+          "_label": "教師查詢",
+          "fields": [
+            "Q_TCH_FACULTY_CODE",
+            "Q_LECTR_TCH_CH"
+          ],
+          "button": "QUERY_BTN3",
+          "list_button": "QUERY_BTN4",
+          "_comment": [
+            "doQuery case 3 =「教師課表-課表」（真的課表），case 4 =「教師課表-清單」。",
+            "Q_LECTR_TCH_CH 初始有 0 個 option —— 要先選 Q_TCH_FACULTY_CODE 才會連動填入，",
+            "所以不能直接送，得先觸發系所變更的 postback。"
+          ]
+        },
+        "timeslot": {
+          "_label": "時段查詢",
+          "fields": [
+            "Q_WEEK",
+            "Q_CLASS"
+          ],
+          "button": "QUERY_BTN5",
+          "_comment": [
+            "doQuery 的 case 註解寫「上課時間」。兩個下拉都有選項，不像教師查詢要先連動。",
+            "系所查詢的結果沒有時間欄位，所以時間資訊要從這裡拿。"
+          ]
+        },
+        "classroom": {
+          "_label": "教室查詢",
+          "fields": [
+            "Q_CLSSRM_BUILD",
+            "Q_CLSSRM_ID"
+          ],
+          "button": "QUERY_BTN6"
+        }
+      },
+      "codes": {
+        "_comment": "從 TKE2211_01.aspx 的 <select> 抓的，完整清單在該頁 fixture 裡。",
+        "degree": {
+          "0": "大學部",
+          "1": "碩士班",
+          "2": "博士班",
+          "3": "進修學士班"
+        },
+        "faculty_cs": "0507",
+        "faculty_cs_label": "0507-資訊工程學系",
+        "faculty_ee_college": "0600-電機資訊學院",
+        "weekday_values": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "period_values_start": [
+          "00",
+          "01",
+          "02",
+          "03",
+          "04",
+          "05",
+          "06",
+          "07"
+        ]
+      },
+      "_result_columns": {
+        "_comment": [
+          "系所查詢（QUERY_BTN1）的結果欄位，2026-08-25 實測 0507 資工系：",
+          "**沒有上課時間、沒有教室**。列也沒有連到詳細頁（fn_open 只有定義沒有呼叫）。",
+          "所以要畫課表的話，時間資訊得從別的查詢拿。"
+        ],
+        "columns": [
+          "序號",
+          "學期",
+          "課號",
+          "課名",
+          "開課單位",
+          "年級班別",
+          "授課老師",
+          "老師單位",
+          "全程英語",
+          "學分",
+          "選別",
+          "人數",
+          "人數限制上／下限",
+          "實習",
+          "時數",
+          "合開",
+          "期限"
+        ],
+        "sample_row": {
+          "課號": "B57011RQ",
+          "課名": "計算機概論",
+          "年級班別": "1年A班",
+          "學分": "3",
+          "選別": "A",
+          "時數": "3",
+          "學期": "1151"
+        },
+        "paging": "每頁 10 筆（PC$PageSize），要翻頁用 __doPostBack('ReQuery','') 搭配 PC$PageNo"
+      },
+      "_no_schedule_data": [
+        "**這個 UI 的清單檢視從來不含上課時間和教室。** 2026-08-25 實測：",
+        "系所查詢（QUERY_BTN1）和時段查詢（QUERY_BTN5）回的是同一組 17 欄，",
+        "都沒有時間欄位。時段查詢是「用時段篩選」，但結果不顯示時段。",
+        "頁面上也沒有隱藏欄位（ColumnFilter 是空的、沒有 setColumnHide）。",
+        "",
+        "所以課表資料只存在於 Crystal Report 的課表檢視裡：",
+        "  教師課表   TKE2211 QUERY_BTN3（要先選系所連動出教師名單）",
+        "  學生選課課表 TKE2240 QUERY_BTN3（需要本人有修課資料）",
+        "App 要畫課表的話，資料來源是後者。"
+      ]
+    },
+    "course_search_history": {
+      "path": "Application/TKE/TKE22/TKE2210_.aspx?progcd=STU1190",
+      "_menu_trail": "教務系統 > 選課系統 > 歷年課程課表查詢"
+    },
+    "required_courses": {
+      "path": "Application/ENR/ENRA0/ENRA120_.aspx?progcd=STU1101",
+      "_menu_trail": "教務系統 > 選課系統 > 查詢必修科目表"
+    },
+    "enrollment": {
+      "path": "Application/TKE/TKE20/TKE2011_.aspx?progcd=STU1010",
+      "_menu_trail": "教務系統 > 選課系統 > 線上加退選",
+      "_warning": "會改變資料的頁面。只讀取、不要自動送出。"
+    },
+    "grades": {
+      "path": null,
+      "_comment": [
+        "**成績查詢不在 ais.ntou.edu.tw 的學生選單裡。**",
+        "50 個功能全部檢查過，唯一含「成績」的是「英檢成績申請抵免」，那是抵免用的。",
+        "成績可能在別的系統，要另外確認入口再處理。"
+      ]
+    }
+  },
+  "_session_notes": [
+    "登入後**必須先載完 MainFrame 的四個 frame**（title/MenuTree/portal/timeout），",
+    "否則功能頁會被導到 ConfirmInOrOut.aspx，錯誤訊息是「一次僅許可一個帳號登入」——",
+    "那個訊息會誤導人往「舊 session 沒登出」的方向查，實際上是握手沒做完。",
+    "見 ais.enter_portal()。"
+  ]
+}

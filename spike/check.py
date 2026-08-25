@@ -59,12 +59,31 @@ def fixture_files() -> list[str]:
 # 實際發生過：對外 IP 被抄進 scrub.py 的註解裡，跟著程式碼一起要上 GitHub。
 TRACKED_PATTERNS = {
     "身分證字號": re.compile(r"\b[A-Z][12]\d{8}\b"),
-    # 排掉私有網段和 scrub 用的佔位符
-    "對外 IP": re.compile(r"\b(?!10\.|127\.|192\.168\.|0\.)(?:\d{1,3}\.){3}\d{1,3}\b"),
-    "明文密碼": re.compile(r"""LoginPWD['"]?\s*[:=]\s*['"](?!REDACTED|你的密碼|\.\.\.)[^'"]{3,}"""),
+    # 前後不能接 - + . 或英數，否則版本號會被誤判成 IP：
+    # `jdk-17.0.20.1+1` 裡的那串是合法的 dotted-quad，但顯然不是 IP。  scrub-ok
+    # 私有網段（10./127./192.168./0.）本來就不算外洩。
+    "對外 IP": re.compile(
+        r"(?<![-+.\w])(?!10\.|127\.|192\.168\.|0\.)(?:\d{1,3}\.){3}\d{1,3}(?![-+.\w])"
+    ),
+    "明文密碼": re.compile(r"""LoginPWD['"]?\s*[:=]\s*['"]([^'"]{3,})['"]"""),
 }
-# 這些是刻意寫死的假資料，不是外洩
-ALLOWED = {"A123456789", "P@ssw0rd123", "SuperSecret123", "10.0.0.1", "0912-345-678"}
+
+# 大家都在用的假密碼／佔位符。真的外洩不會長這樣。
+# 這份清單擋不完別人測試檔裡的自訂假資料 —— 那種情況用 SCRUB_OK 行內標記。
+DUMMY_SECRETS = {
+    "REDACTED", "SCRUBBED", "你的密碼", "...", "<password>",
+    "hunter2", "password", "changeme", "secret", "test",
+    "P@ssw0rd123", "SuperSecret123", "A123456789", "10.0.0.1", "0912-345-678",
+}
+
+# 樣板佔位符不是值本身，是「這裡之後會填東西」。
+# 例如 Dart 的 LoginPWD:'$fakePassword'、Python 的 {pw}、%s。
+INTERPOLATION_RE = re.compile(r"^\s*(?:\$\{?\w|\{\{?\w|%[sd(]|<[\w ]+>)")
+
+# 行內豁免：這一行有把握是安全的就加這個標記，掃描會跳過。
+# 跟 `# noqa` 同一個用意 —— 誤報一定會有，要有乾淨的出口，
+# 不然大家會乾脆把整個檢查關掉。
+SCRUB_OK = "scrub-ok"
 
 
 def scan_tracked_files(quiet: bool) -> bool:
@@ -85,14 +104,21 @@ def scan_tracked_files(quiet: bool) -> bool:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
+        lines = text.splitlines()
         for label, pat in TRACKED_PATTERNS.items():
             for m in pat.finditer(text):
-                # 比對用「包含」而不是相等 —— 匹配到的是整段
-                # `LoginPWD:'P@ssw0rd123`，不是單獨的值
-                if any(a in m.group(0) for a in ALLOWED):
+                # 有捕獲群組的話（明文密碼）比對群組，否則比對整段。
+                # 直接比對整段會失敗，因為匹配到的是按鈕名加值，  scrub-ok
+                # 而不是單獨的值本身。
+                value = m.group(1) if m.groups() else m.group(0)
+                if value in DUMMY_SECRETS or INTERPOLATION_RE.match(value):
                     continue
-                line = text[:m.start()].count("\n") + 1
-                hits.append(f"[{label}] {rel}:{line}  {m.group(0)[:50]!r}")
+
+                lineno = text[:m.start()].count("\n") + 1
+                if SCRUB_OK in lines[lineno - 1]:
+                    continue
+
+                hits.append(f"[{label}] {rel}:{lineno}  {m.group(0)[:50]!r}")
 
     if hits:
         print("[失敗] tracked 檔案個資掃描")

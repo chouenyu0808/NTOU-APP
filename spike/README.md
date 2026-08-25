@@ -312,6 +312,7 @@ top.mainFrame.location.href='TKE2240_01.aspx';
 | `test_ais.py` | 登入判斷、callback 封裝、密碼外洩守門測試 |
 | `test_login.py` | `--fetch-all` 的安全性：不能掃到會改資料的頁面 |
 | `check.py` | commit 前的把關：個資 → 測試 → lint，一個指令 |
+| `test_check.py` | 把關掃描本身的測試（誤報會擋到整個 repo，包含 app/） |
 | `pyproject.toml` | ruff 設定。每條 ignore 都寫了為什麼 |
 | `_console.py` / `.venv/…/sitecustomize.py` | Windows 中文輸出修正 |
 | `fixtures/` | 抓下來的頁面（已洗個資）+ `menu_tree.json` 選單結構 |
@@ -351,6 +352,11 @@ commit 前跑這個（個資檢查 → 測試 → lint，一個指令）：
 ```powershell
 .venv\Scripts\python.exe check.py
 ```
+
+掃描範圍是**整個 repo 的 tracked 檔案**，不只 fixtures/ —— 個資會跑進註解和文件。
+誤報時在那一行加 `scrub-ok` 就會跳過（跟 `# noqa` 同一個用意）。
+已知會自動放行的：版本號（`jdk-17.0.20.1+1` 不是 IP）、私有網段、
+常見假密碼（`hunter2` 等）、樣板佔位符（`$fakePassword`、`{pw}`、`%s`）。
 
 個資檢查刻意排在第一個：測試紅了、lint 髒了都只是重跑一次的事，
 但明文密碼一旦推上遠端，改密碼也救不回歷史紀錄。
