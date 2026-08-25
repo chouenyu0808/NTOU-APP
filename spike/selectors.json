@@ -1,0 +1,109 @@
+{
+  "_comment": [
+    "這個檔案之後會放到 GitHub raw / Firebase Remote Config，App 開機拉一次。",
+    "學校改版時你只改這裡，不用發新版 App、不用等審核。",
+    "login 區塊已用 probe.py 對 ais.ntou.edu.tw 實測填好（2026-08-25）。",
+    "pages 區塊要等登入後才能填。"
+  ],
+  "version": 4,
+  "base_url": "https://ais.ntou.edu.tw/",
+  "min_interval_seconds": 1.0,
+  "login": {
+    "path": "Default.aspx",
+    "_queue_comment": [
+      "AIS 在登入前有虛擬排隊（DefaultQ.aspx）。實測：直接 GET Default.aspx 拿到的",
+      "頁面驗證碼 <img> 沒有 src，必須先走一次 DefaultQ.aspx 再回來，src 才會出現。",
+      "排隊是選課尖峰保護伺服器用的，照著走，不要繞過。"
+    ],
+    "queue_path": "DefaultQ.aspx",
+    "queue_redirect_marker": "DefaultQ.aspx",
+    "username_field": "M_PORTAL_LOGIN_ACNT",
+    "password_field": "LoginPWD",
+    "captcha_field": "M_PW2",
+    "captcha_img_id": "importantImg",
+    "_captcha_comment": [
+      "4 碼、區分大小寫（maxlength=4, ime-mode:disabled）。",
+      "圖片是伺服器產的實體檔：/Temp/Captcha/<每個 session 隨機>.png?t=<timestamp>",
+      "檔名每次都不同，一定要從頁面 <img id=importantImg> 的 src 抓，不能寫死。",
+      "不要做 OCR —— 顯示給使用者自己打，體驗差不了多少，也不會踩到繞過防護的線。"
+    ],
+    "submit_field": "LGOIN_BTN",
+    "submit_value": "登入/Login",
+    "submit_event_target": "",
+    "submit_event_argument": "",
+    "extra_fields": {},
+    "_marker_comment": "success/failure markers 還沒驗證過，要登入成功一次才能確定。",
+    "success_markers": [],
+    "failure_markers": [
+      "密碼錯誤",
+      "帳號或密碼",
+      "驗證碼錯誤",
+      "請重新登入"
+    ],
+    "_success_comment": [
+      "登入成功時伺服器不回 302，而是回一頁 JS：top.location.href = 'MainFrame.aspx'。",
+      "成功的回應長得跟登入頁幾乎一模一樣（22101B vs 21988B），只差那一行導向指令，",
+      "所以判斷成功要看導向、不能找「登出」這種字串。ais.js_redirect_target() 負責這件事。",
+      "失敗時系統不給任何錯誤訊息，只是重畫登入頁配一張新驗證碼。"
+    ],
+    "success_redirect": "MainFrame.aspx",
+    "_security_warning": [
+      "警告：登入回應會把密碼明文回吐兩次 —— keyObj={LoginPWD:'...'} 以及",
+      "_i(0,'LoginPWD').value='...'。這是校方系統的行為，不是我們造成的。",
+      "任何存下來的回應都含明文密碼，scrub.py 已針對這兩個模式做清除。"
+    ]
+  },
+  "pages": {
+    "_comment": [
+      "路徑由 login.py --menu 遞迴展開 MenuTree.aspx 取得（2026-08-25 實測）。",
+      "格式：Application/<模組>/<子模組>/<代碼>_.aspx?progcd=<功能代碼>",
+      "整份選單（50 個功能）存在 fixtures/menu_tree.json。"
+    ],
+    "home": {
+      "path": "MainFrame.aspx",
+      "_comment": "登入後的落地頁，是 frameset；選單在 MenuTree.aspx"
+    },
+    "menu": {
+      "path": "MenuTree.aspx",
+      "callback_id": "Menu_TreeView"
+    },
+    "timetable": {
+      "path": "Application/TKE/TKE22/TKE2240_.aspx?progcd=STU1220",
+      "_menu_trail": "教務系統 > 選課系統 > 學生個人選課清單課表列印",
+      "_comment": "個人課表。還沒抓過內容，parser 要對著 fixture 調。",
+      "table_header_keywords": [
+        "一",
+        "二",
+        "三",
+        "四",
+        "五"
+      ]
+    },
+    "course_search": {
+      "path": "Application/TKE/TKE22/TKE2211_.aspx?progcd=STU1250",
+      "_menu_trail": "教務系統 > 選課系統 > 課程課表查詢",
+      "_comment": "全校課程查詢（不是個人課表）"
+    },
+    "course_search_history": {
+      "path": "Application/TKE/TKE22/TKE2210_.aspx?progcd=STU1190",
+      "_menu_trail": "教務系統 > 選課系統 > 歷年課程課表查詢"
+    },
+    "required_courses": {
+      "path": "Application/ENR/ENRA0/ENRA120_.aspx?progcd=STU1101",
+      "_menu_trail": "教務系統 > 選課系統 > 查詢必修科目表"
+    },
+    "enrollment": {
+      "path": "Application/TKE/TKE20/TKE2011_.aspx?progcd=STU1010",
+      "_menu_trail": "教務系統 > 選課系統 > 線上加退選",
+      "_warning": "會改變資料的頁面。只讀取、不要自動送出。"
+    },
+    "grades": {
+      "path": null,
+      "_comment": [
+        "**成績查詢不在 ais.ntou.edu.tw 的學生選單裡。**",
+        "50 個功能全部檢查過，唯一含「成績」的是「英檢成績申請抵免」，那是抵免用的。",
+        "成績可能在別的系統，要另外確認入口再處理。"
+      ]
+    }
+  }
+}

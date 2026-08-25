@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# ---- 個資：預設全部不進版控 ----
+# fixture 是從真實帳號抓下來的頁面。login.py 存檔時已經洗過
+# （明文密碼、學號、姓名、身分證、IP、VIEWSTATE），但預設仍然不上傳 ——
+# 洗過的東西沒人檢查過第二遍，而漏掉一次的代價是密碼外流。
+#
+# 真的需要讓測試在 CI 跑的話，逐個檔案檢查後再 git add -f，
+# 並且務必先跑 spike/check.py。
+spike/fixtures/*.html
+
+# callback 的原始回應（debug 用），一定含 session 相關資料
+spike/fixtures/callbacks/
+
+# 這兩個是選單結構，沒有個資，刻意保留：
+!spike/fixtures/menu_tree.json

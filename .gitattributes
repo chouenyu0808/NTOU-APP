@@ -1,0 +1,6 @@
+# 版控裡一律 LF，避免 Windows 開發 + CI 跑 Linux 時整份檔案顯示成改動。
+* text=auto eol=lf
+
+# fixture 是抓下來的原始 HTML，不要動它的位元組 ——
+# 換行被改掉的話，和真實回應比對就會失真。
+*.html -text

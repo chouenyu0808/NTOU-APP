@@ -1,0 +1,38 @@
+[tool.ruff]
+line-length = 100
+exclude = [".venv", "fixtures"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S", "BLE", "PL", "RUF", "FURB"]
+
+ignore = [
+    # import _console 必須是第一個 import —— 它在 Windows 上把 stdout 改成 UTF-8，
+    # 晚一步就會有模組先抓住 cp950 的 stdout。isort 會把它排到別的位置，所以關掉。
+    "I001",
+
+    # 抓 Exception 是刻意的：--fetch-all 掃 38 個頁面，
+    # 其中一頁壞掉不該讓整批中斷（每次登入都要手打驗證碼，重跑很貴）。
+    "BLE001",
+
+    # 用系統看圖程式開驗證碼失敗就算了，使用者還是可以自己開那個檔案路徑。
+    "S110",
+
+    # 這個 spike 只跑在開發者自己的機器上，不是伺服器程式。
+    "S101",   # assert（測試用）
+    "S310",   # URL 開啟（我們有 same_origin 防護）
+    "S607",   # 從 PATH 找 git —— 這是開發者自己的機器，不是伺服器
+
+    # 註解和文件字串是中文寫的，全形標點是正確的中文排版，不是誤植的半形。
+    # 不關掉的話這兩條會產生數百則純誤報，把真正的問題淹掉。
+    "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 測試裡的魔術數字就是要寫死才看得懂；區域 import 是為了讓每個測試自我完備。
+"test_*.py" = ["PLR2004", "PLC0415"]
+# probe.describe() 是純輸出函式，分支多是因為要報告很多種欄位，拆開反而難讀。
+"probe.py" = ["PLR0912", "PLR0915", "PLR2004"]
+"scrub.py" = ["PLR2004"]
+# walk_menu 和 main 都偏長，但拆開只會讓「先做什麼再做什麼」更難追。
+# TreeView 那段的順序是有意義的（狀態要照順序更新），硬拆反而危險。
+"login.py" = ["PLR0912", "PLR0915"]

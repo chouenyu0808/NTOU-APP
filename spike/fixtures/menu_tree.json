@@ -1,0 +1,252 @@
+[
+  {
+    "trail": "教務系統 > 學生基本資料維護作業 > 維護新生資料",
+    "text": "維護新生資料",
+    "href": "Application/ENR/ENR30/ENR3030_.aspx?progcd=ENR3030"
+  },
+  {
+    "trail": "教務系統 > 學生基本資料維護作業 > 維護舊生資料",
+    "text": "維護舊生資料",
+    "href": "Application/ENR/ENR30/ENR3040_.aspx?progcd=ENR3040"
+  },
+  {
+    "trail": "教務系統 > 學生基本資料維護作業 > 新生線上註冊",
+    "text": "新生線上註冊",
+    "href": "Application/ENR/ENR30/ENR3090_.aspx?progcd=ENR3090"
+  },
+  {
+    "trail": "教務系統 > 學生基本資料維護作業 > 服役彈性修業/超修申請",
+    "text": "服役彈性修業/超修申請",
+    "href": "Application/AUT/MAP/MAP002/MAP0021_.aspx?progcd=STU3270"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 課程課表查詢",
+    "text": "課程課表查詢",
+    "href": "Application/TKE/TKE22/TKE2211_.aspx?progcd=STU1250"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 線上加退選",
+    "text": "線上加退選",
+    "href": "Application/TKE/TKE20/TKE2011_.aspx?progcd=STU1010"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 學生個人選課清單課表列印",
+    "text": "學生個人選課清單課表列印",
+    "href": "Application/TKE/TKE22/TKE2240_.aspx?progcd=STU1220"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 查詢必修科目表",
+    "text": "查詢必修科目表",
+    "href": "Application/ENR/ENRA0/ENRA120_.aspx?progcd=STU1101"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 歷年課程課表查詢",
+    "text": "歷年課程課表查詢",
+    "href": "Application/TKE/TKE22/TKE2210_.aspx?progcd=STU1190"
+  },
+  {
+    "trail": "教務系統 > 抵免/免修作業 > 申請抵免學分",
+    "text": "申請抵免學分",
+    "href": "Application/ENR/ENR60/ENR6030_.aspx?progcd=ENR6030"
+  },
+  {
+    "trail": "教務系統 > 抵免/免修作業 > 英檢成績申請抵免/免修課程",
+    "text": "英檢成績申請抵免/免修課程",
+    "href": "Application/AUT/MAP/MAP001/MAP0010_.aspx?progcd=STU3190"
+  },
+  {
+    "trail": "教務系統 > 抵免/免修作業 > 確認/查詢抵免結果",
+    "text": "確認/查詢抵免結果",
+    "href": "Application/ENR/ENR60/ENR6070_.aspx?progcd=ENR6070"
+  },
+  {
+    "trail": "教務系統 > 休/退/復學作業 > 申請休退學",
+    "text": "申請休退學",
+    "href": "Application/ENR/ENRD0/ENRD140_.aspx?progcd=ENRD140"
+  },
+  {
+    "trail": "教務系統 > 休/退/復學作業 > 查詢/撤銷休/退學/保留學籍申請記錄",
+    "text": "查詢/撤銷休/退學/保留學籍申請記錄",
+    "href": "Application/ENR/ENRD0/ENRD160_.aspx?progcd=ENRD160"
+  },
+  {
+    "trail": "暑修作業 > 本校學生暑修作業 > 簡易繳費查詢",
+    "text": "簡易繳費查詢",
+    "href": "Application/AUT/MAP/MAP001/MAP0015_.aspx?progcd=STU3260"
+  },
+  {
+    "trail": "學生宿舍管理系統 > 申請住宿作業",
+    "text": "申請住宿作業",
+    "href": "Application/SDM/SDM20/SDM2010_.aspx?progcd=SDM2010"
+  },
+  {
+    "trail": "學生宿舍管理系統 > 查詢籤號作業",
+    "text": "查詢籤號作業",
+    "href": "Application/SDM/SDM20/SDM2020_.aspx?progcd=SDM2020"
+  },
+  {
+    "trail": "學生宿舍管理系統 > 查詢床位",
+    "text": "查詢床位",
+    "href": "Application/SDM/SDM20/SDM2050_.aspx?progcd=SDM2050"
+  },
+  {
+    "trail": "學生宿舍管理系統 > 申請換床",
+    "text": "申請換床",
+    "href": "Application/SDM/SDM20/SDM2070_.aspx?progcd=SDM2070"
+  },
+  {
+    "trail": "校外租賃訊息管理 > 租賃查詢作業 > 查詢出租訊息",
+    "text": "查詢出租訊息",
+    "href": "Application/SDO/SDO40/SDO4010_.aspx?progcd=SDO4010"
+  },
+  {
+    "trail": "就學貸款-減免補助 > 減免補助 > 申請減免補助",
+    "text": "申請減免補助",
+    "href": "Application/SAC/SAC30/SAC3010_.aspx?progcd=SAC3010"
+  },
+  {
+    "trail": "就學貸款-減免補助 > 減免補助 > 查詢減免補助歷年申請資料",
+    "text": "查詢減免補助歷年申請資料",
+    "href": "Application/SAC/SAC50/SAC5020_.aspx?progcd=SAC5020"
+  },
+  {
+    "trail": "就學貸款-減免補助 > 就學貸款作業 > 申請就學貸款",
+    "text": "申請就學貸款",
+    "href": "Application/SAC/SAC20/SAC2010_.aspx?progcd=SAC2010"
+  },
+  {
+    "trail": "就學貸款-減免補助 > 就學貸款作業 > 查詢就學貸款歷年申請資料",
+    "text": "查詢就學貸款歷年申請資料",
+    "href": "Application/SAC/SAC50/SAC5010_.aspx?progcd=SAC5010"
+  },
+  {
+    "trail": "學生請假 > 學生請假申請",
+    "text": "學生請假申請",
+    "href": "Application/SEC/SEC60/SEC6000_.aspx?progcd=SEC6000"
+  },
+  {
+    "trail": "學生請假 > 學生請假查詢",
+    "text": "學生請假查詢",
+    "href": "Application/SEC/SEC20/SEC2050_.aspx?progcd=SEC2050"
+  },
+  {
+    "trail": "學生請假 > 學生請假取消",
+    "text": "學生請假取消",
+    "href": "Application/SEC/SEC20/SEC2020_.aspx?progcd=SEC2020"
+  },
+  {
+    "trail": "學生請假 > 刪除取消狀態假單",
+    "text": "刪除取消狀態假單",
+    "href": "Application/SEC/SEC20/SEC2030_.aspx?progcd=SEC2030"
+  },
+  {
+    "trail": "學生請假 > 學生請假上傳補件",
+    "text": "學生請假上傳補件",
+    "href": "Application/SEC/SEC20/SEC2080_.aspx?progcd=SEC2080"
+  },
+  {
+    "trail": "學生請假 > 列印註冊/考試請假單",
+    "text": "列印註冊/考試請假單",
+    "href": "Application/SEC/SEC50/SEC5010_.aspx?progcd=SEC5010"
+  },
+  {
+    "trail": "學生請假 > 列印假單證明聯",
+    "text": "列印假單證明聯",
+    "href": "Application/SEC/SEC20/SEC2090_.aspx?progcd=SEC2090"
+  },
+  {
+    "trail": "學生請假 > 列印學期請假紀錄",
+    "text": "列印學期請假紀錄",
+    "href": "Application/SEC/SEC21/SEC2110_.aspx?progcd=SEC2110"
+  },
+  {
+    "trail": "學生社團活動資訊系統 > 社團活動資訊系統",
+    "text": "社團活動資訊系統",
+    "href": "Application/AUT/MAP/MAP001/MAP0008_.aspx?progcd=STU3210"
+  },
+  {
+    "trail": "學生兵役管理 > 維護兵役資料",
+    "text": "維護兵役資料",
+    "href": "Application/SMM/SMM10/SMM1010_.aspx?progcd=SMM1012"
+  },
+  {
+    "trail": "學生兵役管理 > 上傳兵役相關附件",
+    "text": "上傳兵役相關附件",
+    "href": "Application/SMM/SMM50/SMM5010_.aspx?progcd=SMM5010"
+  },
+  {
+    "trail": "學生兵役管理 > 查詢兵役資訊別",
+    "text": "查詢兵役資訊別",
+    "href": "Application/SMM/SMM50/SMM5031_.aspx?progcd=SMM5031"
+  },
+  {
+    "trail": "新生體檢收件作業 > 查詢健康資料卡繳交情形",
+    "text": "查詢健康資料卡繳交情形",
+    "href": "Application/PHY/PHY20/PHY2021_.aspx?progcd=PHY2021"
+  },
+  {
+    "trail": "體育室辦證系統 > 申請體育館運動證",
+    "text": "申請體育館運動證",
+    "href": "Application/SCM/SCM20/SCM2030_.aspx?progcd=SCM2030"
+  },
+  {
+    "trail": "體育室辦證系統 > 查詢申請紀錄",
+    "text": "查詢申請紀錄",
+    "href": "Application/SCM/SCM20/SCM2010_.aspx?progcd=SCM2010"
+  },
+  {
+    "trail": "SDGs > SDGs 填報作業 > 質化指標填報",
+    "text": "質化指標填報",
+    "href": "Application/SDG/SDG20/SDG2010_.aspx?progcd=SDG2010"
+  },
+  {
+    "trail": "電子公布欄 > 公告訊息查詢",
+    "text": "公告訊息查詢",
+    "href": "Application/BBS/BBS30/BBS3010_.aspx?progcd=BBS3010"
+  },
+  {
+    "trail": "連結校內資訊系統 > 教務處-服役彈性修業/超修申請",
+    "text": "教務處-服役彈性修業/超修申請",
+    "href": "Application/AUT/MAP/MAP002/MAP0021_.aspx?progcd=MAP0021"
+  },
+  {
+    "trail": "連結校內資訊系統 > 教務處-英檢成績申請抵免/免修課程",
+    "text": "教務處-英檢成績申請抵免/免修課程",
+    "href": "Application/AUT/MAP/MAP001/MAP0010_.aspx?progcd=MAP0010"
+  },
+  {
+    "trail": "連結校內資訊系統 > 教務處-簡易繳費查詢",
+    "text": "教務處-簡易繳費查詢",
+    "href": "Application/AUT/MAP/MAP001/MAP0015_.aspx?progcd=MAP0015"
+  },
+  {
+    "trail": "連結校內資訊系統 > 學務處-社團活動資訊系統",
+    "text": "學務處-社團活動資訊系統",
+    "href": "Application/AUT/MAP/MAP001/MAP0008_.aspx?progcd=MAP0008"
+  },
+  {
+    "trail": "編輯常用功能",
+    "text": "編輯常用功能",
+    "href": "Application/FAV/FAV1010_.aspx?progcd=FAV1010"
+  },
+  {
+    "trail": "修改密碼",
+    "text": "修改密碼",
+    "href": "./Application/PWD/PWD1020_.aspx"
+  },
+  {
+    "trail": "登入記錄查詢",
+    "text": "登入記錄查詢",
+    "href": "./Application/PWD/PWD1030_.aspx"
+  },
+  {
+    "trail": "回首頁",
+    "text": "回首頁",
+    "href": "Portal.aspx"
+  },
+  {
+    "trail": "登出",
+    "text": "登出",
+    "href": "LogOut.aspx"
+  }
+]
