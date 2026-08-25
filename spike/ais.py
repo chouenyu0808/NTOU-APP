@@ -148,7 +148,13 @@ class SessionExpired(RuntimeError):
     連抓幾十頁的時候中途逾時，就會把一堆登入頁存成「課表」「成績」的 fixture ——
     檔案大小正常、看起來也像 HTML，要等到 parser 解析出 0 筆才會發現，
     而那時你會以為是 parser 壞了。
+
+    帶著擋住我們的那一頁 —— 沒有它就只能憑症狀猜原因。
     """
+
+    def __init__(self, message: str, page: Page | None = None) -> None:
+        super().__init__(message)
+        self.page = page
 
 
 class LoginFailed(RuntimeError):
@@ -189,6 +195,8 @@ class AisSession:
     # 登入 POST 的原始回應。login() 會跟隨 JS 導向，回傳的是導向後的落地頁，
     # 但「怎麼判斷登入成功」的證據在原始回應裡，測試需要它。
     login_response: Page | None = field(default=None, repr=False)
+    # 登出的回應。只有 48 bytes，看起來不像真的做了什麼 —— 要留著檢查。
+    last_logout_response: Page | None = field(default=None, repr=False)
     _hidden: dict[str, str] = field(default_factory=dict, repr=False)
     _last_url: str = ""
     _last_request_at: float = 0.0
@@ -547,12 +555,14 @@ class AisSession:
                 "帳號在別處還有未登出的 session —— 這個系統一次只允許一個登入。\n"
                 "  這支程式結束前會自動登出（LogOut.aspx 是「登出全部視窗」），"
                 "所以**直接重跑一次就會正常**。\n"
-                "  如果重跑還是一樣，用瀏覽器登入再正常登出一次。"
+                "  如果重跑還是一樣，用瀏覽器登入再正常登出一次。",
+                page,
             )
         if self.is_login_page(page):
             raise SessionExpired(
                 f"{page.url} 回傳的是登入頁（session 逾時或被登出）。"
-                "後面的頁面不用再抓了，重新登入吧。"
+                "後面的頁面不用再抓了，重新登入吧。",
+                page,
             )
         return page
 
@@ -560,11 +570,20 @@ class AisSession:
         """
         登出。**每次跑完都要做**，否則 session 留在伺服器上，
         下次登入會被 ConfirmInOrOut.aspx 擋掉，而且症狀完全不像「忘了登出」。
+
+        `LogOut.aspx` 跟這個系統其他地方一樣**只是派發器**，只回 48 bytes：
+
+            <script>top.location.href='Logout.htm';</script>
+
+        真正把 session 作廢的是它導向的頁面。只做 GET 不跟導向的話，
+        每次都會印出「已登出」但**其實沒有登出** —— 然後 session 一路累積，
+        下次登入就被擋，而且看起來完全是另一個問題。
         """
         try:
-            self.get(path)
+            page = self.follow_js_redirect(self.get(path))
+            self.last_logout_response = page
             if self.verbose:
-                print("  已登出")
+                print(f"  已登出（最後停在 {_path_of(page.url, self.base_url)}）")
         except Exception as e:
             print(f"  登出失敗（{type(e).__name__}），"
                   f"下次登入可能會被擋，屆時先用瀏覽器登入再登出一次。")

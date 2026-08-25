@@ -203,6 +203,9 @@ def fetch_pages(sess: AisSession, paths: list[str], save: bool = False,
         except SessionExpired as e:
             # 這個不能 continue：session 沒了，後面每一頁都會存成登入頁
             print(f"\n  {e}", file=sys.stderr)
+            # 把擋住我們的那一頁存下來 —— 沒有它就只能憑症狀猜原因
+            if e.page is not None:
+                save_fixture(e.page, "session_blocked.html", who)
             print(f"  已抓到 {len(out)} 頁，剩下的中止。", file=sys.stderr)
             break
         except Exception as e:

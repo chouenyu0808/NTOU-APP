@@ -355,8 +355,17 @@ Python 在 Windows 預設 stdout 是 cp950，遇到 Big5 編不出來的字會 `
 **登入本身會成功、MainFrame 也載得起來**，但所有功能頁都被導到 ConfirmInOrOut.aspx
 （狀態碼 200）。不偵測的話會把那一頁存成幾十份「課表」fixture。
 
-`login.py` 每次跑完都會自動登出（`LogOut.aspx` 是「登出全部視窗」），
-所以撞到這個直接重跑一次就好。`--no-logout` 可以關掉自動登出，但通常不要用。
+**`LogOut.aspx` 也是派發器**，只回 48 bytes：
+
+```html
+<script>top.location.href='Logout.htm';</script>
+```
+
+只做 GET 不跟導向的話，程式會印出「已登出」但**其實沒有登出**。
+session 一路累積，下次登入被擋，而症狀看起來完全是另一個問題 ——
+這個坑吃掉了三次登入測試才找到，而且中間我兩次都猜錯方向。
+
+`login.py` 每次跑完會自動登出並跟完導向。`--no-logout` 可以關掉，但通常不要用。
 
 對 App 的意義：**學生在網頁登入時，App 抓不到資料。**
 這是產品設計要處理的，不是能繞過的技術問題。

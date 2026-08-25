@@ -230,3 +230,29 @@ def test_normal_page_is_not_session_conflict():
     page = Page(url="https://ais.ntou.edu.tw/Portal.aspx", status=200,
                 html="<table><tr><td>公告</td></tr></table>")
     assert not AisSession.is_session_conflict(page)
+
+
+def test_logout_dispatcher_redirect_is_detected():
+    """
+    LogOut.aspx 只是派發器，回 48 bytes：
+        <script>top.location.href='Logout.htm';</script>
+    只做 GET 不跟導向的話，會印出「已登出」但其實沒登出 ——
+    session 一路累積，下次登入被擋，症狀看起來完全是另一個問題。
+    """
+    page = Page(url="https://ais.ntou.edu.tw/LogOut.aspx", status=200,
+                html="<script>top.location.href='Logout.htm';</script>")
+    assert AisSession.js_redirect_target(page) == "Logout.htm"
+
+
+def test_blocked_page_carries_conflict_signal():
+    """
+    被擋時拿到的是登入頁 + location.href='ConfirmInOrOut.aspx'。
+    兩個訊號都要認得：頁面文字和導向目標。
+    """
+    p = FIXTURES / "session_blocked.html"
+    if not p.exists():
+        pytest.skip("還沒有 session_blocked.html")
+    page = Page(url="https://ais.ntou.edu.tw/Default.aspx", status=200,
+                html=p.read_text(encoding="utf-8"))
+    assert AisSession.is_session_conflict(page)
+    assert AisSession.js_redirect_target(page) == "ConfirmInOrOut.aspx"
