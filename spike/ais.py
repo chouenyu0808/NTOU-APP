@@ -334,10 +334,13 @@ class AisSession:
             if not name:
                 continue
             opt = el.find("option", selected=True) or el.find("option")
-            if opt is not None:
-                out[name] = opt.get("value", opt.get_text(strip=True))
-            else:
-                out[name] = ""
+            if opt is None:
+                # 沒有任何 <option> 的 select，瀏覽器**完全不送這個欄位**。
+                # 送空字串的話，ASP.NET 的 event validation 會判定
+                # 「這個值不是我渲染出來的」而拋例外 —— 表面上是一句
+                # 通用的資料庫錯誤（403），完全看不出是哪個欄位害的。
+                continue
+            out[name] = opt.get("value", opt.get_text(strip=True))
 
         for el in form.find_all("textarea"):
             if el.get("name"):

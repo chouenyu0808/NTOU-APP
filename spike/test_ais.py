@@ -379,3 +379,34 @@ def test_post_is_not_retried(monkeypatch):
     with pytest.raises(requests.ConnectionError):
         sess.post("x.aspx", {"a": "1"})
     assert calls["n"] == 1, "POST 只能送一次"
+
+
+def test_empty_select_is_omitted_not_sent_blank():
+    """
+    沒有任何 <option> 的 select，瀏覽器完全不送這個欄位。
+    送空字串會踩到 ASP.NET 的 event validation（值不是伺服器渲染的），
+    伺服器拋例外，表面上只回一句通用的資料庫錯誤 403。
+    """
+    page = Page(url="x", status=200, html="""
+        <form>
+          <select name="有選項"><option value="A">A</option></select>
+          <select name="空的"></select>
+        </form>
+    """)
+    fields = AisSession(verbose=False).form_fields(page)
+    assert fields["有選項"] == "A"
+    assert "空的" not in fields, "空 select 不能送出去"
+
+
+def test_real_course_search_omits_empty_teacher_select():
+    """真實頁面：Q_LECTR_TCH_CH 是 0 個選項的 select。"""
+    p = FIXTURES / "Application_TKE_TKE22_TKE2211_01.html"
+    if not p.exists():
+        pytest.skip("還沒有課程查詢頁")
+    page = Page(url="https://ais.ntou.edu.tw/x.aspx", status=200,
+                html=p.read_text(encoding="utf-8"))
+    fields = AisSession(verbose=False).form_fields(page)
+    assert "Q_LECTR_TCH_CH" not in fields
+    # 有選項的照送
+    assert fields["Q_FACULTY_CODE"]
+    assert fields["Q_DEGREE_CODE"] == "0"
