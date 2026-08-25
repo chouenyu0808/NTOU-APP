@@ -5,7 +5,7 @@
     "login 區塊已用 probe.py 對 ais.ntou.edu.tw 實測填好（2026-08-25）。",
     "pages 區塊要等登入後才能填。"
   ],
-  "version": 6,
+  "version": 7,
   "base_url": "https://ais.ntou.edu.tw/",
   "min_interval_seconds": 1.0,
   "login": {
@@ -131,7 +131,12 @@
             "Q_LECTR_TCH_CH"
           ],
           "button": "QUERY_BTN3",
-          "list_button": "QUERY_BTN4"
+          "list_button": "QUERY_BTN4",
+          "_comment": [
+            "doQuery case 3 =「教師課表-課表」（真的課表），case 4 =「教師課表-清單」。",
+            "Q_LECTR_TCH_CH 初始有 0 個 option —— 要先選 Q_TCH_FACULTY_CODE 才會連動填入，",
+            "所以不能直接送，得先觸發系所變更的 postback。"
+          ]
         },
         "timeslot": {
           "_label": "時段查詢",
@@ -139,7 +144,11 @@
             "Q_WEEK",
             "Q_CLASS"
           ],
-          "button": "QUERY_BTN5"
+          "button": "QUERY_BTN5",
+          "_comment": [
+            "doQuery 的 case 註解寫「上課時間」。兩個下拉都有選項，不像教師查詢要先連動。",
+            "系所查詢的結果沒有時間欄位，所以時間資訊要從這裡拿。"
+          ]
         },
         "classroom": {
           "_label": "教室查詢",
@@ -180,6 +189,42 @@
           "06",
           "07"
         ]
+      },
+      "_result_columns": {
+        "_comment": [
+          "系所查詢（QUERY_BTN1）的結果欄位，2026-08-25 實測 0507 資工系：",
+          "**沒有上課時間、沒有教室**。列也沒有連到詳細頁（fn_open 只有定義沒有呼叫）。",
+          "所以要畫課表的話，時間資訊得從別的查詢拿。"
+        ],
+        "columns": [
+          "序號",
+          "學期",
+          "課號",
+          "課名",
+          "開課單位",
+          "年級班別",
+          "授課老師",
+          "老師單位",
+          "全程英語",
+          "學分",
+          "選別",
+          "人數",
+          "人數限制上／下限",
+          "實習",
+          "時數",
+          "合開",
+          "期限"
+        ],
+        "sample_row": {
+          "課號": "B57011RQ",
+          "課名": "計算機概論",
+          "年級班別": "1年A班",
+          "學分": "3",
+          "選別": "A",
+          "時數": "3",
+          "學期": "1151"
+        },
+        "paging": "每頁 10 筆（PC$PageSize），要翻頁用 __doPostBack('ReQuery','') 搭配 PC$PageNo"
       }
     },
     "course_search_history": {
