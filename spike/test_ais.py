@@ -256,3 +256,58 @@ def test_blocked_page_carries_conflict_signal():
                 html=p.read_text(encoding="utf-8"))
     assert AisSession.is_session_conflict(page)
     assert AisSession.js_redirect_target(page) == "ConfirmInOrOut.aspx"
+
+
+# ---------- onclick 的隱藏欄位副作用 ----------
+
+def test_onclick_sets_query_type():
+    """
+    onclick="return doQuery('1')" 對應 JS 裡的
+        _i(0, "QUERY_TYPE").value = type;
+    不送這個欄位伺服器就拋例外，而且只回一句通用的 403
+    「系統發生錯誤, 請通知系統管理人員」—— 完全看不出少了什麼。
+    """
+    from bs4 import BeautifulSoup
+    el = BeautifulSoup(
+        """<input type="submit" name="QUERY_BTN1" onclick="return doQuery('1');">""",
+        "lxml",
+    ).find("input")
+    assert AisSession.onclick_side_effects(el) == {"QUERY_TYPE": "1"}
+
+
+def test_onclick_without_argument_sets_nothing():
+    """TKE2240 的 doQuery() 沒帶參數，不該亂補欄位。"""
+    from bs4 import BeautifulSoup
+    el = BeautifulSoup(
+        """<input type="submit" name="QUERY_BTN1" onclick="return doQuery();">""",
+        "lxml",
+    ).find("input")
+    assert AisSession.onclick_side_effects(el) == {}
+
+
+@pytest.mark.parametrize("html", [
+    '<input name="X">',                                  # 沒有 onclick
+    '<input name="X" onclick="clearQueryForm();">',      # 不相干的函式
+])
+def test_onclick_side_effects_on_other_buttons(html):
+    from bs4 import BeautifulSoup
+    el = BeautifulSoup(html, "lxml").find("input")
+    assert AisSession.onclick_side_effects(el) == {}
+
+
+def test_onclick_side_effects_on_missing_button():
+    assert AisSession.onclick_side_effects(None) == {}
+
+
+def test_real_course_search_buttons_map_to_query_types():
+    """真實頁面：七顆查詢按鈕各自對應一個 QUERY_TYPE。"""
+    p = FIXTURES / "Application_TKE_TKE22_TKE2211_01.html"
+    if not p.exists():
+        pytest.skip("還沒有課程查詢頁")
+    soup = Page(url="x", status=200, html=p.read_text(encoding="utf-8")).soup
+    expected = {"QUERY_BTN1": "1", "QUERY_BTN7": "2", "QUERY_BTN3": "3",
+                "QUERY_BTN4": "4", "QUERY_BTN5": "5", "QUERY_BTN6": "6",
+                "QUERY_BTN8": "7"}
+    for name, want in expected.items():
+        el = soup.find("input", {"name": name})
+        assert AisSession.onclick_side_effects(el) == {"QUERY_TYPE": want}, name

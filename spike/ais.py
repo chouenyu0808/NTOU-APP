@@ -19,6 +19,7 @@ import re
 import ssl
 import time
 from dataclasses import dataclass, field
+from typing import ClassVar
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -384,6 +385,29 @@ class AisSession:
             raise CallbackError(env.error)
         return env.result
 
+    # 按鈕 onclick 裡「順手設一個隱藏欄位」的慣例。
+    # 目前只有 doQuery -> QUERY_TYPE 一組，但這個系統很愛這樣寫，
+    # 之後遇到新的加在這裡就好。
+    ONCLICK_FIELD_SETTERS: ClassVar[dict[str, str]] = {"doQuery": "QUERY_TYPE"}
+
+    @classmethod
+    def onclick_side_effects(cls, button_el) -> dict[str, str]:
+        """
+        從按鈕的 onclick 推出它會設哪些隱藏欄位。
+
+        `onclick="return doQuery('1')"` 對應到 JS 裡的
+        `_i(0, "QUERY_TYPE").value = type;` —— 不送這個欄位伺服器就拋例外。
+        """
+        if button_el is None:
+            return {}
+        onclick = button_el.get("onclick") or ""
+        out: dict[str, str] = {}
+        for fn, field_name in cls.ONCLICK_FIELD_SETTERS.items():
+            m = re.search(rf"{fn}\(\s*['\"]([^'\"]*)['\"]\s*\)", onclick)
+            if m:
+                out[field_name] = m.group(1)
+        return out
+
     def submit_form(self, page: Page, button: str,
                     values: dict[str, str] | None = None,
                     path: str | None = None) -> Page:
@@ -398,10 +422,24 @@ class AisSession:
         """
         fields = self.form_fields(page)
         fields.update(self._hidden)
+
+        el = page.soup.find("input", {"name": button})
+
+        # 有些按鈕的 onclick 會順手設一個隱藏欄位再送出，例如
+        #     onclick="return doQuery('1')"   ->   QUERY_TYPE = "1"
+        # 漏掉的話伺服器直接拋例外，而且只回一句通用的 403
+        # 「系統發生錯誤, 請通知系統管理人員」—— 完全看不出少了什麼。
+        # 呼叫端明確給的值優先，這裡只補沒給的。
+        auto = self.onclick_side_effects(el)
+        for k, v in auto.items():
+            if not (values and k in values):
+                fields[k] = v
+                if self.verbose:
+                    print(f"  （依 onclick 自動設定 {k}={v}）")
+
         if values:
             fields.update(values)
 
-        el = page.soup.find("input", {"name": button})
         fields[button] = el.get("value", "") if el is not None else ""
         fields["__EVENTTARGET"] = ""
         fields["__EVENTARGUMENT"] = ""
