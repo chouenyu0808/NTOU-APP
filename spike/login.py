@@ -371,6 +371,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="--fetch-all 時只印標題和大小，不印完整欄位表")
     ap.add_argument("--user", help="學號（不給就互動輸入）")
     ap.add_argument("--name", help="你的姓名 —— 存 fixture 時一併洗掉")
+    ap.add_argument("--no-frames", action="store_true",
+                    help="登入後不載入 frame（用來驗證 frame 是不是必要的）")
     ap.add_argument("--no-logout", action="store_true",
                     help="跑完不登出（這個系統一次只允許一個 session，通常不要用）")
     return ap
@@ -385,6 +387,11 @@ def run_session(sess: AisSession, page: Page, args, who: Identity) -> int:
         save_fixture(page, "mainframe.html", who)
 
     report_navigation(sess, page)
+
+    # 像瀏覽器一樣把 frame 載一遍再開始抓 —— 見 ais.enter_portal()
+    if not args.no_frames:
+        print("\n載入 frame（模擬瀏覽器完成登入握手）...")
+        sess.enter_portal(page)
 
     if args.menu:
         walk_menu(sess, save=args.save, max_depth=args.menu_depth, who=who)

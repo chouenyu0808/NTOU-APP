@@ -566,6 +566,37 @@ class AisSession:
             )
         return page
 
+    def enter_portal(self, page: Page) -> list[Page]:
+        """
+        載入落地頁的所有 frame，像瀏覽器一樣。
+
+        為什麼需要：`MainFrame.aspx` 是 frameset，瀏覽器載完它會**接著載四個 frame**
+        （title / MenuTree / portal / timeout）。我們如果登入後直接跳去功能頁，
+        等於握手只做了一半。
+
+        實測到的相關性：
+            登入 -> MenuTree.aspx -> 展開選單      成功
+            登入 -> 直接抓 Application/…           被導到 ConfirmInOrOut
+
+        差別就在有沒有先碰過 frame。**這是假設，不是已證實的因果**，
+        但瀏覽器本來就會載這些，多打三四個請求換忠實模擬是划算的。
+
+        about:blank 的 frame 跳過（viewFrame / actionFrame 那些）。
+        """
+        loaded: list[Page] = []
+        for frame in page.soup.find_all(["frame", "iframe"]):
+            src = frame.get("src")
+            if not src or src.strip().lower().startswith(("about:", "javascript:")):
+                continue
+            dest = urljoin(page.url, src)
+            if not self.same_origin(dest):
+                continue
+            try:
+                loaded.append(self.get(dest))
+            except Exception as e:
+                print(f"  frame {src!r} 載入失敗（{type(e).__name__}），繼續")
+        return loaded
+
     def logout(self, path: str = "LogOut.aspx") -> None:
         """
         登出。**每次跑完都要做**，否則 session 留在伺服器上，
