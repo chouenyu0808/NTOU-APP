@@ -10,7 +10,13 @@ import 'dart:io';
 /// 少一份副本，就少一次「這份洗乾淨了嗎」的疑問。
 final Directory fixturesDir = Directory('../spike/fixtures');
 
-bool get fixturesAvailable => fixturesDir.existsSync();
+/// 有沒有真的 fixture 可以測。
+///
+/// **不能只看資料夾在不在。** `spike/fixtures/` 一定存在 ——
+/// `menu_tree.json` 是刻意保留在版控裡的（那份沒有個資）。
+/// 只檢查資料夾的話，任何 clone 這個 repo 的人都會拿到一整組紅燈，
+/// 而錯誤訊息是「檔案不存在」，看起來像程式壞了而不是「你沒有 fixture」。
+bool get fixturesAvailable => fixtureFiles().isNotEmpty;
 
 String? get skipReason =>
     fixturesAvailable ? null : '沒有 fixture（跑 spike/login.py --save 產生）';
@@ -19,7 +25,9 @@ String fixture(String name) =>
     File('${fixturesDir.path}/$name').readAsStringSync();
 
 List<File> fixtureFiles() {
-  if (!fixturesAvailable) return const [];
+  // 這裡才是問資料夾在不在的地方 —— fixturesAvailable 反過來靠這個函式，
+  // 兩邊互相呼叫會變成無窮遞迴。
+  if (!fixturesDir.existsSync()) return const [];
   return fixturesDir
       .listSync()
       .whereType<File>()
