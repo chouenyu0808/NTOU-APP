@@ -5,7 +5,7 @@
     "login 區塊已用 probe.py 對 ais.ntou.edu.tw 實測填好（2026-08-25）。",
     "pages 區塊要等登入後才能填。"
   ],
-  "version": 7,
+  "version": 8,
   "base_url": "https://ais.ntou.edu.tw/",
   "min_interval_seconds": 1.0,
   "login": {
@@ -225,7 +225,18 @@
           "學期": "1151"
         },
         "paging": "每頁 10 筆（PC$PageSize），要翻頁用 __doPostBack('ReQuery','') 搭配 PC$PageNo"
-      }
+      },
+      "_no_schedule_data": [
+        "**這個 UI 的清單檢視從來不含上課時間和教室。** 2026-08-25 實測：",
+        "系所查詢（QUERY_BTN1）和時段查詢（QUERY_BTN5）回的是同一組 17 欄，",
+        "都沒有時間欄位。時段查詢是「用時段篩選」，但結果不顯示時段。",
+        "頁面上也沒有隱藏欄位（ColumnFilter 是空的、沒有 setColumnHide）。",
+        "",
+        "所以課表資料只存在於 Crystal Report 的課表檢視裡：",
+        "  教師課表   TKE2211 QUERY_BTN3（要先選系所連動出教師名單）",
+        "  學生選課課表 TKE2240 QUERY_BTN3（需要本人有修課資料）",
+        "App 要畫課表的話，資料來源是後者。"
+      ]
     },
     "course_search_history": {
       "path": "Application/TKE/TKE22/TKE2210_.aspx?progcd=STU1190",

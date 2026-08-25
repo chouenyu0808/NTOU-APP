@@ -56,6 +56,9 @@ _JS_REDIRECT_RE = re.compile(
     r"""(?:\.href)?\s*=\s*['"]([^'"]+)['"]"""
 )
 
+# 錯誤訊息裡最多列幾個選項 —— 系所有 63 個、教師系所有 189 個，全列出來沒人看。
+_OPTIONS_PREVIEW = 12
+
 DEFAULT_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -430,6 +433,36 @@ class AisSession:
                 out[field_name] = m.group(1)
         return out
 
+    @staticmethod
+    def check_values(page: Page, values: dict[str, str]) -> None:
+        """
+        送出前先確認每個值都是頁面上真的有的選項。
+
+        ASP.NET 的 event validation 會拒絕它沒渲染過的值，但錯誤長成
+        「系統發生錯誤, 請通知系統管理人員」——看不出是哪個欄位、哪個值。
+
+        實際踩過：PowerShell 把 `--sweep Q_CLASS=03,05` 裡的 `05` 當數字
+        轉成 `5`，而選項是 '00'..'16'，於是伺服器丟 403。
+        在本機擋下來，錯誤訊息才有用。
+        """
+        soup = page.soup
+        for name, value in values.items():
+            sel = soup.find("select", {"name": name})
+            if sel is None:
+                continue          # 不是下拉就沒得驗，交給伺服器
+            allowed = [o.get("value", "") for o in sel.find_all("option")]
+            if value in allowed:
+                continue
+            preview = ", ".join(repr(a) for a in allowed[:_OPTIONS_PREVIEW])
+            more = (f" …共 {len(allowed)} 個"
+                    if len(allowed) > _OPTIONS_PREVIEW else "")
+            raise ValueError(
+                f"{name}={value!r} 不是合法選項（送出去只會得到看不懂的 403）。\n"
+                f"  可用的值：{preview}{more}\n"
+                f"  提示：PowerShell 會把 05 這種值當數字轉成 5，"
+                f"參數要加引號：--sweep 'Q_CLASS=03,05'"
+            )
+
     def submit_form(self, page: Page, button: str,
                     values: dict[str, str] | None = None,
                     path: str | None = None) -> Page:
@@ -460,6 +493,7 @@ class AisSession:
                     print(f"  （依 onclick 自動設定 {k}={v}）")
 
         if values:
+            self.check_values(page, values)
             fields.update(values)
 
         fields[button] = el.get("value", "") if el is not None else ""

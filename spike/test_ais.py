@@ -410,3 +410,56 @@ def test_real_course_search_omits_empty_teacher_select():
     # 有選項的照送
     assert fields["Q_FACULTY_CODE"]
     assert fields["Q_DEGREE_CODE"] == "0"
+
+
+# ---------- 送出前的值驗證 ----------
+
+def _select_page() -> Page:
+    return Page(url="x", status=200, html="""
+        <form>
+          <select name="Q_CLASS">
+            <option value="00">00</option><option value="03">03</option>
+            <option value="05">05</option>
+          </select>
+          <input name="Q_TEXT" type="text">
+        </form>
+    """)
+
+
+def test_check_values_accepts_real_options():
+    AisSession.check_values(_select_page(), {"Q_CLASS": "03"})
+
+
+def test_check_values_rejects_stripped_leading_zero():
+    """
+    PowerShell 把 --sweep Q_CLASS=03,05 裡的 05 當數字轉成 5。
+    送出去只會得到看不懂的 403，在本機擋下來錯誤訊息才有用。
+    """
+    with pytest.raises(ValueError, match="不是合法選項"):
+        AisSession.check_values(_select_page(), {"Q_CLASS": "5"})
+
+
+def test_check_values_error_lists_valid_options():
+    try:
+        AisSession.check_values(_select_page(), {"Q_CLASS": "99"})
+    except ValueError as e:
+        assert "'00'" in str(e) and "'03'" in str(e), "要把可用的值列出來"
+    else:
+        pytest.fail("應該要擋下來")
+
+
+def test_check_values_ignores_non_select_fields():
+    """文字欄位沒得驗，交給伺服器。"""
+    AisSession.check_values(_select_page(), {"Q_TEXT": "任何值"})
+    AisSession.check_values(_select_page(), {"不存在的欄位": "x"})
+
+
+def test_check_values_on_real_page():
+    p = FIXTURES / "Application_TKE_TKE22_TKE2211_01.html"
+    if not p.exists():
+        pytest.skip("還沒有課程查詢頁")
+    page = Page(url="x", status=200, html=p.read_text(encoding="utf-8"))
+    AisSession.check_values(page, {"Q_CLASS": "03", "Q_WEEK": "1",
+                                   "Q_FACULTY_CODE": "0507"})
+    with pytest.raises(ValueError):
+        AisSession.check_values(page, {"Q_CLASS": "5"})
