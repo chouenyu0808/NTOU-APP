@@ -10,7 +10,7 @@
          （API 28+ 預設就是 false，這裡只是把「不要改它」寫下來。） -->
 
     <application
-        android:label="海大課表"
+        android:label="NTOU"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

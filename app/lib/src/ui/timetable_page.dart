@@ -7,9 +7,18 @@ import 'login_page.dart';
 import 'timetable_grid.dart';
 
 class TimetablePage extends StatelessWidget {
-  const TimetablePage({super.key, required this.controller});
+  const TimetablePage({
+    super.key,
+    required this.controller,
+    this.showLoginAction = true,
+  });
 
   final AppController controller;
+
+  /// 顯示「登入更新」那顆 FAB。
+  ///
+  /// 從登入頁進來看快取時要關掉 —— 那裡按登入等於在登入頁上面再開一個登入頁。
+  final bool showLoginAction;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +54,7 @@ class TimetablePage extends StatelessWidget {
             },
             child: _Body(controller: c),
           ),
-          floatingActionButton: c.phase == AppPhase.ready
+          floatingActionButton: (c.phase == AppPhase.ready || !showLoginAction)
               ? null
               : FloatingActionButton.extended(
                   onPressed: () => _openLogin(context, c),
@@ -241,7 +250,14 @@ class _CourseTile extends StatelessWidget {
       v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 }
 
-/// 課有抓到，但「上課時間」欄解析不出來 —— 格子畫不了，清單照樣完整。
+/// 課有抓到，但沒有時段可以排進格子。
+///
+/// **這通常不是解析失敗，是資料本來就沒有。** 2026-08-25 實測：學校這個 UI 的
+/// 清單檢視（`QUERY_BTN1`）回的 17 欄裡**完全沒有上課時間和教室**，
+/// 也沒有隱藏欄位。時間只存在於 Crystal Report 的課表檢視（`QUERY_BTN3`）。
+///
+/// 所以這裡的文案不能寫成「看不懂」—— 那會讓使用者以為 App 壞了，
+/// 或是去懷疑自己的選課資料有問題。要講的是「這個來源沒有這個欄位」。
 class _NoSlotsNotice extends StatelessWidget {
   const _NoSlotsNotice();
 
@@ -257,8 +273,9 @@ class _NoSlotsNotice extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '這學期的資料裡沒有看得懂的上課時間，所以沒有畫成格子。'
-              '課程資料都在下面，展開可以看到學校給的每一個欄位。',
+              '學校的選課清單沒有附上課時間，所以沒有畫成格子 —— '
+              '這不是漏抓，那個查詢本來就不含時間和教室欄位。\n'
+              '下面是完整的修課清單，展開可以看到學校給的每一個欄位。',
               style: theme.textTheme.bodySmall,
             ),
           ),

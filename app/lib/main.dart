@@ -5,14 +5,17 @@ import 'package:flutter/material.dart';
 
 import 'src/config/selectors.dart';
 import 'src/data/ais_repository.dart';
+import 'src/menu/menu_catalog.dart';
 import 'src/storage/credential_store.dart';
 import 'src/storage/timetable_cache.dart';
 import 'src/ui/app_controller.dart';
-import 'src/ui/timetable_page.dart';
+import 'src/ui/auth_gate.dart';
+import 'src/ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final config = await SelectorConfig.loadFromAsset();
+  final catalog = await MenuCatalog.load();
 
   final repository = AisRepository(
     config: config,
@@ -28,13 +31,18 @@ Future<void> main() async {
   );
   await controller.init();
 
-  runApp(NtouApp(controller: controller));
+  runApp(NtouApp(controller: controller, catalog: catalog));
 }
 
 class NtouApp extends StatefulWidget {
-  const NtouApp({super.key, required this.controller});
+  const NtouApp({
+    super.key,
+    required this.controller,
+    required this.catalog,
+  });
 
   final AppController controller;
+  final MenuCatalog catalog;
 
   @override
   State<NtouApp> createState() => _NtouAppState();
@@ -55,35 +63,41 @@ class _NtouAppState extends State<NtouApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // App 離開前景就登出。
+    // 學校系統一個帳號同時只允許一個 session，App 掛著的那個會擋住使用者
+    // 自己在瀏覽器登入 —— 症狀是「系統同時一次僅許可一個帳號登入」，
+    // 完全看不出兇手是自己的手機。所以離開夠久就要放掉。
     //
-    // 學校系統一個帳號同時只允許一個 session，而 App 掛著的 session
-    // 會擋住使用者自己在瀏覽器登入 —— 症狀是「系統同時一次僅許可一個帳號登入」，
-    // 完全看不出是自己手機上的 App 造成的。
+    // 但「一切出去就登出」太煩：看一眼訊息再回來就要重打驗證碼。
+    // 所以給兩分鐘緩衝，細節見 AppController.handlePaused。
     //
-    // 代價是回到 App 要重新登入（含驗證碼）。這是刻意的取捨：
-    // 課表有快取，看得到；擋住使用者選課則是不能接受的。
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
-      // 這裡不能 await（lifecycle callback 是同步的），但 logout 內部
-      // 就算請求失敗也會把本機 cookie 清掉，所以不會留下半個狀態。
-      unawaited(widget.controller.handleBackgrounded());
+    // 這裡不能 await（lifecycle callback 是同步的），但 logout 內部
+    // 就算請求失敗也會把本機 cookie 清掉，不會留下半個狀態。
+    switch (state) {
+      case AppLifecycleState.paused:
+        widget.controller.handlePaused();
+      case AppLifecycleState.resumed:
+        unawaited(widget.controller.handleResumed());
+      case AppLifecycleState.detached:
+        // 要被關掉了，最後一次機會，不等緩衝
+        unawaited(widget.controller.handleDetached());
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '海大課表',
+      title: 'NTOU',
       debugShowCheckedModeBanner: false,
-      theme: _theme(Brightness.light),
-      darkTheme: _theme(Brightness.dark),
-      home: TimetablePage(controller: widget.controller),
+      theme: NtouTheme.of(Brightness.light),
+      darkTheme: NtouTheme.of(Brightness.dark),
+      home: AuthGate(
+        controller: widget.controller,
+        catalog: widget.catalog,
+      ),
     );
   }
 
-  ThemeData _theme(Brightness brightness) => ThemeData(
-        useMaterial3: true,
-        brightness: brightness,
-        colorSchemeSeed: const Color(0xFF00587A), // 海大的海
-      );
 }

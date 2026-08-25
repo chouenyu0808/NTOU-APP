@@ -31,8 +31,8 @@ class AisSession {
         _dio = dio ?? Dio() {
     _dio.options
       ..baseUrl = config.baseUrl
-      ..connectTimeout = const Duration(seconds: 20)
-      ..receiveTimeout = const Duration(seconds: 20)
+      ..connectTimeout = _timeout
+      ..receiveTimeout = _timeout
       ..responseType = ResponseType.bytes
       ..followRedirects = true
       ..maxRedirects = 5
@@ -66,6 +66,10 @@ class AisSession {
   DateTime _lastRequestAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   Uri get _base => Uri.parse(config.baseUrl);
+
+  /// dio 用 null 表示「不設逾時」。設定檔給 0 就是那個意思。
+  Duration? get _timeout =>
+      config.timeout > Duration.zero ? config.timeout : null;
 
   // ---------- 低階 ----------
 
@@ -200,6 +204,63 @@ class AisSession {
 
     return post(Uri.parse(page.url), fields);
   }
+
+  /// 模擬 `__doPostBack(target, argument)`。
+  ///
+  /// 連動下拉靠這個。這個系統有三組：學制→系所、教師系所→教師名單、大樓→教室。
+  /// 它們的 `onchange` 長這樣：
+  /// ```javascript
+  /// onchange="javascript:setTimeout('__doPostBack(\'Q_TCH_FACULTY_CODE\',\'\')', 0)"
+  /// ```
+  /// 選了上游還沒 postback 之前，下游的 `<select>` 是**0 個 option** ——
+  /// 那種欄位送出去會踩 event validation，而錯誤只是一句通用的 403。
+  ///
+  /// 跟 [submitForm] 的差別：這裡靠 `__EVENTTARGET` 告訴伺服器誰觸發的，
+  /// **不送任何按鈕的 name**。反過來做會變成「按了某顆按鈕」，執行的是別的邏輯。
+  Future<AisPage> postback(
+    AisPage page,
+    String target, {
+    String argument = '',
+    Map<String, String>? values,
+  }) async {
+    final fields = formFields(page.doc)..addAll(_hidden);
+    if (values != null) {
+      checkValues(page.doc, values);
+      fields.addAll(values);
+    }
+    fields['__EVENTTARGET'] = target;
+    fields['__EVENTARGUMENT'] = argument;
+    return post(Uri.parse(page.url), fields);
+  }
+
+  /// 哪些欄位改了之後要重送整張表單（ASP.NET 的 AutoPostBack）。
+  ///
+  /// **刻意走 DOM 而不是對原始 HTML 下正則。** 屬性裡的引號被編碼成 `&#39;`
+  /// 再加一層反斜線跳脫，原始碼長這樣：
+  /// ```
+  /// onchange="javascript:setTimeout(&#39;__doPostBack(\&#39;Q_DEGREE_CODE\&#39;,…
+  /// ```
+  /// 直接 regex 只會抓到頁面上那些**沒有被編碼**的（例如分頁的 `ReQuery`），
+  /// 而真正的連動下拉全部漏掉 —— 而且漏得很安靜。
+  /// HTML 解析器會把屬性值的實體解碼掉，從它讀就對了。
+  static Set<String> autoPostBackFields(AisPage page) {
+    final out = <String>{};
+    for (final el in page.doc.querySelectorAll('[onchange], [onclick]')) {
+      for (final attr in ['onchange', 'onclick']) {
+        final js = el.attributes[attr];
+        if (js == null) continue;
+        for (final m in _doPostBackRe.allMatches(js)) {
+          final target = m.group(1);
+          if (target != null && target.isNotEmpty) out.add(target);
+        }
+      }
+    }
+    return out;
+  }
+
+  /// `__doPostBack(\'Q_X\',\'\')` —— 反斜線是可選的，這個系統兩種寫法都有。
+  static final RegExp _doPostBackRe =
+      RegExp(r"""__doPostBack\(\s*\\?['"]([^'"\\]+)""");
 
   // ---------- 登入 ----------
 

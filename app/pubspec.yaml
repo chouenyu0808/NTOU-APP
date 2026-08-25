@@ -68,6 +68,7 @@ flutter:
   # 字串都在裡面，之後接遠端設定就不用發新版 App。
   assets:
     - assets/selectors.json
+    - assets/menu_tree.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:

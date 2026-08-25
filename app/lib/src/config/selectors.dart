@@ -14,6 +14,7 @@ class SelectorConfig {
     required this.version,
     required this.baseUrl,
     required this.minInterval,
+    required this.timeout,
     required this.login,
     required this.timetable,
     this.logoutPath = 'LogOut.aspx',
@@ -22,6 +23,13 @@ class SelectorConfig {
   final int version;
   final String baseUrl;
   final Duration minInterval;
+
+  /// 單一請求的逾時。
+  ///
+  /// 設成 0 或負數代表**不設逾時** —— 測試用的，正式執行不要這樣配。
+  /// （dio 為每個逾時排一個計時器，widget test 會因為那個計時器還掛著而失敗。）
+  final Duration timeout;
+
   final LoginConfig login;
   final TimetableConfig timetable;
   final String logoutPath;
@@ -41,6 +49,10 @@ class SelectorConfig {
       minInterval: Duration(
         milliseconds:
             (((json['min_interval_seconds'] as num?) ?? 1.0) * 1000).round(),
+      ),
+      timeout: Duration(
+        milliseconds:
+            (((json['timeout_seconds'] as num?) ?? 20) * 1000).round(),
       ),
       login: LoginConfig.fromJson(
         (json['login'] as Map<String, dynamic>?) ?? const {},

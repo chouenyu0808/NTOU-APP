@@ -23,3 +23,4 @@ spike/fixtures/callbacks/
 # 漏洞回報的信稿：內容描述一個尚未修復的弱點。即使 repo 是私有的，
 # 一旦哪天轉公開，刪檔案也救不回 git 歷史。這種東西留在工作區就好。
 漏洞回報*.md
+zeroday-submission.md

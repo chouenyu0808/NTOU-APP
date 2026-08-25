@@ -1,14 +1,20 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+
 import '../ais/ais_session.dart';
 import '../ais/exceptions.dart';
+import '../ais/form_schema.dart';
 import '../ais/forms.dart';
 import '../ais/page.dart';
 import '../config/selectors.dart';
+import '../menu/menu_catalog.dart';
 import '../parsing/models.dart';
+import '../parsing/data_grid.dart';
 import '../parsing/tables.dart';
 import '../parsing/timetable.dart';
 import '../storage/timetable_cache.dart';
+import 'function_view.dart';
 
 /// 等使用者輸入的驗證碼。
 class CaptchaChallenge {
@@ -38,11 +44,24 @@ class SemesterOptions {
 /// 每一步都要 checkSession。少任何一步，症狀都是「回應正常但內容不對」，
 /// 而且錯誤訊息會把人帶往完全錯誤的方向（見 spike/README 第八節）。
 class AisRepository {
-  AisRepository({required this.config, required this.cache, this.log});
+  AisRepository({
+    required this.config,
+    required this.cache,
+    this.log,
+    this.dio,
+  });
 
   final SelectorConfig config;
   final TimetableCache cache;
   final AisLogger? log;
+
+  /// 注入用的 HTTP client。正式執行時是 null（[AisSession] 自己建一個）。
+  ///
+  /// 存在的理由是測試：widget test 裡的 HttpClient 是被擋住的，而且節流用的
+  /// 計時器會在測試結束時還掛著 —— 那會讓測試以「Pending timers」失敗，
+  /// 訊息完全看不出跟登入有關。有這個接縫，測試就能跑**真正的程式路徑**，
+  /// 而不是靠一堆「測試時不要做這件事」的旗標繞過去。
+  final Dio? dio;
 
   AisSession? _session;
 
@@ -64,7 +83,7 @@ class AisRepository {
   /// 送出去只會得到「驗證碼錯誤」，而且你在頁面上找不到任何圖可以看。
   Future<CaptchaChallenge> beginLogin() async {
     await _session?.logout();
-    final session = _session = AisSession(config: config, log: log);
+    final session = _session = AisSession(config: config, log: log, dio: dio);
 
     final page = _loginPage = await session.openLoginPage();
     final image = await session.fetchCaptcha(page);
@@ -183,6 +202,124 @@ class AisRepository {
 
     await cache.write(out);
     return out;
+  }
+
+  // ---------- 通用功能頁 ----------
+
+  /// 手機上一頁 10 筆幾乎沒用，送出時把 `PC$PageSize` 調大。
+  ///
+  /// 不調到上限（欄位允許到 100000）是刻意的：查詢結果是全校範圍的話，
+  /// 一次拉幾千列只是把學校的機器和手機的記憶體一起拖垮。
+  static const int _pageSize = 100;
+
+  /// 打開一個功能頁。
+  ///
+  /// 選單給的路徑是**派發器**，GET 完只會拿到 1.4KB 空殼，要跟完 JS 導向
+  /// 才會到真正的表單頁。
+  Future<FunctionView> openFunction(AisFunction fn) async {
+    final session = _requireSession();
+    var page = await session.get(fn.path);
+    page = await session.followJsRedirect(page);
+    session.checkSession(page);
+
+    final schema = FunctionSchema.fromPage(page);
+    return FunctionView(
+      function: fn,
+      page: page,
+      schema: schema,
+      cascadeFields: AisSession.autoPostBackFields(page),
+      values: {for (final f in schema.visibleFields) f.name: f.value},
+    );
+  }
+
+  /// 改了一個連動欄位：重送整張表單，讓伺服器把下游的下拉填好。
+  ///
+  /// 不做這件事，下游的 `<select>` 會一直是 0 個 option，
+  /// 而那種欄位送出去只會得到一句看不懂的 403。
+  Future<FunctionView> cascade(
+    FunctionView view,
+    String field,
+    String value,
+  ) async {
+    final session = _requireSession();
+    final values = {...view.values, field: value};
+    final page = await session.postback(
+      view.page,
+      field,
+      // 只送得出去的那些。**這裡漏掉過一次**：連動 postback 如果把 0 個選項的
+      // 下拉也一起送，會被 event validation 擋下來 —— 而使用者看到的是
+      // 「某個他根本沒碰過的欄位不是合法選項」，完全不知道發生什麼事。
+      values: _sendable(view, values),
+    );
+    session.checkSession(page);
+
+    final schema = FunctionSchema.fromPage(page);
+    return view.copyWith(
+      page: page,
+      schema: schema,
+      cascadeFields: AisSession.autoPostBackFields(page),
+      // 伺服器可能重填了下游的選項，所以值要以回應為準，不是以使用者填的為準
+      values: {
+        for (final f in schema.visibleFields)
+          f.name: values[f.name] ?? f.value,
+      },
+      clearResult: true,
+    );
+  }
+
+  /// 按下某顆查詢按鈕。
+  Future<FunctionView> runQuery(
+    FunctionView view,
+    String button, {
+    Map<String, String>? values,
+    int? pageNo,
+    int? tabIndex,
+  }) async {
+    final session = _requireSession();
+    final merged = {...view.values, ...?values};
+    final sendable = _sendable(view, merged);
+    sendable['PC\$PageSize'] = '$_pageSize';
+    if (pageNo != null) sendable['PC\$PageNo'] = '$pageNo';
+
+    // 分頁式的頁面靠這個欄位決定用哪一組條件。差一個就會拿別組的空欄位去查，
+    // 而回應是「查無符合資料」—— 看起來像沒資料，其實是問錯問題。
+    if (tabIndex != null) sendable['hdnSelectedTab'] = '$tabIndex';
+
+    final page = await session.submitForm(view.page, button, values: sendable);
+    session.checkSession(page);
+
+    return view.copyWith(
+      page: page,
+      schema: FunctionSchema.fromPage(page),
+      cascadeFields: AisSession.autoPostBackFields(page),
+      values: merged,
+      result: parseDataGrid(page.html),
+    );
+  }
+
+  /// 挑出「這一頁真的收得下」的值。
+  ///
+  /// 兩件事會被濾掉：
+  ///   - **0 個 option 的下拉。** 瀏覽器根本不送它；我們送空字串會被 ASP.NET 的
+  ///     event validation 判定「這不是我渲染出來的值」而拋例外。
+  ///   - 頁面上沒有的欄位。切換標籤頁之後，上一組的欄位可能已經不在了。
+  static Map<String, String> _sendable(
+    FunctionView view,
+    Map<String, String> values,
+  ) {
+    final out = <String, String>{};
+    for (final f in view.schema.fields) {
+      if (f.needsCascade) continue;
+      final v = values[f.name];
+      if (v != null) out[f.name] = v;
+    }
+    return out;
+  }
+
+  AisSession _requireSession() {
+    final s = _session;
+    if (s == null) throw const SessionExpired('還沒登入，請先登入。');
+    return s;
   }
 
   /// 登出並清掉 session。**App 進背景或使用者離開時一定要做** ——

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../ais/exceptions.dart';
@@ -174,19 +176,65 @@ class AppController extends ChangeNotifier {
     await repository.logout();
   }
 
-  /// App 離開前景時呼叫：把學校那端的 session 結束掉，本地退回未登入。
+  /// 進背景多久之後才登出。
   ///
-  /// 不做的話，App 掛著的 session 會擋住使用者自己在瀏覽器登入，
-  /// 而錯誤訊息（「系統同時一次僅許可一個帳號登入」）完全看不出兇手是自己的手機。
+  /// 一開始是「一離開前景就登出」，因為學校系統一個帳號只能有一個 session，
+  /// App 掛著的那個會擋住使用者自己在瀏覽器登入。但那樣切出去看一眼訊息再回來
+  /// 就要重打一次驗證碼，太煩了。給兩分鐘的緩衝。
+  static const Duration backgroundGrace = Duration(minutes: 2);
+
+  Timer? _logoutTimer;
+  DateTime? _pausedAt;
+
+  /// App 進背景。
   ///
-  /// 課表快取留著 —— 回到 App 時馬上看得到東西，只是需要重新登入才能更新。
-  Future<void> handleBackgrounded() async {
+  /// **計時器不保證會跑到** —— Android 會凍結背景的 App，被凍住的 isolate
+  /// 不會執行 Timer。所以這裡只是「能跑就跑」，真正一定會發生的那道防線在
+  /// [handleResumed]：回到前景時檢查實際經過多久。
+  ///
+  /// 兩道都沒跑到的情況（App 被系統直接殺掉）就只能靠學校自己的 session 逾時。
+  void handlePaused() {
+    if (phase != AppPhase.ready) return;
+    _pausedAt = DateTime.now();
+    _logoutTimer?.cancel();
+    _logoutTimer = Timer(backgroundGrace, () => unawaited(_releaseSession()));
+  }
+
+  /// 回到前景。逾時就登出，沒逾時就把計時器取消掉繼續用。
+  Future<void> handleResumed() async {
+    _logoutTimer?.cancel();
+    _logoutTimer = null;
+
+    final since = _pausedAt;
+    _pausedAt = null;
+    if (since == null || phase != AppPhase.ready) return;
+    if (DateTime.now().difference(since) >= backgroundGrace) {
+      await _releaseSession();
+    }
+  }
+
+  /// App 要被關掉了。這是最後一次釋放 session 的機會，不等緩衝時間。
+  Future<void> handleDetached() async {
+    _logoutTimer?.cancel();
+    await _releaseSession();
+  }
+
+  /// 結束學校那端的登入，本地退回未登入。
+  ///
+  /// 課表快取留著 —— 回到 App 時馬上看得到東西，只是要重新登入才能更新。
+  Future<void> _releaseSession() async {
     if (phase != AppPhase.ready) return;
     await repository.logout();
     captcha = null;
     phase = AppPhase.loggedOut;
     showingCache = timetable != null;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _logoutTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> logout() async {

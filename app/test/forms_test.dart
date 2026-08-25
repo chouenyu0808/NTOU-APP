@@ -119,6 +119,26 @@ void main() {
       );
     });
 
+    test('0 個選項的下拉：講「還沒連動出來」，不要印一句空的「可用的值」', () {
+      // 實際踩過：使用者改了「部別代碼」觸發連動，App 把 0 個選項的教師欄位
+      // 一起送去驗證，畫面上就跳出「Q_LECTR_TCH_CH= 不是這一頁提供的選項，
+      // 可用的值：」後面空白 —— 而使用者根本沒碰過那一格。
+      final empty = html_parser.parse(
+        '<form><select name="Q_LECTR_TCH_CH"></select></form>',
+      );
+
+      expect(
+        () => checkValues(empty, {'Q_LECTR_TCH_CH': ''}),
+        throwsA(
+          isA<InvalidFieldValue>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('還沒有任何選項'), isNot(contains('可用的值'))),
+          ),
+        ),
+      );
+    });
+
     test('不是下拉的欄位不驗，交給伺服器', () {
       expect(() => checkValues(doc, {'Q_FREE': '任何值'}), returnsNormally);
     });

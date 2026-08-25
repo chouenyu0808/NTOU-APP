@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ntou_app/main.dart';
+import 'package:ntou_app/src/menu/menu_catalog.dart';
 import 'package:ntou_app/src/config/selectors.dart';
 import 'package:ntou_app/src/data/ais_repository.dart';
 import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/storage/credential_store.dart';
 import 'package:ntou_app/src/storage/timetable_cache.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
+import 'package:ntou_app/src/ui/home_shell.dart';
 import 'package:ntou_app/src/ui/timetable_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -108,16 +110,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('線性代數'), findsOneWidget);
+    // 文案要講清楚「資料本來就沒有這個欄位」，不能讓使用者以為 App 漏抓了。
     expect(find.textContaining('沒有畫成格子'), findsOneWidget);
+    expect(find.textContaining('不是漏抓'), findsOneWidget);
   });
 
   testWidgets('App 根層編得起來也畫得出來', (tester) async {
     // 這個測試的重點不在斷言，而是**把 main.dart 拉進編譯範圍**。
     // 沒有它，App 入口只有真的 flutter run 時才會被編譯到 ——
     // 而這台機器上還沒有 Android / iOS SDK 可以跑。
-    await tester.pumpWidget(NtouApp(controller: await controllerWith(null)));
+    final c = await controllerWith(null);
+
+    // 建構根 widget 就足以把 main.dart 拉進編譯範圍 —— 那才是這個測試的目的。
+    // 不 pump 它：NtouApp 底下的 HomeShell 一掛載就會跳登入頁去打學校的伺服器，
+    // 而 widget test 裡的 HttpClient 是被擋住的。
+    expect(
+      NtouApp(controller: c, catalog: const MenuCatalog([])).controller,
+      same(c),
+    );
+
+    await tester.pumpWidget(MaterialApp(
+      home: HomeShell(
+        controller: c,
+        catalog: const MenuCatalog([]),
+        promptLoginOnOpen: false,
+      ),
+    ));
     await tester.pumpAndSettle();
 
     expect(find.byType(TimetablePage), findsOneWidget);
+    expect(find.text('校務系統'), findsOneWidget);
   });
 }

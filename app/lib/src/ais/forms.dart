@@ -143,6 +143,16 @@ void checkValues(dom.Document doc, Map<String, String> values) {
     final allowed =
         sel.querySelectorAll('option').map((o) => o.attributes['value'] ?? '').toList();
     if (allowed.contains(value)) return;
+
+    // 0 個 option 的下拉是「還沒連動出來」，不是「值填錯了」。
+    // 印一句空的「可用的值：」對使用者完全沒有幫助 —— 而且他多半根本沒碰過這一格。
+    if (allowed.isEmpty) {
+      throw InvalidFieldValue(
+        '「$name」這一格還沒有任何選項，要先選它上面的條件才會連動出來。'
+        '（這通常是 App 的問題，不是你操作錯了）',
+      );
+    }
+
     final preview = allowed.take(12).map((a) => "'$a'").join(', ');
     final more = allowed.length > 12 ? ' …共 ${allowed.length} 個' : '';
     throw InvalidFieldValue(

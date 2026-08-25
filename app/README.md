@@ -1,24 +1,23 @@
-# ntou_app
+# NTOU
 
-海大課表 App。`spike/` 把登入與抓資料的流程打通之後，這裡是移植過來的 Flutter 版。
+國立臺灣海洋大學的學生 App。`spike/` 把登入與抓資料的流程打通之後，這裡是移植過來的 Flutter 版。
 
-第一版範圍：**登入 + 個人課表**。成績不做（不在這個系統裡，見 `spike/README.md` 第七節）。
+範圍：**學校選單上的 13 個模組（50 個功能）全部原生**，加上專屬的課表畫面。
+成績不做（不在這個系統裡，見 `spike/README.md` 第七節）。
 
 ## 現在的狀態
 
 ```
 dart analyze  ->  No issues found
-flutter test  ->  78 passed
+flutter test  ->  107 passed
 ```
 
 跑得起來的部分：登入流程（排隊關卡、驗證碼、frame 握手、派發器導向）、
-課表查詢與解析、離線快取、整套 UI。
+13 個模組 50 個功能的通用驅動器、課表查詢與解析、離線快取、整套 UI。
 
-**Android debug APK 已經建置成功**（162MB，debug build 含全部 ABI 和除錯資訊）。
-但**不是在這個路徑上跑的** —— 「桌面」是非 ASCII，AGP 直接拒絕建置，
-所以驗證是在 `C:\dev` 的拋棄式複本上做的。搬完之後這裡就能直接 build。
+**Android debug APK 在這個路徑上直接建得起來**（debug build 含全部 ABI 和除錯資訊）。
 
-**還沒有裝到實體手機上跑過。**
+**還沒有裝到實體手機上跑過** —— 手機的 USB 偵錯授權要在手機上按，見「怎麼跑」。
 
 ## 工具鏈裝在哪
 
@@ -54,12 +53,23 @@ $env:Path = "C:\Users\choue\flutter\bin;$env:JAVA_HOME\bin;$env:ANDROID_HOME\pla
 .\check.ps1
 ```
 
-裝到手機上（手機要開開發者選項 + USB 偵錯）：
+裝到手機上：
 
 ```powershell
-flutter devices
-flutter run
+.\run.ps1
 ```
+
+`run.ps1` 會自己設好 `JAVA_HOME` / `ANDROID_HOME` / PATH（**刻意不改系統環境變數**），
+先確認手機有沒有接上、有沒有授權，再跑 `flutter run`。
+沒接手機或沒授權的話會直接告訴你缺哪一步，而不是丟一句 flutter 的通用錯誤。
+
+手機要先開：設定 → 關於手機 → 連點「版本號碼」7 次 → 回到「開發者選項」→ 開 **USB 偵錯**。
+插上線之後 USB 模式要選**檔案傳輸 / MTP**，只充電的模式 adb 看不到。
+第一次會在手機上跳出 RSA 指紋的確認框，要按允許。
+
+> **測試前先把瀏覽器上的 AIS 登出。** 一個帳號同時只能有一個 session，
+> 沒登出的話 App 會被擋，而錯誤訊息（「一次僅許可一個帳號登入」）
+> 看起來完全不像是這個原因。
 
 ## 架構
 
@@ -73,10 +83,14 @@ lib/src/
     decode.dart        編碼（AIS 是 UTF-8，有測試鎖住這個假設）
     page.dart          一次回應。**刻意沒有存檔、沒有印出 html 的路徑**
     exceptions.dart    每個例外都帶一句可以直接顯示的中文
+    form_schema.dart   讀出「這一頁能做什麼」——通用驅動器的核心
   parsing/      spike/parsers.py 的移植。純函式，不碰網路
     tables.dart        GridView 解析 + rowspan/colspan 攤平
+    data_grid.dart     通用查詢結果（欄名、列、分頁）
     timetable.dart     選課清單、上課時間、課表格線
     models.dart        Course / TimeSlot / TimetableResult
+  menu/         13 個模組 50 個功能的目錄，含「會改資料」的標記
+  planner/      預排課表的資料模型（做到一半，見「還沒做的」）
   config/       selectors.json 的型別化版本
   storage/      Keychain/Keystore（密碼）與 SharedPreferences（課表快取）
   data/         把上面接起來，UI 只跟這層講話
@@ -85,6 +99,58 @@ lib/src/
 
 `assets/selectors.json` 跟 `spike/selectors.json` 是同一份。
 **所有會因為學校改版而爛掉的字串都在裡面**，之後接遠端設定就不用發新版 App。
+
+## 50 個功能怎麼可能都原生
+
+不為每一頁寫 parser。**讀頁面自己的宣告。**
+
+這個系統的 50 個功能頁是同一套產生器做出來的，而且每樣東西都標好了：
+
+| 頁面上的宣告 | App 拿來做什麼 |
+|---|---|
+| `<select name="Q_AYEAR" CNAME="學年度">` | 欄位的**中文標籤**（不是我們翻譯的） |
+| `<option value="115">115</option>` | 下拉的選項（每年變動的東西不寫死在 App 裡） |
+| `<input type=submit ml="CB_選課清單">` | 按鈕的中文文字 |
+| `<title>TKE2211_課程課表查詢</title>` | 功能名稱（不一定有填，以選單為準） |
+| `onchange="…__doPostBack('Q_DEGREE_CODE'…)"` | 這一格改了要重送（連動下拉） |
+| `<table id="DataGrid">` | 查詢結果，照學校給的欄名和欄序畫 |
+
+所以 `FunctionPage` 這一頁**沒有為任何特定功能寫過一行程式碼**，卻能正確畫出
+50 個功能的查詢表單。學校加一個欄位、改一個標籤、多一顆按鈕，App 自動跟上。
+
+代價是畫面比不上手工雕的。值得為特定功能做專屬畫面時再另外做 —— 課表就是。
+
+**分頁式的頁面要照標籤頁分組。** 課程課表查詢是 jQuery UI tabs，同一頁擺了六套
+互不相干的查詢條件（單位／關鍵字／開課老師／上課時間／教室排課／全英語課），
+每套自己一顆送出鈕。攤平成一張表單的話，畫面上會出現**六顆都叫「查詢」**的按鈕，
+十幾個欄位混在一起 —— 使用者不知道哪個配哪個。
+
+分組依據一樣是頁面自己的宣告：DOM 的 `<div id="tabs-N">` 容器 +
+標籤列的 `<a href="#tabs-N">單位查詢</a>`。送出時 `hdnSelectedTab` 要帶
+**0-based** 的索引（容器 id 是 1-based，差一個就會拿別組的空欄位去查，
+而回應是「查無符合資料」—— 看起來像沒資料，其實是問錯問題）。
+
+三個必須特別處理的：
+
+- **0 個 option 的下拉不能送。** 瀏覽器根本不送它，我們送空字串會被 ASP.NET 的
+  event validation 擋掉，而錯誤只是一句通用的 403，完全看不出是哪個欄位。
+  這種欄位在畫面上會顯示「要先選上面的條件」。
+- **`type=button` 的列印鈕不收。** 它們的 `onclick="doPrint()"` 會先動
+  `QUERY_COND` 和 `Q_AYEARSMS` 再送，不是單純的 postback。收進來而不重現那些
+  副作用，按下去只會得到看不懂的 403。
+- **不是每個欄位都有 `CNAME`。** 課程查詢的節次（`Q_CLASS`）就沒有。
+  只認 `CNAME` 的話那一格會整個消失，而使用者只會覺得「時間查詢只能選星期」。
+  所以還要退回去讀畫面上真正的標籤：`<span ml="PL_節次">節次</span>`。
+
+## 會改資料的 11 個功能
+
+線上加退選、申請休退學、申請住宿/換床、申請減免/就學貸款、申請抵免、
+請假申請/取消/刪除、維護新生舊生資料、線上註冊、維護兵役資料、修改密碼。
+
+點進去之前會跳一次提醒，講清楚這一頁會送出什麼。**不是擋** —— 是不要讓人在
+選課期間手滑點進「線上加退選」。清單和判斷邏輯在 `menu/menu_catalog.dart`，
+`menu_catalog_test.dart` 兩邊都鎖：該標的要標，純查詢的**不能誤標**
+（誤標的代價是每次查課表都跳警告，久了就沒人看警告了）。
 
 ## 跟 spike 刻意不一樣的三個地方
 
@@ -112,8 +178,14 @@ spike 的 `Page.save()` 是拿來產 fixture 的。App 裡只要存在一條把 
 所以 `parseTimeSlots()` 只認明確的寫法（`一3,4`、`一3-4`、`星期二第3節`），
 分不出來就回空的 —— 課仍然列在清單裡，只是不畫進格子，畫面上也會說明為什麼。
 
-> 這個帳號還沒有修課資料（轉學生），所以**還沒有人拿真實的「上課時間」欄對過**。
-> 選課之後第一件事就是回來補上真實格式，然後這個函式就可以放心一點。
+> **但目前這條路上根本沒有時間欄位可以解。** spike 在 2026-08-25 實測確認：
+> 學校這個 UI 的清單檢視（`QUERY_BTN1`）回的 17 欄裡完全沒有上課時間和教室，
+> 也沒有隱藏欄位。時間只存在於 Crystal Report 的課表檢視（`QUERY_BTN3`）。
+>
+> 所以 v1 的課表格子**實際上永遠不會有東西**，畫面上一律顯示清單 +
+> 一句「學校的選課清單沒有附上課時間」。`parseTimeSlots()` 和 `TimetableGrid`
+> 是為了 `QUERY_BTN3` 接上來之後準備的，現在是空轉的。
+> 見下面「還沒做的」。
 
 ## 安全
 
@@ -131,9 +203,17 @@ spike 的 `Page.save()` 是拿來產 fixture 的。App 裡只要存在一條把 
 處理方式：
 
 - 課表抓到就存本機，開 App 先畫快取再更新，畫面上標明「還沒跟學校核對」
-- App 進背景就登出，免得 App 掛著的 session 擋住使用者自己在瀏覽器登入
-- 代價是回到 App 要重新打一次驗證碼。這是刻意的取捨 —— 課表看得到，
-  擋住使用者選課則不能接受
+- **進背景兩分鐘之後才登出**（`AppController.backgroundGrace`）。
+  一開始是「一離開前景就登出」，但那樣切出去看一眼訊息再回來就要重打驗證碼，
+  太煩。兩分鐘是「切出去一下」和「不用了」的分界。
+- 兩道防線，因為 **Android 會凍結背景的 App**，被凍住的 isolate 不會執行 Timer：
+  1. `handlePaused()` 開一個兩分鐘的計時器 —— 能跑就跑
+  2. `handleResumed()` 檢查實際經過多久 —— 這道一定會跑到
+  3. `handleDetached()` 立刻登出，不等緩衝（要被關掉了，最後一次機會）
+
+  三道都沒跑到（App 被系統直接殺掉）就只能靠學校自己的 session 逾時。
+- 開 App 直接跳登入頁，是 `push` 的 —— 按返回就能退出去看快取的課表。
+  學校系統掛掉或帳號在別處登著的時候，那是唯一還看得到的東西。
 
 ## 測試
 
@@ -146,6 +226,9 @@ test/
   timetable_test.dart        時段解析（含「刻意不猜」）、課表格線、選課清單
   fixtures_test.dart         對著 spike/fixtures 的**真實頁面**測
   password_leak_test.dart    守門：頁面內容不能經由 toString 外流
+  form_schema_test.dart      通用驅動器：從真實頁面讀出欄位/標籤/選項/按鈕
+  postback_test.dart         連動下拉的 AutoPostBack 欄位偵測
+  menu_catalog_test.dart     13 個模組的順序、會改資料的標記不能誤標
   timetable_page_test.dart   畫面：「沒課」和「出錯」必須長得不一樣
 ```
 
@@ -240,8 +323,13 @@ Big5 的前導位元組會把後面那個字元吃掉 —— 剛好吃掉一個 
 ## 還沒做的
 
 - [ ] **還沒在真的手機上跑過。** 工具鏈已經齊了，接上手機打 `flutter run` 就行。
-- [ ] 個人課表的真實欄位 —— 這個帳號沒有修課資料，選課後要回來對
-      `parseCourseList()` 的欄名和 `parseTimeSlots()` 的時間格式
+- [ ] **真正的課表格子要接 `QUERY_BTN3`（Crystal Report）。**
+      現在用的 `QUERY_BTN1`（選課清單）**結構上就不含上課時間和教室**，
+      不是抓漏也不是解析失敗。v1 因此只有清單，沒有格子。
+      `QUERY_BTN3` 掛在 `__CRYSTALSTATECrystalReportViewer` 上，
+      **輸出格式沒人驗證過**（可能不是 HTML 表格），而且要有修課資料才驗得了。
+- [ ] `parseCourseList()` 的欄名 —— 這個帳號沒有修課資料，選課後要拿真實的
+      個人清單回來對（目前是照全校課程查詢的欄位結構推的）
 - [ ] `selectors.json` 改成從遠端拉（GitHub raw / Remote Config），
       學校改版時就不用發新版
 - [ ] 成績 —— 不在這個系統裡，要另找入口
