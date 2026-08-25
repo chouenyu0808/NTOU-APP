@@ -544,8 +544,10 @@ class AisSession:
         """抓到登入頁或重複登入警告就直接停 —— 繼續抓只會存下一堆假 fixture。"""
         if self.is_session_conflict(page):
             raise SessionExpired(
-                "帳號在別處還有未登出的 session（ConfirmInOrOut.aspx）。"
-                "這個系統一次只允許一個登入，先把舊的登出再重跑。"
+                "帳號在別處還有未登出的 session —— 這個系統一次只允許一個登入。\n"
+                "  這支程式結束前會自動登出（LogOut.aspx 是「登出全部視窗」），"
+                "所以**直接重跑一次就會正常**。\n"
+                "  如果重跑還是一樣，用瀏覽器登入再正常登出一次。"
             )
         if self.is_login_page(page):
             raise SessionExpired(
