@@ -239,6 +239,8 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
             page = sess.check_session(sess.follow_js_redirect(sess.get(path)))
             if submit:
                 shown = ", ".join(f"{k}={v}" for k, v in submit.values.items())
+                # 連動欄位要先各自 postback，後面的選項才存在
+                page = sess.apply_cascading(page, submit.values)
                 print(f"  送出 {submit.button}（{shown or '無額外欄位'}）...")
                 page = sess.check_session(
                     sess.follow_js_redirect(

@@ -434,6 +434,40 @@ class AisSession:
         return out
 
     @staticmethod
+    def onchange_postback_target(el) -> str | None:
+        """
+        這個欄位改值時會不會觸發 AutoPostBack。
+
+            onchange="javascript:setTimeout('__doPostBack(\\'Q_TCH_FACULTY_CODE\\',\\'\\')', 0)"
+
+        連動下拉就是靠這個：選了系所之後伺服器重新渲染，才把教師名單填進
+        Q_LECTR_TCH_CH。不先做這個 postback，那個下拉永遠是 0 個 option，
+        送出去只會拿到 event validation 失敗。
+        """
+        if el is None:
+            return None
+        onchange = el.get("onchange") or ""
+        m = re.search(r"__doPostBack\(\\?['\"]([^'\"\\]+)", onchange)
+        return m.group(1) if m else None
+
+    def apply_cascading(self, page: Page, values: dict[str, str],
+                        path: str | None = None) -> Page:
+        """
+        依序套用會觸發 AutoPostBack 的欄位，回傳最後那一頁。
+
+        順序有意義：後面的欄位（教師名稱）要等前面的 postback（系所）回來
+        才存在。所以不能一次全送，得像使用者一樣一格一格填。
+        """
+        for name, value in values.items():
+            target = self.onchange_postback_target(page.soup.find(attrs={"name": name}))
+            if not target:
+                continue
+            if self.verbose:
+                print(f"  {name}={value} 會觸發連動，先 postback...")
+            page = self.postback(page, target, extra={name: value}, path=path)
+        return page
+
+    @staticmethod
     def check_values(page: Page, values: dict[str, str]) -> None:
         """
         送出前先確認每個值都是頁面上真的有的選項。

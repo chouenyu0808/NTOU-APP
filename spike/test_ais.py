@@ -463,3 +463,48 @@ def test_check_values_on_real_page():
                                    "Q_FACULTY_CODE": "0507"})
     with pytest.raises(ValueError):
         AisSession.check_values(page, {"Q_CLASS": "5"})
+
+
+# ---------- AutoPostBack 連動下拉 ----------
+
+def test_onchange_postback_target_is_detected():
+    r"""
+    連動下拉的 onchange 長這樣（引號在 HTML 屬性裡是跳脫過的）：
+        javascript:setTimeout('__doPostBack(\'Q_TCH_FACULTY_CODE\',\'\')', 0)
+    """
+    from bs4 import BeautifulSoup
+    html = (
+        '<select name="Q_TCH_FACULTY_CODE" '
+        """onchange="javascript:setTimeout('__doPostBack(\'Q_TCH_FACULTY_CODE\',\'\')', 0)">"""
+        "</select>"
+    )
+    el = BeautifulSoup(html, "lxml").find("select")
+    assert AisSession.onchange_postback_target(el) == "Q_TCH_FACULTY_CODE"
+
+
+def test_plain_select_has_no_postback():
+    from bs4 import BeautifulSoup
+    el = BeautifulSoup('<select name="Q_WEEK"></select>', "lxml").find("select")
+    assert AisSession.onchange_postback_target(el) is None
+    assert AisSession.onchange_postback_target(None) is None
+
+
+def test_real_page_cascading_fields():
+    """
+    真實頁面上有三組連動：學制→系所、教師系所→教師名單、大樓→教室。
+    不先 postback 的話，後面那個下拉是 0 個 option，
+    送出去只會拿到 event validation 失敗（表面上是看不懂的 403）。
+    """
+    p = FIXTURES / "Application_TKE_TKE22_TKE2211_01.html"
+    if not p.exists():
+        pytest.skip("還沒有課程查詢頁")
+    soup = Page(url="x", status=200, html=p.read_text(encoding="utf-8")).soup
+
+    cascading = {
+        el["name"] for el in soup.find_all("select")
+        if AisSession.onchange_postback_target(el)
+    }
+    assert cascading == {"Q_DEGREE_CODE", "Q_TCH_FACULTY_CODE", "Q_CLSSRM_BUILD"}
+    # 被連動填入的那一端不該自己也觸發
+    assert AisSession.onchange_postback_target(
+        soup.find("select", {"name": "Q_LECTR_TCH_CH"})) is None
