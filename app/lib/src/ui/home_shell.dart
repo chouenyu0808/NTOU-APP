@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../menu/menu_catalog.dart';
+import '../storage/plan_store.dart';
 import 'app_controller.dart';
 import 'login_page.dart';
 import 'module_list_page.dart';
+import 'planner_page.dart';
 import 'timetable_page.dart';
 
 /// App 的骨架：課表在前面，校務系統的 13 個模組在後面。
@@ -15,11 +17,13 @@ class HomeShell extends StatefulWidget {
     super.key,
     required this.controller,
     required this.catalog,
+    required this.planStore,
     this.promptLoginOnOpen = true,
   });
 
   final AppController controller;
   final MenuCatalog catalog;
+  final PlanStore planStore;
 
   /// 開 App 時自動跳登入頁。
   ///
@@ -66,6 +70,7 @@ class _HomeShellState extends State<HomeShell> {
         index: _index,
         children: [
           TimetablePage(controller: widget.controller),
+          PlannerPage(controller: widget.controller, store: widget.planStore),
           ModuleListPage(
             controller: widget.controller,
             catalog: widget.catalog,
@@ -80,6 +85,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.calendar_month_outlined),
             selectedIcon: Icon(Icons.calendar_month),
             label: '課表',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.event_note_outlined),
+            selectedIcon: Icon(Icons.event_note),
+            label: '預排',
           ),
           NavigationDestination(
             icon: Icon(Icons.apps_outlined),

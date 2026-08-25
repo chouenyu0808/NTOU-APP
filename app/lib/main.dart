@@ -7,6 +7,7 @@ import 'src/config/selectors.dart';
 import 'src/data/ais_repository.dart';
 import 'src/menu/menu_catalog.dart';
 import 'src/storage/credential_store.dart';
+import 'src/storage/plan_store.dart';
 import 'src/storage/timetable_cache.dart';
 import 'src/ui/app_controller.dart';
 import 'src/ui/auth_gate.dart';
@@ -31,7 +32,7 @@ Future<void> main() async {
   );
   await controller.init();
 
-  runApp(NtouApp(controller: controller, catalog: catalog));
+  runApp(NtouApp(controller: controller, catalog: catalog, planStore: PlanStore()));
 }
 
 class NtouApp extends StatefulWidget {
@@ -39,10 +40,12 @@ class NtouApp extends StatefulWidget {
     super.key,
     required this.controller,
     required this.catalog,
+    required this.planStore,
   });
 
   final AppController controller;
   final MenuCatalog catalog;
+  final PlanStore planStore;
 
   @override
   State<NtouApp> createState() => _NtouAppState();
@@ -96,6 +99,7 @@ class _NtouAppState extends State<NtouApp> with WidgetsBindingObserver {
       home: AuthGate(
         controller: widget.controller,
         catalog: widget.catalog,
+        planStore: widget.planStore,
       ),
     );
   }

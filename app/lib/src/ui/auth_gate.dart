@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../menu/menu_catalog.dart';
+import '../storage/plan_store.dart';
 import 'app_controller.dart';
 import 'home_shell.dart';
 import 'login_page.dart';
@@ -15,10 +16,16 @@ import 'login_page.dart';
 /// 用 push/pop 表達的話，「session 逾時要退回登入」就得從任何一層強制彈出，
 /// 那種程式碼很快就會失控。
 class AuthGate extends StatelessWidget {
-  const AuthGate({super.key, required this.controller, required this.catalog});
+  const AuthGate({
+    super.key,
+    required this.controller,
+    required this.catalog,
+    required this.planStore,
+  });
 
   final AppController controller;
   final MenuCatalog catalog;
+  final PlanStore planStore;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +40,7 @@ class AuthGate extends StatelessWidget {
                   key: const ValueKey('shell'),
                   controller: controller,
                   catalog: catalog,
+                  planStore: planStore,
                 )
               : LoginPage(
                   key: const ValueKey('login'),

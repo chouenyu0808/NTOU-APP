@@ -7,6 +7,7 @@ import 'package:ntou_app/src/config/selectors.dart';
 import 'package:ntou_app/src/data/ais_repository.dart';
 import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/storage/credential_store.dart';
+import 'package:ntou_app/src/storage/plan_store.dart';
 import 'package:ntou_app/src/storage/timetable_cache.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
 import 'package:ntou_app/src/ui/home_shell.dart';
@@ -125,7 +126,7 @@ void main() {
     // 不 pump 它：NtouApp 底下的 HomeShell 一掛載就會跳登入頁去打學校的伺服器，
     // 而 widget test 裡的 HttpClient 是被擋住的。
     expect(
-      NtouApp(controller: c, catalog: const MenuCatalog([])).controller,
+      NtouApp(controller: c, catalog: const MenuCatalog([]), planStore: PlanStore()).controller,
       same(c),
     );
 
@@ -133,6 +134,7 @@ void main() {
       home: HomeShell(
         controller: c,
         catalog: const MenuCatalog([]),
+        planStore: PlanStore(),
         promptLoginOnOpen: false,
       ),
     ));
