@@ -384,6 +384,31 @@ class AisSession:
             raise CallbackError(env.error)
         return env.result
 
+    def submit_form(self, page: Page, button: str,
+                    values: dict[str, str] | None = None,
+                    path: str | None = None) -> Page:
+        """
+        填欄位、按某顆按鈕送出。查詢頁都是這樣運作的。
+
+        跟 postback() 的差別：這裡是 `<input type=submit>`，靠 **name=value**
+        告訴伺服器你按了哪顆，`__EVENTTARGET` 要留空。
+        LinkButton 才是反過來（用 __EVENTTARGET，不送按鈕的 name）。
+
+        按鈕的 value 從頁面上抓 —— 伺服器有些地方會比對 value 的文字。
+        """
+        fields = self.form_fields(page)
+        fields.update(self._hidden)
+        if values:
+            fields.update(values)
+
+        el = page.soup.find("input", {"name": button})
+        fields[button] = el.get("value", "") if el is not None else ""
+        fields["__EVENTTARGET"] = ""
+        fields["__EVENTARGUMENT"] = ""
+
+        dest = path if path is not None else _path_of(page.url, self.base_url)
+        return self.post(dest, fields)
+
     def postback_targets(self, page: Page) -> list[tuple[str, str]]:
         """列出這一頁所有 __doPostBack 目標 —— 探索站台結構用。"""
         seen: dict[tuple[str, str], None] = {}

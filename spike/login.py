@@ -25,7 +25,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -60,6 +60,18 @@ class Identity:
 
 # 不知道身分時用這個 —— 只洗學號、IP 這類固定樣式，洗不掉姓名。
 NOBODY = Identity()
+
+
+@dataclass(frozen=True)
+class FormSubmit:
+    """查詢頁要填的欄位 + 要按的按鈕。例如學年 115 學期 1 按「選課課表」。"""
+
+    button: str
+    values: dict[str, str] = field(default_factory=dict)
+
+    def slug(self) -> str:
+        """給 fixture 檔名用 —— 不同查詢條件不能互相覆蓋。"""
+        return "_".join([self.button, *self.values.values()])
 
 
 def save_fixture(page: Page, filename: str, who: Identity = NOBODY) -> Path:
@@ -185,8 +197,9 @@ def menu_paths() -> list[str]:
     return out
 
 
-def fetch_pages(sess: AisSession, paths: list[str], save: bool = False,
-                quiet: bool = False, who: Identity = NOBODY) -> list[Page]:
+def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
+                quiet: bool = False, who: Identity = NOBODY,
+                submit: FormSubmit | None = None) -> list[Page]:
     """
     在已登入的 session 內依序抓多個頁面。
 
@@ -200,6 +213,14 @@ def fetch_pages(sess: AisSession, paths: list[str], save: bool = False,
         print(f"\n抓取 {path} ...")
         try:
             page = sess.check_session(sess.follow_js_redirect(sess.get(path)))
+            if submit:
+                shown = ", ".join(f"{k}={v}" for k, v in submit.values.items())
+                print(f"  送出 {submit.button}（{shown or '無額外欄位'}）...")
+                page = sess.check_session(
+                    sess.follow_js_redirect(
+                        sess.submit_form(page, submit.button, submit.values)
+                    )
+                )
         except SessionExpired as e:
             # 這個不能 continue：session 沒了，後面每一頁都會存成登入頁
             print(f"\n  {e}", file=sys.stderr)
@@ -218,7 +239,11 @@ def fetch_pages(sess: AisSession, paths: list[str], save: bool = False,
             probe.describe(page)
 
         if save:
-            save_fixture(page, fixture_name(page.url), who)
+            name = fixture_name(page.url)
+            if submit:
+                # 同一頁不同查詢條件會互相覆蓋，把條件寫進檔名
+                name = name.removesuffix(".html") + f"__{submit.slug()}.html"
+            save_fixture(page, name, who)
         out.append(page)
     return out
 
@@ -367,6 +392,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="選單展開深度上限（預設 3）")
     ap.add_argument("--fetch-all", action="store_true",
                     help="抓 menu_tree.json 裡所有唯讀功能頁（會改資料的自動跳過）")
+    ap.add_argument("--submit", metavar="BUTTON",
+                    help="抓到頁面後按這顆按鈕送出（例如 QUERY_BTN3）")
+    ap.add_argument("--set", metavar="K=V", action="append", default=[],
+                    help="送出前設定欄位值，可重複（例如 --set Q_AYEAR=115）")
     ap.add_argument("--quiet", action="store_true",
                     help="--fetch-all 時只印標題和大小，不印完整欄位表")
     ap.add_argument("--user", help="學號（不給就互動輸入）")
@@ -399,7 +428,14 @@ def run_session(sess: AisSession, page: Page, args, who: Identity) -> int:
     targets = list(args.fetch)
     if args.fetch_all:
         targets = menu_paths() + targets
-    fetch_pages(sess, targets, save=args.save, quiet=args.quiet, who=who)
+    submit = None
+    if args.submit:
+        submit = FormSubmit(
+            button=args.submit,
+            values=dict(kv.split("=", 1) for kv in args.set),
+        )
+    fetch_pages(sess, targets, save=args.save, quiet=args.quiet, who=who,
+                submit=submit)
 
     if args.goto:
         print(f"\n前往 {args.goto} ...")

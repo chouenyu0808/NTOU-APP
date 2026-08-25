@@ -222,7 +222,31 @@ populateLog.value += index + ","      // 累加
 所以 App 想做成績就得另外找入口 —— 那是獨立的目標，不是這個 spike 的延伸。
 `selectors.json` 的 `pages.grades.path` 目前是 `null`，不要當成待填的 TODO。
 
-### 八、功能頁都是派發器
+### 八、登入握手要載完 frame
+
+**功能頁在載完 frame 之前一律被擋。** 症狀是被導到 `ConfirmInOrOut.aspx`
+（「系統同時一次僅許可一個帳號登入」），很容易誤判成「舊 session 沒登出」——
+我就誤判了兩次。
+
+實測對照：
+
+| 路徑 | 結果 |
+|---|---|
+| 登入 → `MenuTree.aspx` → 展開選單 | 成功 |
+| 登入 → 直接抓 `Application/…` | 被擋 |
+| 登入 → 載完四個 frame → 抓 `Application/…` | **成功** |
+
+`MainFrame.aspx` 是 frameset，瀏覽器載完它會接著載 `title` / `MenuTree` /
+`portal` / `timeout` 四個 frame。直接跳去功能頁等於握手只做一半。
+`--menu` 那條路徑之所以會過，是因為它剛好碰到了 `MenuTree.aspx`。
+
+`ais.enter_portal()` 照瀏覽器的行為把 frame 載一遍，`--no-frames` 可以關掉做對照。
+
+> 順帶更正一個中途的錯誤推論：`LogOut.aspx` **本來就會清 session**。
+> 有 session 時回 48B 導向 `Logout.htm`，沒有時回 50B 導向 `Default.aspx` ——
+> 回應不同就是它有做事的證據。`Logout.htm` 只是靜態確認頁。
+
+### 九、功能頁都是派發器
 
 選單給的 `Application/<模組>/<子模組>/<代碼>_.aspx?progcd=<代碼>` **不是內容頁**。
 直接 GET 只會拿到 1.4KB 的空殼，裡面就一行：

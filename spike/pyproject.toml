@@ -35,4 +35,6 @@ ignore = [
 "scrub.py" = ["PLR2004"]
 # walk_menu 和 main 都偏長，但拆開只會讓「先做什麼再做什麼」更難追。
 # TreeView 那段的順序是有意義的（狀態要照順序更新），硬拆反而危險。
-"login.py" = ["PLR0912", "PLR0915"]
+# fetch_pages 六個參數，但後四個都是 keyword-only 且有預設值，
+# 呼叫端讀起來是 fetch_pages(sess, paths, save=..., who=...)，不會混淆。
+"login.py" = ["PLR0912", "PLR0915", "PLR0913"]
