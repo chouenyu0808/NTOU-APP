@@ -265,11 +265,30 @@ class AisSession:
             print(f"  [{r.status_code}] {r.url}  (viewstate {len(vs)}B, html {len(html)}B)")
         return page
 
-    def get(self, path: str = "") -> Page:
-        self._throttle()
+    def get(self, path: str = "", retries: int = 2) -> Page:
+        """
+        GET，遇到連線層的錯誤會重試。
+
+        **只有 GET 重試，POST 不重試。** GET 是冪等的；POST 送出後連線斷掉時，
+        沒辦法知道伺服器到底處理了沒有 —— 重送可能造成重複提交。
+        （而且這個系統的登入 POST 綁著一次性驗證碼，重送本來就會失敗。）
+
+        為什麼要重試：每次跑都要人工打驗證碼，一次網路抖動就浪費掉整輪。
+        實測遇過 TLS 握手階段被 RST（WinError 10054），下一秒就恢復正常。
+        """
         url = urljoin(self.base_url, path)
-        r = self.s.get(url, timeout=self.timeout)
-        return self._absorb(r)
+        for attempt in range(retries + 1):
+            self._throttle()
+            try:
+                return self._absorb(self.s.get(url, timeout=self.timeout))
+            except (requests.ConnectionError, requests.Timeout) as e:
+                if attempt == retries:
+                    raise
+                wait = 2 ** attempt
+                print(f"  連線失敗（{type(e).__name__}），{wait} 秒後重試 "
+                      f"{attempt + 1}/{retries}")
+                time.sleep(wait)
+        raise AssertionError("unreachable")
 
     def post(self, path: str, fields: dict[str, str]) -> Page:
         self._throttle()

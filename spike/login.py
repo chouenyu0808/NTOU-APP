@@ -30,6 +30,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
+import requests
+
 import probe
 from ais import (
     AisSession,
@@ -538,5 +540,21 @@ def main() -> int:
             sess.logout()
 
 
+def cli() -> int:
+    """把連線層的錯誤翻成人看得懂的一句話，不要吐 100 行 traceback。"""
+    try:
+        return main()
+    except KeyboardInterrupt:
+        print("\n已中斷。", file=sys.stderr)
+        return 130
+    except (requests.ConnectionError, requests.Timeout) as e:
+        print(f"\n連不上 ais.ntou.edu.tw：{type(e).__name__}", file=sys.stderr)
+        print("  重試過仍然失敗。可能是學校伺服器暫時有狀況，或你的網路斷了。",
+              file=sys.stderr)
+        print("  先確認能不能用瀏覽器開 https://ais.ntou.edu.tw 再重跑。",
+              file=sys.stderr)
+        return 2
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(cli())

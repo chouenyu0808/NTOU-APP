@@ -311,3 +311,71 @@ def test_real_course_search_buttons_map_to_query_types():
     for name, want in expected.items():
         el = soup.find("input", {"name": name})
         assert AisSession.onclick_side_effects(el) == {"QUERY_TYPE": want}, name
+
+
+# ---------- 連線層重試 ----------
+
+def test_get_retries_on_connection_error(monkeypatch):
+    """
+    每次跑都要人工打驗證碼，一次網路抖動就浪費掉整輪 ——
+    實測遇過 TLS 握手被 RST（WinError 10054），下一秒就恢復。
+    """
+    import requests
+
+    sess = AisSession(verbose=False, min_interval=0)
+    calls = {"n": 0}
+
+    class FakeResponse:
+        content = b"<html>ok</html>"
+        encoding = "utf-8"
+        status_code = 200
+        url = "https://ais.ntou.edu.tw/x.aspx"
+
+    def flaky(url, timeout=None):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise requests.ConnectionError("Connection aborted")
+        return FakeResponse()
+
+    monkeypatch.setattr(sess.s, "get", flaky)
+    monkeypatch.setattr("time.sleep", lambda _: None)
+
+    page = sess.get("x.aspx", retries=2)
+    assert page.status == 200
+    assert calls["n"] == 3, "應該重試到成功"
+
+
+def test_get_gives_up_after_retries(monkeypatch):
+    import requests
+
+    sess = AisSession(verbose=False, min_interval=0)
+
+    def always_fail(url, timeout=None):
+        raise requests.ConnectionError("Connection aborted")
+
+    monkeypatch.setattr(sess.s, "get", always_fail)
+    monkeypatch.setattr("time.sleep", lambda _: None)
+
+    with pytest.raises(requests.ConnectionError):
+        sess.get("x.aspx", retries=2)
+
+
+def test_post_is_not_retried(monkeypatch):
+    """
+    POST **不能**重試：連線斷掉時沒辦法知道伺服器處理了沒有，
+    重送可能造成重複提交。登入 POST 還綁著一次性驗證碼，重送本來就會失敗。
+    """
+    import requests
+
+    sess = AisSession(verbose=False, min_interval=0)
+    calls = {"n": 0}
+
+    def failing_post(url, **kwargs):
+        calls["n"] += 1
+        raise requests.ConnectionError("Connection aborted")
+
+    monkeypatch.setattr(sess.s, "post", failing_post)
+
+    with pytest.raises(requests.ConnectionError):
+        sess.post("x.aspx", {"a": "1"})
+    assert calls["n"] == 1, "POST 只能送一次"
