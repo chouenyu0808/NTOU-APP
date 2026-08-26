@@ -198,15 +198,36 @@ class CourseSearchLessonNameTab {
   const CourseSearchLessonNameTab({
     required this.button,
     required this.nameField,
+    required this.classField,
+    required this.modeField,
+    required this.byName,
+    required this.fuzzy,
   });
 
   final String button;
   final String nameField;
 
+  /// 「類別」那組 radio：`0` 課號、`1` 課名、`2` 老師。
+  final String classField;
+
+  /// 「查詢模式」那組 radio：`0` 精準、`1` 模糊。
+  final String modeField;
+
+  /// 用課名查。**頁面預設是課號**，不指定的話等於拿課名去比對課號。
+  final String byName;
+
+  /// 模糊比對。**頁面預設是精準**，不指定的話「微積分」比不到「微積分(一)」。
+  final String fuzzy;
+
   factory CourseSearchLessonNameTab.fromJson(Map<String, dynamic> json) {
+    final radios = (json['radios'] as Map<String, dynamic>?) ?? const {};
     return CourseSearchLessonNameTab(
       button: json['button'] as String? ?? 'QUERY_BTN7',
-      nameField: 'Q_CH_LESSON', // Always use Q_CH_LESSON based on fields array
+      nameField: json['name_field'] as String? ?? 'Q_CH_LESSON',
+      classField: json['class_field'] as String? ?? 'radioButtonClass',
+      modeField: json['mode_field'] as String? ?? 'radioButtonQuery',
+      byName: radios['by_name'] as String? ?? '1',
+      fuzzy: radios['fuzzy'] as String? ?? '1',
     );
   }
 }

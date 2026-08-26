@@ -260,6 +260,12 @@ void main() {
 
       final sent = ais.posts.single;
       expect(sent.pressed('QUERY_BTN7'), isTrue);
+
+      // 頁面預設是「類別=課號(0)、查詢模式=精準(0)」——
+      // 照預設送等於拿課名去比對課號、而且要完全相同。
+      // 「微積分」永遠比不到「微積分(一)」，畫面上看起來就像這門課不存在。
+      expect(sent['radioButtonClass'], '1', reason: '要用課名查，不是課號');
+      expect(sent['radioButtonQuery'], '1', reason: '要模糊比對，不是精準');
       expect(sent.pressed('QUERY_BTN1'), isFalse);
       expect(sent['Q_CH_LESSON'], '計算機');
       // 關鍵字查詢是頁面上的第二個標籤頁（tabs-2），送出去要減一。
