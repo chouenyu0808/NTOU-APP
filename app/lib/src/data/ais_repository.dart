@@ -9,6 +9,7 @@ import '../ais/forms.dart';
 import '../ais/page.dart';
 import '../config/selectors.dart';
 import '../menu/menu_catalog.dart';
+import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../parsing/data_grid.dart';
 import '../parsing/tables.dart';
@@ -75,6 +76,20 @@ class AisRepository {
 
   bool get isLoggedIn => _session != null && _queryPage != null;
 
+  /// 登入握手時順便讀到的電子公布欄。沒登入過就是空的。
+  List<Announcement> get announcements => _announcements;
+  List<Announcement> _announcements = const [];
+
+  /// 四個 frame 裡哪一頁有公布欄，交給 parser 自己說 ——
+  /// 用檔名或順序去猜，學校調整 frame 就會壞。
+  static List<Announcement> _pickAnnouncements(List<AisPage> frames) {
+    for (final page in frames) {
+      final found = parseAnnouncements(page.html);
+      if (found.isNotEmpty) return found;
+    }
+    return const [];
+  }
+
   // ---------- 登入 ----------
 
   /// 開登入頁、通過排隊關卡、抓驗證碼圖。
@@ -122,7 +137,11 @@ class AisRepository {
     // 但留著它只會讓過期的 __VIEWSTATE 有機會被誤用。
     _loginPage = null;
 
-    await session.enterPortal(landing);
+    // 入口頁的四個 frame 裡就有電子公布欄 —— **順便讀走**。
+    // 選單裡雖然有「電子公布欄 > 公告訊息查詢」，但為了首頁那幾則去開那一頁
+    // 等於多打一次學校的伺服器，而資料已經在手上了。
+    _announcements = _pickAnnouncements(await session.enterPortal(landing));
+
     return _openQueryPage(session);
   }
 
@@ -274,6 +293,7 @@ class AisRepository {
     Map<String, String>? values,
     int? pageNo,
     int? tabIndex,
+    Map<String, String>? extra,
   }) async {
     final session = _requireSession();
     final merged = {...view.values, ...?values};
@@ -284,6 +304,10 @@ class AisRepository {
     // 分頁式的頁面靠這個欄位決定用哪一組條件。差一個就會拿別組的空欄位去查，
     // 而回應是「查無符合資料」—— 看起來像沒資料，其實是問錯問題。
     if (tabIndex != null) sendable['hdnSelectedTab'] = '$tabIndex';
+
+    // [extra] 走 `_sendable` 之後才加：radio 沒有 `CNAME`，進不了 schema，
+    // 照一般欄位送會被濾掉。而那幾顆正是決定「用課號還是課名查」的開關。
+    if (extra != null) sendable.addAll(extra);
 
     final page = await session.submitForm(view.page, button, values: sendable);
     session.checkSession(page);
@@ -331,7 +355,12 @@ class AisRepository {
       view,
       t.button,
       values: {t.nameField: keyword},
-      tabIndex: 1, // lesson_name is index 1
+      tabIndex: 1, // 關鍵字查詢是第二個標籤頁
+      // **一定要指定這兩顆，不能用頁面的預設值。**
+      // 頁面預設是「類別=課號、查詢模式=精準」——
+      // 拿「微積分」去做課號的精準比對，永遠是「查無符合資料」，
+      // 而畫面上看起來就像這門課不存在。
+      extra: {t.classField: t.byName, t.modeField: t.fuzzy},
     );
   }
 
@@ -424,6 +453,7 @@ class AisRepository {
     _session = null;
     _loginPage = null;
     _queryPage = null;
+    _announcements = const [];
     if (forgetCache) await cache.clear();
   }
 

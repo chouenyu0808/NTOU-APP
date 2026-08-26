@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../ais/exceptions.dart';
 import '../ais/forms.dart';
 import '../data/ais_repository.dart';
+import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../storage/credential_store.dart';
 
@@ -57,6 +58,9 @@ class AppController extends ChangeNotifier {
   String? semester;
 
   TimetableResult? timetable;
+
+  /// 電子公布欄。登入握手時順便讀到的，不是另外打一次伺服器換來的。
+  List<Announcement> announcements = const [];
 
   /// 現在顯示的是快取，還沒跟學校核對過。
   bool showingCache = false;
@@ -136,6 +140,7 @@ class AppController extends ChangeNotifier {
       semesters = options.semesters;
       year ??= options.defaultYear;
       semester ??= options.defaultSemester;
+      announcements = repository.announcements;
       captcha = null;
       phase = AppPhase.ready;
     }, onFailure: () async => phase = AppPhase.loggedOut);

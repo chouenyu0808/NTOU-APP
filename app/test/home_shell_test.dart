@@ -83,6 +83,9 @@ void main() {
 
     // 首頁上的「預排課表」快捷 —— 對新生來說那是開學前唯一用得到的東西，
     // 不該要他先知道底部有幾個分頁。
+    // 公告區塊把快捷推到畫面外了 —— 捲過去再點，不然 tap 會靜靜地沒反應。
+    await tester.ensureVisible(find.text('預排課表'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('預排課表'));
     await tester.pumpAndSettle();
 

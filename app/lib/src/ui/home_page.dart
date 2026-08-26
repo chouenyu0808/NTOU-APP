@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../parsing/timetable.dart' show kWeekdays;
 import 'app_controller.dart';
@@ -106,6 +107,11 @@ class _HomePageState extends State<HomePage> {
             Text('今日課程', style: theme.textTheme.titleMedium),
             const SizedBox(height: 10),
             _TodayCard(controller: _c, weekday: weekday),
+
+            const SizedBox(height: 28),
+            Text('校園公告', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 10),
+            _Announcements(items: _c.announcements),
 
             const SizedBox(height: 28),
             Text('快捷', style: theme.textTheme.titleMedium),
@@ -224,6 +230,62 @@ class _TodayCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 電子公布欄。只列最近幾則 —— 首頁是「順手看一眼」的地方，
+/// 要全部的話選單裡有「電子公布欄 > 公告訊息查詢」。
+class _Announcements extends StatelessWidget {
+  const _Announcements({required this.items});
+
+  final List<Announcement> items;
+
+  /// 首頁顯示幾則。
+  static const int _limit = 5;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (items.isEmpty) {
+      return Card(
+        margin: EdgeInsets.zero,
+        child: const Padding(
+          padding: EdgeInsets.all(18),
+          child: _Notice(
+            icon: Icons.campaign_outlined,
+            title: '登入後顯示校園公告',
+            body: '公告是登入時順便讀到的，不會另外打一次學校的伺服器。',
+          ),
+        ),
+      );
+    }
+
+    final shown = items.take(_limit).toList();
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var i = 0; i < shown.length; i++) ...[
+            if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
+            ListTile(
+              title: Text(shown[i].title, style: theme.textTheme.bodyMedium),
+              subtitle: Text(
+                [
+                  if (shown[i].date != null) _dateLabel(shown[i].date!),
+                  if (shown[i].unit.isNotEmpty) shown[i].unit,
+                ].join('  ·  '),
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 學校的頁面用民國年，我們已經轉成西元了 —— 這裡顯示「8/26」就好。
+  /// 年份對「最近的公告」沒有資訊量，佔的位置拿來放標題比較實在。
+  static String _dateLabel(DateTime d) => '${d.month}/${d.day}';
 }
 
 class _Notice extends StatelessWidget {

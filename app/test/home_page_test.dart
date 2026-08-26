@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ntou_app/src/parsing/announcements.dart';
 import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
 import 'package:ntou_app/src/ui/home_page.dart';
@@ -146,6 +147,51 @@ void main() {
     });
   });
 
+  group('校園公告', () {
+    testWidgets('沒登入時說明它是登入時順便拿到的', (tester) async {
+      final c = await newController();
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('登入後顯示校園公告'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('列出標題、日期和發布單位', (tester) async {
+      final c = await newController();
+      c.announcements = [
+        Announcement(
+          title: '學生宿舍開放入住首二日',
+          unit: '學務處住宿輔導組',
+          id: '9005901',
+          date: DateTime(2026, 8, 26),
+        ),
+      ];
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('學生宿舍開放入住首二日'), findsOneWidget);
+      // 年份對「最近的公告」沒有資訊量，位置留給標題
+      expect(find.text('8/26  ·  學務處住宿輔導組'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('只列最近 5 則 —— 首頁是順手看一眼的地方', (tester) async {
+      final c = await newController();
+      c.announcements = [
+        for (var i = 0; i < 12; i++)
+          Announcement(title: '公告 $i', unit: '單位', date: DateTime(2026, 8, 26)),
+      ];
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('公告 0'), findsOneWidget);
+      expect(find.text('公告 4'), findsOneWidget);
+      expect(find.text('公告 5'), findsNothing);
+      await unmount(tester);
+    });
+  });
+
   group('快捷', () {
     testWidgets('三個快捷各自切到對應的分頁', (tester) async {
       final c = await newController();
@@ -156,10 +202,13 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('完整課表'));
-      await tester.tap(find.text('預排課表'));
-      await tester.tap(find.text('校務系統'));
-      await tester.pumpAndSettle();
+      for (final label in ['完整課表', '預排課表', '校務系統']) {
+        // 公告區塊把快捷推到畫面外了 —— 捲過去再點，不然 tap 會靜靜地沒反應。
+        await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+      }
 
       expect(opened, [1, 2, 3]);
       await unmount(tester);
