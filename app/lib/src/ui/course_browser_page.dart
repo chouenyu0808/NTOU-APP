@@ -143,7 +143,15 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     final plan = await widget.planStore.read(year, semester) ??
         CoursePlan(year: year, semester: semester);
     
-    if (plan.courses.any((c) => c.course.code == course.code || c.course.name == course.name)) {
+    // 「同一門課」是指**同一班**，不是同課號。真實資料裡 B57011RQ 計算機概論
+    // 有 1年A班和 1年B班，兩列課號和課名都一樣 —— 用 `||` 比課名的話，
+    // 使用者連想比較兩個班都做不到，而且訊息還說「已經在預排清單中了」。
+    bool alreadyPlanned(PlannedCourse c) => course.code.isNotEmpty
+        ? c.course.code == course.code &&
+            c.course.classLabel == course.classLabel
+        : c.course.name == course.name;
+
+    if (plan.courses.any(alreadyPlanned)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('這門課已經在預排清單中了')),
@@ -157,7 +165,14 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     // 這裡替使用者跑一次那個 postback。
     var slots = const <TimeSlot>[];
     try {
-      final target = courseDetailTarget(_view!.page.html, course.code);
+      // 同一個課號常常有好幾列（A班／B班），上課時間不一樣 ——
+      // 要帶著班別和老師才認得出使用者按的是哪一列。
+      final target = courseDetailTarget(
+        _view!.page.html,
+        course.code,
+        classLabel: course.classLabel,
+        teacher: course.teacher,
+      );
       if (target != null) {
         slots = await widget.controller.repository
             .fetchCourseTimeSlots(_view!, target);

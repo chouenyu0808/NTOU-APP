@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ntou_app/src/parsing/models.dart';
@@ -10,6 +12,7 @@ import 'package:ntou_app/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_ais.dart';
+import 'fixtures.dart';
 
 /// 連動下拉的 `onchange`。
 ///
@@ -89,19 +92,28 @@ String _resultTable() => '<table id="DataGrid">'
     '<td>3</td><td>A</td></tr>'
     '</table>';
 
-/// 點課號進去的課程詳細頁。
+/// 課程內容頁（`TKE2240_03.aspx`），照真實頁面的形狀。
 ///
-/// 是同一支 aspx 回來的，所以那段驗證 JS **還在**，而且「上課教室」就排在
-/// 「上課時間」隔壁 —— 綜一301 裡的 301 長得跟時間代碼一模一樣。
+/// 上課時間在一個有 id 的 span 裡，而**隔壁的上課地點是 `INS105,INS105,INS105`**
+/// —— `INS105` 裡的 105 是合法的時間代碼（週一第 5 節）。掃文字會多排一節課出來。
 String _detailPage(String codes) =>
-    '<html><head><title>TKE2211_課程課表查詢</title></head><body>'
+    '<html><head><title>TKE2240_03 課程內容</title></head><body>'
     '$_validationScript'
-    '<table>'
-    '<tr><th>課號</th><td>B57011RQ</td></tr>'
-    '<tr><th>人數限制</th><td>65</td></tr>'
-    '<tr><th>上課時間</th><td>$codes</td></tr>'
-    '<tr><th>上課教室</th><td>綜一301</td></tr>'
-    '</table></body></html>';
+    '<div><span ml="PL_課號">課號</span></div>'
+    '<div><span id="M_COSID" cname="課號">B57011RQ</span></div>'
+    '<div><span ml="PL_上課時間">上課時間</span></div>'
+    '<div><span id="M_SEG" class="form-label" cname="時間">$codes</span></div>'
+    '<div><span ml="PL_上課地點">上課地點</span></div>'
+    '<div><span id="M_CLSSRM_ID" cname="教室代號">INS105,INS105,INS105</span>'
+    '</div></body></html>';
+
+/// 點課號的 postback 回應。
+///
+/// **跟查詢結果頁幾乎一模一樣，只多注入這一行。** 真實資料裡整份 HTML 只差
+/// 3 個 byte（`Message.hideProcess()` 換成 `fn_open(...)`）。
+const _fnOpenResponse = '<html><body>'
+    "<script>fn_open('137171415','1');</script>"
+    '</body></html>';
 
 /// 被踢回登入頁 —— 狀態碼一樣是 200，只能靠指紋認出來。
 const _kickedToLogin =
@@ -141,7 +153,11 @@ void main() {
       if (r.cascaded('Q_DEGREE_CODE')) {
         return _searchPage(facultyOptions: facultyOptions);
       }
+      // 點課號不換頁，只回一行 fn_open；內容在它指的那一頁。
       if (onDetail != null && r['__EVENTTARGET'] == _target('ctl02')) {
+        return _fnOpenResponse;
+      }
+      if (onDetail != null && r.page.startsWith('TKE2240_03.aspx')) {
         return onDetail;
       }
       if (onKeyword != null && r.pressed('QUERY_BTN7')) return onKeyword;
@@ -470,26 +486,45 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('詳細頁是 window.open 另開視窗時，跟著把那一頁抓下來', (tester) async {
-      ais.reply = (r) {
-        if (_isDispatcher(r)) return _dispatcher;
-        if (r.page.startsWith('TKE2220_1.aspx')) return _detailPage('102 103');
-        if (r['__EVENTTARGET'] == _target('ctl02')) {
-          return '<html><body><script>'
-              "window.open('TKE2220_1.aspx?cos=1&amp;y=114','_blank');"
-              '</script></body></html>';
-        }
-        if (r.pressed('QUERY_BTN7')) {
-          return _searchPage(result: _resultTable());
-        }
-        return _searchPage();
-      };
+    testWidgets('點課號不換頁 —— 要跟著 fn_open 再抓一次才拿得到時間', (tester) async {
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage('102,103,104'),
+      );
       await open(tester);
       await searchByKeyword(tester, '計算機');
       await addFirstCourse(tester);
 
-      expect(ais.seen.any((r) => r.page.startsWith('TKE2220_1.aspx')), isTrue);
-      expect((await readPlan())!.courses.single.slots, hasLength(2));
+      // postback 之後一定要再 GET 一次課程內容頁，而且要帶著 fn_open 給的 PKNO
+      final detail = ais.seen.where(
+        (r) => r.page.startsWith('TKE2240_03.aspx'),
+      );
+      expect(detail, hasLength(1),
+          reason: '停在 postback 的回應上是抓不到上課時間的');
+      expect(detail.single.url.queryParameters['PKNO'], '137171415');
+      expect(detail.single.url.queryParameters['LESSON_TYPE'], '1');
+      expect(detail.single.method, 'GET');
+
+      expect((await readPlan())!.courses.single.slots, hasLength(3));
+      await unmount(tester);
+    });
+
+    testWidgets('上課地點裡的數字不能被當成上課時間', (tester) async {
+      // 真實資料：上課時間 102,103,104；上課地點 INS105,INS105,INS105。
+      // 掃文字的話 INS105 的 105 會變成「週一第 5 節」，憑空多一節課。
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage('102,103,104'),
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+      await addFirstCourse(tester);
+
+      expect((await readPlan())!.courses.single.slots, const [
+        TimeSlot(0, 2),
+        TimeSlot(0, 3),
+        TimeSlot(0, 4),
+      ]);
       await unmount(tester);
     });
 
@@ -629,5 +664,72 @@ void main() {
       expect(courseDetailTarget(_resultTable(), 'X99999'), isNull);
       expect(courseDetailTarget(_resultTable(), ''), isNull);
     });
+
+    test('同課號多班別：靠班別和老師認出使用者按的那一列', () {
+      // 真實資料就長這樣：B57011RQ 計算機概論同時有 1年A班和 1年B班，
+      // 上課時間不一樣。只比課號的話會固定拿第一列 —— 使用者加的是 B 班，
+      // 填進去的卻是 A 班的時間，而且畫面上完全看不出來（有時間、看起來正常）。
+      final html = '<table id="DataGrid">'
+          '<tr><th>課號</th><th>課名</th><th>年級班別</th><th>授課老師</th></tr>'
+          '<tr><td>${_codeLink('ctl02', 'B57011RQ')}</td>'
+          '<td>計算機概論</td><td>1年A班</td><td>許為元</td></tr>'
+          '<tr><td>${_codeLink('ctl03', 'B57011RQ')}</td>'
+          '<td>計算機概論</td><td>1年B班</td><td>林韓禹</td></tr>'
+          '</table>';
+
+      expect(
+        courseDetailTarget(html, 'B57011RQ',
+            classLabel: '1年B班', teacher: '林韓禹'),
+        _target('ctl03'),
+      );
+      expect(
+        courseDetailTarget(html, 'B57011RQ',
+            classLabel: '1年A班', teacher: '許為元'),
+        _target('ctl02'),
+      );
+
+      // 只認得出一個線索，也比「隨便拿第一列」好
+      expect(
+        courseDetailTarget(html, 'B57011RQ', classLabel: '1年B班'),
+        _target('ctl03'),
+      );
+
+      // 完全沒有線索時維持舊行為：回第一列
+      expect(courseDetailTarget(html, 'B57011RQ'), _target('ctl02'));
+    });
+  });
+
+  group('真實的課程內容頁', () {
+    // 這一份是從學校真的抓下來的（login.py --goto 之後自動跟 fn_open）。
+    // 沒有 fixture 的人跑 flutter test 不該拿到紅燈。
+    final missing = File('${fixturesDir.path}/course_detail.html').existsSync()
+        ? null
+        : '沒有 course_detail.html';
+
+    test('M_SEG 是空的時候回「沒有時間」，不要退回掃文字亂猜', () {
+      // PKNO 不對時，課程內容頁會回一份 Mode=ADD 的空殼：版面和標籤都在，
+      // 每一格都是空的。那時候掃文字等於拿頁面上任何三位數當上課時間。
+      const shell = '<html><body>'
+          '<div><span ml="PL_上課時間">上課時間</span></div>'
+          '<div><span id="M_SEG" cname="時間"></span></div>'
+          '<div><span id="M_CLSSRM_ID" cname="教室代號">INS105</span></div>'
+          '<div>人數限制 105 / 102</div>'
+          '</body></html>';
+
+      expect(parseCourseTimeSlots(shell), isEmpty);
+    });
+
+    test('直接對著學校回來的那一頁解析上課時間', () {
+      final html = fixture('course_detail.html');
+
+      // 真實內容：<span id="M_SEG" CNAME="時間">102,103,104</span>
+      // 隔壁是   <span id="M_CLSSRM_ID">INS105,INS105,INS105</span>
+      // —— INS105 的 105 是合法代碼，掃文字會多解析出「週一第 5 節」。
+      expect(parseCourseTimeSlots(html), const [
+        TimeSlot(0, 2),
+        TimeSlot(0, 3),
+        TimeSlot(0, 4),
+      ]);
+    }, skip: missing);
   });
 }

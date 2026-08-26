@@ -167,19 +167,85 @@ final RegExp _postBackTargetRe =
 /// 使用者看到的是「加進預排了，只是沒有上課時間」，看不出是解析失敗。
 /// （`AisSession.autoPostBackFields` 為了同一件事也刻意走 DOM。）
 ///
-/// 同一個課號可能有好幾列（不同班別開的同一門課），這裡回**第一列**。
-String? courseDetailTarget(String html, String code) {
+/// **同一個課號常常有好幾列，而且上課時間不一樣。** 真實資料裡
+/// `B57011RQ 計算機概論` 就同時有「1年A班／許為元」和「1年B班／林韓禹」。
+/// 只比課號的話會固定拿第一列 —— 使用者加的是 B 班、填進去的卻是 A 班的時間，
+/// 而且畫面上完全看不出來（有時間、看起來很正常，只是錯的）。
+/// 所以要再用班別和老師把那一列認出來。
+String? courseDetailTarget(
+  String html,
+  String code, {
+  String classLabel = '',
+  String teacher = '',
+}) {
   final wanted = clean(code);
   if (wanted.isEmpty) return null;
 
   final doc = html_parser.parse(html);
+  final hits = <({String target, String row})>[];
   for (final a in doc.querySelectorAll('a')) {
     if (clean(a.text) != wanted) continue;
     final href = a.attributes['href'] ?? a.attributes['onclick'] ?? '';
     final m = _postBackTargetRe.firstMatch(href);
-    if (m != null) return m.group(1);
+    if (m != null) hits.add((target: m.group(1)!, row: clean(_rowTextOf(a))));
+  }
+  if (hits.isEmpty) return null;
+  if (hits.length == 1) return hits.first.target;
+
+  // 班別和老師都對得上的那一列最準；只對得上一個，也還是比「隨便拿第一列」好。
+  final marks =
+      [clean(classLabel), clean(teacher)].where((s) => s.isNotEmpty).toList();
+  for (var need = marks.length; need >= 1; need--) {
+    for (final h in hits) {
+      if (marks.where(h.row.contains).length >= need) return h.target;
+    }
+  }
+  return hits.first.target;
+}
+
+/// 課程內容頁上「上課時間」那一格。
+///
+/// 先認 id（`M_SEG`），再退而求其次認 `CNAME="時間"` —— 兩個都是頁面自己的宣告，
+/// 學校改版時比「第幾格」可靠。
+dom.Element? _timeFieldByCname(dom.Document doc) {
+  for (final el in doc.querySelectorAll('span, td')) {
+    final cname = el.attributes['cname'] ?? el.attributes['CNAME'];
+    if (cname == '時間') return el;
   }
   return null;
+}
+
+/// 課程內容頁上放上課時間的欄位 id。
+const String kCourseTimeFieldId = 'M_SEG';
+
+/// 點課號之後真正要去的那一頁。
+///
+/// **點課號不會換頁。** 回應是同一份 HTML，只多注入一行
+/// `fn_open('<PKNO>','<LESSON_TYPE>')`（其餘一個 byte 都沒變），瀏覽器據此
+/// 開一個 FancyBox。真正的課程內容在 `TKE2240_03.aspx`，而且是**普通的 GET**。
+///
+/// 不知道這件事的話，會在查詢結果頁上找「上課時間」—— 而那一頁的「上課時間」
+/// 全是分頁標籤「上課時間查詢」，永遠找不到值，症狀看起來像「這門課沒排時間」。
+///
+/// `PKNO` 是**純 9 碼數字**（例如 `137171415`），不是課號。
+String? courseDetailUrl(String html) {
+  final m = _fnOpenRe.firstMatch(html);
+  if (m == null) return null;
+  return '$kCourseDetailPath?PKNO=${m.group(1)}&LESSON_TYPE=${m.group(2)}';
+}
+
+const String kCourseDetailPath = 'Application/TKE/TKE22/TKE2240_03.aspx';
+
+/// 定義本身（`function fn_open(pkno, lesson_type)`）的參數沒有引號，不會誤中。
+final RegExp _fnOpenRe =
+    RegExp(r"""fn_open\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)""");
+
+/// 這個連結所在的那一列的文字。認不出 `<tr>` 就退回連結自己的文字。
+String _rowTextOf(dom.Element el) {
+  for (dom.Element? n = el; n != null; n = n.parent) {
+    if (n.localName == 'tr') return n.text;
+  }
+  return el.text;
 }
 
 /// 學校的上課時間代碼：`102 103 104` = 週一第 2、3、4 節。
@@ -233,6 +299,30 @@ List<TimeSlot> parseCourseTimeSlots(String html) {
   final doc = html_parser.parse(html);
   for (final el in doc.querySelectorAll('script, style')) {
     el.remove();
+  }
+
+  // 課程內容頁把上課時間放在一個有 id 的欄位裡：
+  //     <span id="M_SEG" CNAME="時間">102,103,104</span>
+  //
+  // **優先讀它，不要掃文字。** 它隔壁那一格是上課地點，真實資料長這樣：
+  //     <span id="M_CLSSRM_ID" CNAME="教室代號">INS105,INS105,INS105</span>
+  // `INS105` 裡的 105 就是合法的時間代碼（週一第 5 節）—— 掃文字會憑空
+  // 多排一節課出來，而使用者看到的是一門「多上一節」的課，不會知道哪裡錯了。
+  // **有 `M_SEG` 就完全以它為準：有值就是值，空的就是「這門課沒排時間」。**
+  //
+  // 特別不要在它是空的時候退回掃文字。課程內容頁在 PKNO 不對時會回一份
+  // `Mode=ADD` 的空殼（每一格都是空的），那時候掃文字等於拿頁面上任何一個
+  // 三位數來當上課時間 —— 寧可回「沒有時間」讓使用者自己填，
+  // 也不要給一個看起來很正常、其實是亂猜的時段。
+  final byId = doc.querySelector('#$kCourseTimeFieldId');
+  if (byId != null) return parseTimeCodes(clean(byId.text));
+
+  // 沒有那個 id 才退而求其次認 `CNAME` —— 這個比對比較鬆，所以只在
+  // 真的解出東西時才採用。
+  final byName = _timeFieldByCname(doc);
+  if (byName != null) {
+    final slots = parseTimeCodes(clean(byName.text));
+    if (slots.isNotEmpty) return slots;
   }
 
   for (final cell in doc.querySelectorAll('th, td, dt, label, span')) {

@@ -370,26 +370,26 @@ class AisRepository {
     String eventTarget,
   ) async {
     final session = _requireSession();
-    var page = await session.postback(
+    final posted = await session.postback(
       view.page,
       eventTarget,
       values: _sendable(view, view.values),
     );
-    session.checkSession(page);
+    session.checkSession(posted);
 
-    // 詳細頁有時候是用 `window.open('TKE2220_1.aspx?…')` 另開視窗的，
-    // 那樣 postback 的回應裡只有一段 script，內容在它指的那一頁。
-    final openMatch = _windowOpenRe.firstMatch(page.html);
-    if (openMatch != null) {
-      page = await session.get(openMatch.group(1)!.replaceAll('&amp;', '&'));
-      page = await session.followJsRedirect(page);
-      session.checkSession(page);
-    }
+    // 點課號**不會換頁**，回應只多注入一行 `fn_open('<PKNO>','<型別>')`。
+    // 內容在它指的那一頁 —— 見 [courseDetailUrl]。
+    final detail = courseDetailUrl(posted.html);
+    if (detail == null) return const [];
+
+    // **不要跟 JS 導向。** 課程內容頁自己帶著一行指向 `/Portal.aspx` 的 script，
+    // 跟下去會把剛拿到的 57KB 內容整份換成首頁 —— 而且不會報錯，
+    // 症狀只是「這門課沒有上課時間」，你會跑去查 parser。
+    final page = await session.get(detail);
+    session.checkSession(page);
 
     return parseCourseTimeSlots(page.html);
   }
-
-  static final RegExp _windowOpenRe = RegExp(r"""window\.open\(\s*['"]([^'"]+)""");
 
   /// 挑出「這一頁真的收得下」的值。
   ///
