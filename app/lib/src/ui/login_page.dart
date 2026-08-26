@@ -1,5 +1,10 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'app_controller.dart';
 import 'cached_timetable_page.dart';
@@ -45,10 +50,130 @@ class _LoginPageState extends State<LoginPage> {
     if (saved != null && mounted) _password.text = saved;
   }
 
+  Uint8List? _lastCaptcha;
+
   void _onControllerChanged() {
     if (!mounted) return;
     setState(() {});
-    if (_c.phase == AppPhase.awaitingCaptcha) _captchaFocus.requestFocus();
+    if (_c.phase == AppPhase.awaitingCaptcha) {
+      if (_c.captcha != null && _c.captcha != _lastCaptcha) {
+        _lastCaptcha = _c.captcha;
+        _autoRecognizeCaptcha(_c.captcha!);
+      }
+      _captchaFocus.requestFocus();
+    } else {
+      _lastCaptcha = null;
+    }
+  }
+
+  Future<void> _autoRecognizeCaptcha(Uint8List bytes) async {
+    // 顯示「辨識中」提示
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('正在自動辨識驗證碼…'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+
+    try {
+      // ML Kit 要求圖片最小 32x32，先放大再送去辨識
+      final scaledBytes = await _scaleUpToMinSize(bytes, minSize: 64);
+
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/captcha.png');
+      await file.writeAsBytes(scaledBytes, flush: true);
+
+      final inputImage = InputImage.fromFile(file);
+      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      await textRecognizer.close();
+
+      final rawText = recognizedText.text;
+      // 只保留英文字母和數字（過濾掉空白、雜訊標點符號）
+      final text = rawText.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+
+      if (!mounted) return;
+      // 顯示辨識結果（不管長度），方便診斷
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            text.isEmpty
+                ? '辨識失敗（圖太難辨識），請手動輸入'
+                : text.length == 4
+                    ? '自動辨識：$text，嘗試登入中…'
+                    : '辨識到「$text」(${text.length}碼)，請確認後手動修改',
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+
+      // 如果過濾後剛好是 4 碼，就填入並嘗試送出
+      if (text.length == 4 && mounted && _c.phase == AppPhase.awaitingCaptcha) {
+        _captcha.text = text;
+        setState(() {});
+        if (_canSubmit) {
+          _submit();
+        }
+      } else if (text.isNotEmpty && text.length != 4 && mounted) {
+        // 辨識到但長度不對，先填進去讓使用者修正
+        _captcha.text = text;
+        setState(() {});
+        _captchaFocus.requestFocus();
+      }
+    } catch (e, st) {
+      debugPrint('OCR failed: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('OCR 錯誤：$e'),
+            duration: const Duration(seconds: 10),
+          ),
+        );
+      }
+    }
+  }
+
+  /// ML Kit 要求圖片最小 32x32，把驗證碼放大到至少 [minSize] 像素。
+  /// 用 dart:ui 做，不需要額外套件。
+  Future<Uint8List> _scaleUpToMinSize(Uint8List bytes, {int minSize = 64}) async {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final src = frame.image;
+
+    final w = src.width;
+    final h = src.height;
+
+    // 圖夠大就直接回傳原始 bytes
+    if (w >= minSize && h >= minSize) {
+      src.dispose();
+      return bytes;
+    }
+
+    // 等比例放大：確保短邊 >= minSize
+    final scale = minSize / (w < h ? w : h);
+    final newW = (w * scale).ceil();
+    final newH = (h * scale).ceil();
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawImageRect(
+      src,
+      Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+      Rect.fromLTWH(0, 0, newW.toDouble(), newH.toDouble()),
+      Paint()..filterQuality = FilterQuality.high,
+    );
+    src.dispose();
+
+    final picture = recorder.endRecording();
+    final resized = await picture.toImage(newW, newH);
+    final byteData = await resized.toByteData(format: ui.ImageByteFormat.png);
+    resized.dispose();
+
+    return byteData!.buffer.asUint8List();
   }
 
   @override
@@ -83,7 +208,31 @@ class _LoginPageState extends State<LoginPage> {
       captchaText: _captcha.text.trim(),
       remember: _remember,
     );
-    if (mounted) _captcha.clear();
+    if (mounted) {
+      _captcha.clear();
+      // `clear()` 不會觸發 TextField 的 onChanged，長度要自己歸零，
+      // 不然下一張驗證碼打第一碼就會被當成「剛打完第 4 碼」。
+      _captchaLength = 0;
+    }
+  }
+
+  /// 驗證碼欄上一次的長度。
+  ///
+  /// 用來分辨「使用者剛打完第 4 碼」和「整格一次被填滿」——
+  /// 見 [_onCaptchaChanged]。
+  int _captchaLength = 0;
+
+  void _onCaptchaChanged(String value) {
+    final was = _captchaLength;
+    _captchaLength = value.length;
+    setState(() {});
+
+    // 打完第 4 碼直接送出，少按一次登入鈕。
+    //
+    // **只認「3 → 4」這一步。** 整格一次被填滿（貼上、自動填入、程式設值）時
+    // 不自動送：那種情況使用者多半還想先看一眼，而驗證碼是一次性的 ——
+    // 送錯一次就燒掉一張，而且學校的失敗是靜默的（重畫登入頁配新圖，不給訊息）。
+    if (was == 3 && value.length == 4 && _canSubmit) _submit();
   }
 
   @override
@@ -160,7 +309,7 @@ class _LoginPageState extends State<LoginPage> {
                         textController: _captcha,
                         focusNode: _captchaFocus,
                         onRefresh: _c.startLogin,
-                        onChanged: (_) => setState(() {}),
+                        onChanged: _onCaptchaChanged,
                         onSubmitted: (_) => _submit(),
                       ),
                     ],
@@ -319,9 +468,12 @@ class _CaptchaField extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Tooltip(
-          message: '點一下換一張',
+          message: '點一下放大，長按換一張',
           child: InkWell(
-            onTap: onRefresh,
+            // 圖只有 116×54，四個字裡有一兩個看不清是常態。與其讓人一直換圖
+            // （每換一張就是學校那端一次請求），不如先讓他放大看清楚。
+            onTap: image == null ? onRefresh : () => _enlarge(context, image),
+            onLongPress: onRefresh,
             borderRadius: BorderRadius.circular(12),
             child: Ink(
               width: 116,
@@ -353,6 +505,40 @@ class _CaptchaField extends StatelessWidget {
       ],
     );
   }
+
+  /// 放大看驗證碼。
+  ///
+  /// 底色固定白色 —— 學校給的圖是白底，深色模式下直接鋪在深色面板上
+  /// 會看不出字的邊界。
+  Future<void> _enlarge(BuildContext context, Uint8List image) => showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          content: Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(12),
+            child: Image.memory(
+              image,
+              width: MediaQuery.sizeOf(ctx).width * 0.62,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                onRefresh();
+              },
+              child: const Text('換一張'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('看清楚了'),
+            ),
+          ],
+        ),
+      );
 }
 
 class _ErrorCard extends StatelessWidget {
