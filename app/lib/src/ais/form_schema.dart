@@ -45,6 +45,7 @@ class SchemaButton {
     required this.name,
     required this.label,
     this.value = '',
+    this.action = '',
     this.isPrint = false,
   });
 
@@ -53,6 +54,17 @@ class SchemaButton {
   /// 中文標籤，從按鈕的 `ml` 屬性讀來（`CB_查詢` -> `查詢`）。
   final String label;
   final String value;
+
+  /// 這顆按鈕的 `onclick`。
+  ///
+  /// 用來分辨「同一個動作放了兩次」和「兩個看起來一樣的不同動作」：
+  ///   - 維護新生資料的 `SAVE_BTN1` / `SAVE_BTN2` 都是「存檔」，`onclick`
+  ///     也都是 `return doSave();` —— 長表單上下各放一顆，同一個動作。
+  ///   - 課程課表查詢的六顆「查詢」看起來一樣，但 `onclick` 分別是
+  ///     `doQuery('1')`…`doQuery('6')` —— 是六個不同的查詢，一顆都不能少。
+  ///
+  /// 只看標籤分不出這兩種情況。
+  final String action;
 
   /// 列印／報表類的按鈕。這些多半掛在 Crystal Reports 上，
   /// 輸出不一定是 HTML，所以 UI 要另外處理而不是當成查詢結果。
@@ -201,6 +213,7 @@ class FunctionSchema {
         name: name,
         label: label,
         value: el.attributes['value'] ?? '',
+        action: clean(el.attributes['onclick'] ?? ''),
         isPrint: label.contains('列印') || label.contains('報表'),
       ));
     }
@@ -213,12 +226,36 @@ class FunctionSchema {
     );
   }
 
+  /// 同一組裡重複的按鈕只留一顆。
+  ///
+  /// 這個系統的長表單會**把同一顆送出鈕放在最上面和最下面各一次**。
+  /// 維護新生資料的 `SAVE_BTN1` 和 `SAVE_BTN2` 標籤都是「存檔」，
+  /// `onclick` 也都是 `return doSave();` —— 同一個動作，只是排版方便。
+  ///
+  /// 我們的畫面只有一份表單、按鈕集中在一起，兩顆一模一樣的「存檔」對使用者
+  /// 只是雜訊；而那一頁會真的寫學籍資料，看不出差別更糟。
+  ///
+  /// **標籤和動作都一樣才算重複。** 課程課表查詢那六顆「查詢」標籤一樣，
+  /// 但 `onclick` 分別是 `doQuery('1')`…`doQuery('6')`，是六個不同的查詢，
+  /// 一顆都不能少。「刪除選取」「暫存」也是各自不同的動作。
+  ///
+  /// **只在同一組裡比對** —— 每個標籤頁都有自己的存檔鈕，跨組去重會把
+  /// 第二頁之後的存檔全部吃掉。
+  static List<SchemaButton> _dedupe(List<SchemaButton> buttons) {
+    // 用 record 做鍵：不用拼字串，也就沒有「分隔符剛好出現在標籤裡」的問題。
+    final seen = <(String, String)>{};
+    return [
+      for (final b in buttons)
+        if (seen.add((b.label, b.action))) b,
+    ];
+  }
+
   /// `tabs-3` -> 2。往上找最近的分頁容器，找不到就回 null。
   static int? _tabIndexOf(dom.Element el) {
     for (dom.Element? node = el; node != null; node = node.parent) {
       final id = node.attributes['id'];
       if (id == null) continue;
-      final m = _tabIdRe.firstMatch(id);
+      final m = _tabIdRe.firstMatch(id) ?? _tabCntRe.firstMatch(id);
       if (m != null) return int.parse(m.group(1)!) - 1;
     }
     return null;
@@ -242,9 +279,33 @@ class FunctionSchema {
         labels[int.parse(m.group(1)!) - 1] = text;
       }
     }
+    // 第二種分頁。維護新生資料（`ENR3030`）沒有 `#tabs-N` 錨點，改用一排
+    //     <input type="button" id="TabBtn1" ml="CB_基本資料">
+    // 當標籤，內容放在 `<div id="TabCnt1">`（非作用中的是 `display: none`）。
+    //
+    // **不認得它的代價很具體**：那一頁有 8 組條件、16 顆按鈕，攤平之後畫面上
+    // 出現 14 顆一模一樣的「存檔」，而使用者實際看得見的只有 3 顆。
+    // 那還是一頁會真的寫學籍資料的表單。
+    if (labels.isEmpty) {
+      for (final el in doc.querySelectorAll('input')) {
+        final id = el.attributes['id'] ?? el.attributes['name'] ?? '';
+        final m = _tabBtnRe.firstMatch(id);
+        if (m == null) continue;
+        final label = _buttonLabel(el);
+        if (label != null && label.isNotEmpty) {
+          labels[int.parse(m.group(1)!) - 1] = label;
+        }
+      }
+    }
+
     if (labels.isEmpty) {
       return [
-        SchemaGroup(label: '', index: 0, fields: fields, buttons: buttons),
+        SchemaGroup(
+          label: '',
+          index: 0,
+          fields: fields,
+          buttons: _dedupe(buttons),
+        ),
       ];
     }
 
@@ -284,12 +345,18 @@ class FunctionSchema {
           // 不屬於任何分頁的欄位（例如共用的學年學期）每一組都要看得到，
           // 不然使用者切到第二個標籤頁就找不到它了。
           fields: [...looseFields, ...?byTab[i]],
-          buttons: [...?btnByTab[i], ...looseButtons],
+          // 每組各自判斷重名 —— 分頁式的頁面每組通常只剩一顆「查詢」，
+          // 不能因為整頁有 6 顆同名就被加上編號。
+          buttons: _dedupe([...?btnByTab[i], ...looseButtons]),
         ),
     ];
   }
 
   static final RegExp _tabIdRe = RegExp(r'^tabs-(\d+)$');
+
+  /// 第二種分頁：內容容器 `TabCnt1`、標籤按鈕 `TabBtn1`（都是 1-based）。
+  static final RegExp _tabCntRe = RegExp(r'^TabCnt(\d+)$');
+  static final RegExp _tabBtnRe = RegExp(r'^TabBtn(\d+)$');
   static final RegExp _tabHrefRe = RegExp(r'^#tabs-(\d+)$');
 
   /// 欄位的中文名。
@@ -344,10 +411,16 @@ class FunctionSchema {
       name.startsWith('__');
 
   /// 按鈕標籤：優先用 `ml`（`CB_查詢` -> `查詢`），退而求其次用 `value`。
+  ///
+  /// 前綴不只有 `CB_`。維護新生資料那一頁上就有一顆 `ml="PL_填寫範例說明"`，
+  /// 只剝 `CB_` 的話畫面上會直接出現「PL_填寫範例說明」—— 學校內部的欄位命名
+  /// 漏到使用者眼前。所以剝掉任何「大寫前綴 + 底線」。
+  static final RegExp _mlPrefixRe = RegExp(r'^[A-Z][A-Z0-9]*_');
+
   static String? _buttonLabel(dom.Element el) {
     final ml = el.attributes['ml'] ?? el.attributes['ML'];
     if (ml != null && ml.isNotEmpty) {
-      final stripped = clean(ml).replaceFirst(RegExp(r'^CB_'), '');
+      final stripped = clean(ml).replaceFirst(_mlPrefixRe, '');
       if (stripped.isNotEmpty) return stripped;
     }
     final value = clean(el.attributes['value'] ?? '');

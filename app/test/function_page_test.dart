@@ -192,6 +192,11 @@ void main() {
       await open(tester, fn: _mutatingFn);
 
       expect(find.text('這一頁會真的送出資料，不只是查詢。'), findsOneWidget);
+
+      // 這種頁面下面不會出現結果表格，別叫人「開始查詢」——
+      // 只會讓人以為自己少按了什麼。
+      expect(find.text('按上面的按鈕開始查詢。'), findsNothing);
+      expect(find.text('這一頁是填寫表單，填好上面的欄位再送出。'), findsOneWidget);
       await unmount(tester);
     });
   });

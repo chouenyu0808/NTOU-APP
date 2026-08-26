@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:ntou_app/src/ais/form_schema.dart';
@@ -179,5 +181,190 @@ void main() {
       expect(schema.groups.single.buttons.map((b) => b.name),
           containsAll(['QUERY_BTN1', 'QUERY_BTN3']));
     }, skip: skipReason);
+  });
+
+  group('按鈕標籤', () {
+    FunctionSchema parse(String html) =>
+        FunctionSchema.fromDocument(html_parser.parse(html));
+
+    test('剝掉的不只是 CB_ —— 任何大寫前綴都不該漏到畫面上', () {
+      // 維護新生資料那一頁上就有一顆 ml="PL_填寫範例說明"，
+      // 只剝 CB_ 的話使用者會看到「PL_填寫範例說明」。
+      final schema = parse(
+        '<html><body><form>'
+        '<input type="submit" name="B1" ml="CB_查詢">'
+        '<input type="submit" name="B2" ml="PL_填寫範例說明">'
+        '</form></body></html>',
+      );
+
+      final labels = schema.groups.single.buttons.map((b) => b.label).toList();
+      expect(labels, ['查詢', '填寫範例說明']);
+      expect(labels.any((l) => l.contains('_')), isFalse);
+    });
+
+    test('長表單上下各一顆的「存檔」只留一顆', () {
+
+      // 維護新生資料每一組都有兩顆「存檔」：一顆在表單最上面、一顆在最下面，
+
+      // onclick 都是 `return doSave();` —— 同一個動作，只是排版方便。
+
+      // 我們的畫面按鈕集中在一起，兩顆長得一樣的只是雜訊。
+
+      final schema = parse(
+
+        '<html><body><form>'
+
+        '<input type="submit" name="SAVE_BTN1" ml="CB_存檔" '
+
+        'onclick="return doSave();">'
+
+        '<input type="text" name="F1" cname="姓名">'
+
+        '<input type="submit" name="SAVE_BTN2" ml="CB_存檔" '
+
+        'onclick="return doSave();">'
+
+        '</form></body></html>',
+
+      );
+
+
+
+      final buttons = schema.groups.single.buttons;
+
+      expect(buttons.map((b) => b.label), ['存檔']);
+
+      // 留的是第一顆，不是硬造一個「存檔 2」出來
+
+      expect(buttons.single.name, 'SAVE_BTN1');
+
+    });
+
+
+
+    test('標籤一樣但動作不同的，一顆都不能少', () {
+
+      // 課程課表查詢六顆都叫「查詢」，但 doQuery('1')…('6') 是六個不同的查詢。
+
+      // 只看標籤去重會把五個功能吃掉。
+
+      final schema = parse(
+
+        '<html><body><form>'
+
+        '<input type="submit" name="QUERY_BTN1" ml="CB_查詢" '
+
+        'onclick="return doQuery(&#39;1&#39;);">'
+
+        '<input type="submit" name="QUERY_BTN7" ml="CB_查詢" '
+
+        'onclick="return doQuery(&#39;2&#39;);">'
+
+        '</form></body></html>',
+
+      );
+
+
+
+      expect(schema.groups.single.buttons.map((b) => b.name),
+
+          ['QUERY_BTN1', 'QUERY_BTN7']);
+
+    });
+
+
+
+    test('只有一顆的時候原樣保留', () {
+      final schema = parse(
+        '<html><body><form>'
+        '<input type="submit" name="SAVE1" ml="CB_存檔">'
+        '</form></body></html>',
+      );
+
+      expect(schema.groups.single.buttons.single.label, '存檔');
+    });
+
+    test('第二種分頁：TabBtn 當標籤、TabCnt 裝內容', () {
+      // 維護新生資料那一頁沒有 `#tabs-N` 錨點，靠一排 TabBtn 按鈕切換，
+      // 內容在 TabCnt 裡（非作用中的 display:none）。
+      final schema = parse(
+        '<html><body><form>'
+        '<input type="button" id="TabBtn1" ml="CB_基本資料">'
+        '<input type="button" id="TabBtn2" ml="CB_戶籍與聯絡資料">'
+        '<div id="TabCnt1" style="display: ">'
+        '<input type="text" name="M_NAME" cname="姓名">'
+        '<input type="submit" name="SAVE_BTN1" ml="CB_存檔"></div>'
+        '<div id="TabCnt2" style="display: none">'
+        '<input type="text" name="M_ADDR" cname="戶籍地址">'
+        '<input type="submit" name="SAVE_BTN3" ml="CB_存檔"></div>'
+        '</form></body></html>',
+      );
+
+      expect(schema.isTabbed, isTrue);
+      expect(schema.groups.map((g) => g.label), ['基本資料', '戶籍與聯絡資料']);
+
+      // 每組各自一顆存檔，不是兩顆疊在同一畫面
+      for (final g in schema.groups) {
+        expect(g.buttons.single.label, '存檔');
+      }
+      expect(schema.groups[0].buttons.single.name, 'SAVE_BTN1');
+      expect(schema.groups[1].buttons.single.name, 'SAVE_BTN3');
+
+      // 欄位也要跟著分開
+      expect(schema.groups[0].visibleFields.single.label, '姓名');
+      expect(schema.groups[1].visibleFields.single.label, '戶籍地址');
+    });
+
+    test('分頁式的頁面每組只有一顆，不能被誤加編號', () {
+      // 課程課表查詢整頁有 6 顆都叫「查詢」，但每個標籤頁只看得到一顆 ——
+      // 那是正常的，不該變成「查詢 1」。
+      final schema = parse(
+        '<html><body><form>'
+        '<ul><li><a href="#tabs-1">單位查詢</a></li>'
+        '<li><a href="#tabs-2">教師查詢</a></li></ul>'
+        '<div id="tabs-1">'
+        '<input type="submit" name="QUERY_BTN1" ml="CB_查詢"></div>'
+        '<div id="tabs-2">'
+        '<input type="submit" name="QUERY_BTN2" ml="CB_查詢"></div>'
+        '</form></body></html>',
+      );
+
+      expect(schema.isTabbed, isTrue);
+      for (final g in schema.groups) {
+        expect(g.buttons.single.label, '查詢');
+      }
+    });
+  });
+
+  group('維護新生資料（真實頁面）', () {
+    final missing =
+        File('${fixturesDir.path}/Application_ENR_ENR30_ENR3030_01.html')
+                .existsSync()
+            ? null
+            : '沒有 ENR3030 的 fixture';
+
+    test('8 組條件要分開，不是 14 顆一模一樣的「存檔」攤在同一畫面', () {
+      final schema = FunctionSchema.fromDocument(html_parser.parse(
+          fixture('Application_ENR_ENR30_ENR3030_01.html')));
+
+      expect(schema.isTabbed, isTrue);
+      expect(schema.groups.map((g) => g.label),
+          containsAll(['基本資料', '戶籍與聯絡資料', '入學前資料', '綜合記錄']));
+
+      // 攤平的話整頁有 14 顆「存檔」。分好組之後每一組都只有個位數。
+      for (final g in schema.groups) {
+        final saves = g.queryButtons.where((b) => b.label.startsWith('存檔'));
+        expect(saves.length, lessThan(4),
+            reason: '「${g.label}」有 ${saves.length} 顆存檔，分組沒生效');
+      }
+
+      // 學校內部的欄位命名不該漏到畫面上
+      for (final g in schema.groups) {
+        for (final b in g.buttons) {
+          expect(b.label, isNot(startsWith('PL_')));
+          expect(b.label, isNot(startsWith('CB_')));
+        }
+      }
+    }, skip: missing);
   });
 }

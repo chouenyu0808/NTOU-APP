@@ -201,9 +201,13 @@ class _FunctionPageState extends State<FunctionPage> {
   Widget _buildResult(FunctionView view) {
     final r = view.result;
     if (r == null) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: Text('按上面的按鈕開始查詢。'),
+      // 會改資料的頁面（維護新生資料那一類）不是查詢頁 —— 它下面根本不會出現
+      // 結果表格。跟使用者說「按上面的按鈕開始查詢」只會讓人以為自己少按了什麼。
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Text(widget.function.mutating
+            ? '這一頁是填寫表單，填好上面的欄位再送出。'
+            : '按上面的按鈕開始查詢。'),
       );
     }
     // 「學校說沒資料」和「我們沒解析出表格」必須分開講 ——
