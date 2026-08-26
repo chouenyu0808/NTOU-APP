@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../menu/menu_catalog.dart';
 import '../storage/plan_store.dart';
 import 'app_controller.dart';
+import 'home_page.dart';
 import 'login_page.dart';
 import 'module_list_page.dart';
 import 'planner_page.dart';
@@ -69,6 +70,10 @@ class _HomeShellState extends State<HomeShell> {
       body: IndexedStack(
         index: _index,
         children: [
+          HomePage(
+            controller: widget.controller,
+            onOpenTab: (i) => setState(() => _index = i),
+          ),
           TimetablePage(controller: widget.controller),
           PlannerPage(controller: widget.controller, store: widget.planStore),
           ModuleListPage(
@@ -81,6 +86,11 @@ class _HomeShellState extends State<HomeShell> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: '首頁',
+          ),
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),
             selectedIcon: Icon(Icons.calendar_month),

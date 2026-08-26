@@ -607,6 +607,14 @@ class _EditSlotsDialogState extends State<_EditSlotsDialog> {
 // ─── 時段格子選擇器 ───────────────────────────────────────────────────────────
 
 /// 星期 × 節次的格子，點一下選/取消。
+///
+/// 平常只畫「一～五 × 第 1–13 節」。第 0 節、第 14–16 節和週六日，學校的下拉
+/// **選得出來**（`Q_CLASS` 是 `00`–`16`、`Q_WEEK` 是 1–7），但絕大多數課排不到
+/// 那裡 —— 全部攤開的話手機上每一格會細到點不準。
+///
+/// **有時段真的落在那些格子時才展開。** 這在手動填的時候不會發生（使用者只填得到
+/// 畫得出來的格子），是「從學校課程自動帶入」之後才會的：parser 收得下 1–7 ×
+/// 00–16，畫不出來的話使用者看到的是「加進來了但格子是空的」，而且那一節點不掉。
 class _SlotPicker extends StatelessWidget {
   const _SlotPicker({required this.selected, required this.onChanged});
 
@@ -614,15 +622,46 @@ class _SlotPicker extends StatelessWidget {
   final ValueChanged<TimeSlot> onChanged;
 
   static const _weekdays = ['一', '二', '三', '四', '五', '六', '日'];
-  // 節次：0（早自習）到 13（第 13 節）
-  static const _periods = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+
+  /// 預設只畫到週五，第 1–13 節。
+  ///
+  /// 第 0 節（早自習）刻意收起來：學校的 `Q_CLASS` 有 `00`，但實際上幾乎沒課
+  /// 排在那裡，白留一列只是讓每一格更細。
+  static const int _defaultDays = 5;
+  static const int _defaultFirstPeriod = 1;
+  static const int _defaultLastPeriod = 13;
+
+  /// 學校那邊的上限：`Q_WEEK` 到 7、`Q_CLASS` 到 16。
+  static const int _maxDays = 7;
+  static const int _maxPeriod = 16;
+
+  /// 要畫幾天 —— 有時段落在六日就展開到那一天。
+  int get _days {
+    var n = _defaultDays;
+    for (final s in selected) {
+      if (s.weekday >= n) n = s.weekday + 1;
+    }
+    return n.clamp(_defaultDays, _maxDays);
+  }
+
+  /// 要畫哪幾節 —— 往兩端各自展開到真的有時段的那一節。
+  List<int> get _periods {
+    var first = _defaultFirstPeriod;
+    var last = _defaultLastPeriod;
+    for (final s in selected) {
+      if (s.period < first) first = s.period;
+      if (s.period > last) last = s.period;
+    }
+    first = first.clamp(0, _defaultFirstPeriod);
+    last = last.clamp(_defaultLastPeriod, _maxPeriod);
+    return [for (var p = first; p <= last; p++) p];
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    // 只顯示週一到週五；週六日少見，用橫向捲動
-    const days = 5; // 預設只顯示一到五
+    final days = _days;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

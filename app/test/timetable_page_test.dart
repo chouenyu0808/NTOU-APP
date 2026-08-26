@@ -10,6 +10,7 @@ import 'package:ntou_app/src/storage/credential_store.dart';
 import 'package:ntou_app/src/storage/plan_store.dart';
 import 'package:ntou_app/src/storage/timetable_cache.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
+import 'package:ntou_app/src/ui/home_page.dart';
 import 'package:ntou_app/src/ui/home_shell.dart';
 import 'package:ntou_app/src/ui/timetable_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -140,7 +141,11 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TimetablePage), findsOneWidget);
-    expect(find.text('校務系統'), findsOneWidget);
+    // 骨架的第一頁是首頁；課表在 IndexedStack 裡是 offstage，
+    // 所以要 skipOffstage: false 才找得到（它確實被建進樹裡了）。
+    expect(find.byType(HomePage), findsOneWidget);
+    expect(find.byType(TimetablePage, skipOffstage: false), findsOneWidget);
+    // 限定在導覽列 —— 首頁上也有一個叫「校務系統」的快捷。
+    expect(find.widgetWithText(NavigationBar, '校務系統'), findsOneWidget);
   });
 }
