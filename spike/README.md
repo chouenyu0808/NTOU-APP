@@ -298,6 +298,93 @@ top.mainFrame.location.href='TKE2240_01.aspx';
 在那之前用「課程課表查詢」（`TKE2211_.aspx?progcd=STU1250`）——
 那是全校課程，跟有沒有選課無關。
 
+### 十一、課程的上課時間：點課號**不會換頁**
+
+查詢結果那張表有 17 欄（序號／學期／課號／課名／開課單位／年級班別／授課老師／…），
+**沒有上課時間那一欄**。時間只在點課號進去的課程內容頁裡。
+
+而「點課號」不是你以為的那樣 —— 它是 `__doPostBack('DataGrid$ctl02$COSID','')`，
+但回應**不是詳細頁**，而是**同一份 HTML**，只多注入一行 JS。
+實測整份回應只差 3 個 byte：
+
+```
+- Message.hideProcess();
++ fn_open('137171415','1');
+```
+
+`fn_open()` 定義在頁面上，它做的是開一個 lightbox：
+
+```javascript
+function fn_open(pkno, lesson_type) {
+    doOpenFancyBox('', '800', '600',
+        '/Application/TKE/TKE22/TKE2240_03.aspx?PKNO=' + pkno + '&LESSON_TYPE=' + lesson_type + '#');
+}
+```
+
+所以完整流程是**三步**：postback → 從回應裡抽出 `PKNO` → **普通 GET** 那一頁。
+`login.py --goto` 會自動走完後面兩步。
+
+停在第二步就找「上課時間」是抓不到的 —— 查詢頁上的「上課時間」
+全是分頁標籤「上課時間查詢」（`#tabs-4`）。症狀是「每一門課都沒有時間」。
+
+三個會讓你拿到錯資料而且不會報錯的地方：
+
+1. **課程內容頁自己帶著一行指向 `/Portal.aspx` 的 JS。**
+   跟下去會把剛拿到的 57KB 內容整份換成首頁。直接給內容頁網址時用 `--no-follow`。
+
+2. **`PKNO` 是純 9 碼數字**（`137171415`），不是課號（課號是 `B57011RQ`）。
+   它正好符合 `scrub.py` 的學號樣式，存進 fixture 會被洗成 `B10900000` ——
+   **不能事後從 fixture 讀 PKNO**，讀出來的是佔位值，拿去 GET 只會得到
+   一頁 `Mode=ADD` 的空表單（每一格都是空的，但版面完全正常）。
+
+3. **同一個課號常常有好幾列。** `B57011RQ 計算機概論` 同時有
+   「1年A班／許為元」和「1年B班／林韓禹」，上課時間不一樣。
+   只比課號會固定拿第一列。
+
+內容頁的值都在有 id 的 span 裡，伺服器算好塞進去（**沒有 callback、沒有 ajax**）：
+
+```html
+<span id="M_SEG"       CNAME="時間">102,103,104</span>
+<span id="M_CLSSRM_ID" CNAME="教室代號">INS105,INS105,INS105</span>
+```
+
+`102` = 星期一（第一碼，同 `Q_WEEK`）第 02 節（後兩碼，同 `Q_CLASS`，範圍 `00`–`16`）。
+
+> **一定要讀 `#M_SEG`，不要掃頁面文字。** 隔壁的教室代號 `INS105` 裡的 `105`
+> 就是合法的時間代碼（週一第 5 節）—— 掃文字會憑空多排一節課出來。
+
+### 十二、分頁式頁面有**兩套**機制
+
+| | 錨點式 | 按鈕式 |
+|---|---|---|
+| 例子 | `TKE2211`（課程課表查詢，6 組） | `ENR3030`（維護新生資料，8 組） |
+| 標籤 | `<a href="#tabs-1">單位查詢</a>` | `<input type="button" id="TabBtn1" ml="CB_基本資料">` |
+| 內容 | `<div id="tabs-1">` | `<div id="TabCnt1">`（非作用中 `style="display:none"`） |
+
+只認錨點式的話，`ENR3030` 的 8 組會攤平成同一畫面：
+**16 顆按鈕、其中 14 顆都叫「存檔」**，而瀏覽器實際只顯示 3 顆。
+那還是一頁會真的寫學籍資料的表單。
+
+按鈕標籤的前綴也不只 `CB_`：同一頁上有 `ml="PL_填寫範例說明"`，
+只剝 `CB_` 的話畫面上會出現「PL_填寫範例說明」。
+
+就算分好組，每一組**還是有兩顆「存檔」** —— 長表單會在最上面和最下面各放一顆。
+分辨「同一個動作放兩次」和「兩個不同的動作」要看 `onclick`，光看標籤分不出來：
+
+```
+SAVE_BTN1  onclick="return doSave();"                              ← 同一個動作
+SAVE_BTN2  onclick="return doSave();"                              ←
+
+QUERY_BTN1 onclick="return doQuery('1');"                          ← 六個不同的查詢
+QUERY_BTN7 onclick="return doQuery('2');"                          ←
+
+DEL_BTN1   onclick="return doDelete('DataGrid','chkBox','CHECK');" ← 各自不同
+TMP_SAVE_BTN onclick="return doStcollateralSave();"                ←
+```
+
+所以去重的鍵是**（標籤, onclick）**，而且只能在同一組裡比 ——
+每個標籤頁都有自己的存檔鈕，跨組去重會把第二頁之後的存檔全部吃掉。
+
 ## 檔案
 
 | 檔案 | 用途 |

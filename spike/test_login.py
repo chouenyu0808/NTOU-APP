@@ -154,3 +154,27 @@ def test_submit_slugs_are_unique_per_combo():
                           {"Q_AYEAR": ["114", "115"], "Q_SMS": ["1", "2"]})
     slugs = [c.slug() for c in combos]
     assert len(set(slugs)) == len(slugs)
+
+
+# ---------- 課號 -> 課程內容頁 ----------
+
+def test_fn_open_target_builds_detail_url():
+    """點課號的 postback 不換頁，只注入一行 fn_open —— 那才是通往內容的線索。"""
+    from login import fn_open_target
+    html = "var x=1;fn_open('B12345678','1');Message.hideProcess();"
+    assert fn_open_target(html) == (
+        "Application/TKE/TKE22/TKE2240_03.aspx"
+        "?PKNO=B12345678&LESSON_TYPE=1"
+    )
+
+
+def test_fn_open_target_ignores_the_function_definition():
+    """定義的參數沒有引號，不能被當成呼叫。"""
+    from login import fn_open_target
+    html = "function fn_open(pkno, lesson_type) { doOpenFancyBox(pkno); }"
+    assert fn_open_target(html) is None
+
+
+def test_fn_open_target_absent_is_none():
+    from login import fn_open_target
+    assert fn_open_target("<html>沒有這一行</html>") is None

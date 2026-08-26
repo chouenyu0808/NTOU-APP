@@ -223,7 +223,8 @@ def menu_paths() -> list[str]:
 
 def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
                 quiet: bool = False, who: Identity = NOBODY,
-                submits: list[FormSubmit] | None = None) -> list[Page]:
+                submits: list[FormSubmit] | None = None,
+                follow: bool = True) -> list[Page]:
     """
     在已登入的 session 內依序抓多個頁面。
 
@@ -236,7 +237,14 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
     for path, submit in itertools.product(paths, submits or [None]):
         print(f"\n抓取 {path} ...")
         try:
-            page = sess.check_session(sess.follow_js_redirect(sess.get(path)))
+            page = sess.get(path)
+            # 內容頁自己也可能帶著看起來像導向的 JS。TKE2240_03（課程詳細頁）
+            # 就是：GET 回來 52KB 的真內容，但頁面上有一行指向 /Portal.aspx，
+            # 跟下去就把剛拿到的內容整份蓋掉 —— 而且不會報錯，你只會發現
+            # 存下來的是首頁。直接給網址、不是走派發器時，用 --no-follow。
+            if follow:
+                page = sess.follow_js_redirect(page)
+            page = sess.check_session(page)
             if submit:
                 shown = ", ".join(f"{k}={v}" for k, v in submit.values.items())
                 # 連動欄位要先各自 postback，後面的選項才存在
@@ -431,11 +439,37 @@ def build_parser() -> argparse.ArgumentParser:
                     help="--fetch-all 時只印標題和大小，不印完整欄位表")
     ap.add_argument("--user", help="學號（不給就互動輸入）")
     ap.add_argument("--name", help="你的姓名 —— 存 fixture 時一併洗掉")
+    ap.add_argument("--no-follow", action="store_true",
+                    help="--fetch 時不要跟 JS 導向（直接給內容頁網址時用）")
     ap.add_argument("--no-frames", action="store_true",
                     help="登入後不載入 frame（用來驗證 frame 是不是必要的）")
     ap.add_argument("--no-logout", action="store_true",
                     help="跑完不登出（這個系統一次只允許一個 session，通常不要用）")
     return ap
+
+
+FN_OPEN_RE = re.compile(
+    r"""fn_open\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)"""
+)
+
+
+def fn_open_target(html: str) -> str | None:
+    """`fn_open('B12345678','1')` -> 課程內容頁的網址，沒有就回 None。
+
+    **點課號的 postback 不會換頁。** 回應是同一份 HTML，只多注入這一行 JS
+    （其餘位置一個 byte 都沒變），由瀏覽器據此開一個 FancyBox。真正的課程內容
+    在 `TKE2240_03.aspx`，而且它是個**普通的 GET**，不是 postback。
+
+    不知道這件事的話，你會在查詢結果頁上找「上課時間」——
+    而那一頁上的「上課時間」全是分頁標籤「上課時間查詢」，永遠找不到值。
+
+    定義本身（`function fn_open(pkno, lesson_type)`）參數沒有引號，不會誤中。
+    """
+    m = FN_OPEN_RE.search(html)
+    if m is None:
+        return None
+    return ("Application/TKE/TKE22/TKE2240_03.aspx"
+            f"?PKNO={m.group(1)}&LESSON_TYPE={m.group(2)}")
 
 
 def run_session(sess: AisSession, page: Page, args, who: Identity) -> int:
@@ -472,16 +506,35 @@ def run_session(sess: AisSession, page: Page, args, who: Identity) -> int:
         )
         if len(submits) > 1:
             print(f"\n將掃過 {len(submits)} 組查詢條件（同一次登入）")
-    fetch_pages(sess, targets, save=args.save, quiet=args.quiet, who=who,
-                submits=submits)
+    fetched = fetch_pages(sess, targets, save=args.save, quiet=args.quiet,
+                          who=who, submits=submits, follow=not args.no_follow)
 
     if args.goto:
+        # **一定要對著產生這個連結的那一頁送。** 課號連結（`DataGrid$ctl02$COSID`）
+        # 的 __VIEWSTATE 和 DataGrid 都在查詢結果那一頁上；對著登入後的 mainframe
+        # 送，伺服器會回一頁沒有內容的東西，而且**不會報錯** —— 你只會拿到一份
+        # 看起來很正常、但什麼都解不出來的 fixture。
+        source = fetched[-1] if fetched else page
         print(f"\n前往 {args.goto} ...")
-        page = sess.postback(page, args.goto)
+        page = sess.postback(source, args.goto)
         if args.save:
             safe = args.goto.replace("$", "_").replace(":", "_") + ".html"
             save_fixture(page, safe, who)
         report_navigation(sess, page)
+
+        # 走完最後一步：fn_open 指到的那一頁才是課程內容。
+        #
+        # **一定要在這裡做，不能事後從 fixture 讀 PKNO。** PKNO 長得像學號
+        # （一個字母 + 8 碼數字），存檔時會被 scrub 換成佔位值 `B10900000` ——
+        # 從檔案裡讀出來的是假的，拿去 GET 只會得到一頁 Mode=ADD 的空表單。
+        detail = fn_open_target(page.html)
+        if detail:
+            print("\n偵測到 fn_open，前往課程內容頁 ...")
+            # 這一頁自己帶著指向 /Portal.aspx 的 JS，跟下去會把內容整份蓋掉
+            detail_page = sess.get(detail)
+            report_navigation(sess, detail_page)
+            if args.save:
+                save_fixture(detail_page, "course_detail.html", who)
 
     if args.save:
         print("\nfixture 已在寫檔時洗過個資。commit 前跑：")
