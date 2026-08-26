@@ -159,4 +159,82 @@ void main() {
       await unmount(tester);
     });
   });
+
+  group('驗證碼輸入', () {
+    /// 填好帳號密碼，停在「只差驗證碼」的狀態。
+    Future<AppController> ready(WidgetTester tester) async {
+      setPhoneSize(tester);
+      final controller = await testLoginController();
+      await tester.pumpWidget(wrap(controller));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await tester.enterText(
+        find.widgetWithText(TextField, '學號'),
+        'B11234567',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, '密碼'),
+        'password123',
+      );
+      await tester.pump();
+      return controller;
+    }
+
+    Finder captchaField() => find.widgetWithText(TextField, '驗證碼');
+
+    String captchaText(WidgetTester tester) =>
+        tester.widget<TextField>(captchaField()).controller!.text;
+
+    testWidgets('打完第 4 碼就直接送出，不用再按登入鈕', (tester) async {
+      await ready(tester);
+
+      await tester.enterText(captchaField(), 'abc');
+      await tester.pump();
+      expect(captchaText(tester), 'abc'); // 還沒滿 4 碼，什麼都不該發生
+
+      await tester.enterText(captchaField(), 'abcd');
+      await tester.pumpAndSettle();
+
+      // 送出後欄位會被清掉 —— 清掉了就代表真的送出去了
+      expect(captchaText(tester), isEmpty);
+
+      await unmount(tester);
+    });
+
+    testWidgets('整格一次被填滿時不自動送，讓人先看一眼', (tester) async {
+      await ready(tester);
+
+      // 貼上 / 自動填入是一步到位的（0 -> 4），不是「剛打完第 4 碼」。
+      // 驗證碼是一次性的，送錯就燒掉一張，所以這種情況要等使用者自己按。
+      await tester.enterText(captchaField(), 'abcd');
+      await tester.pumpAndSettle();
+
+      expect(captchaText(tester), 'abcd');
+      final loginBtn = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, '登入'),
+      );
+      expect(loginBtn.onPressed, isNotNull);
+
+      await unmount(tester);
+    });
+
+    testWidgets('點驗證碼圖是放大來看，不是直接換一張', (tester) async {
+      await ready(tester);
+
+      await tester.tap(find.byType(Image));
+      await tester.pumpAndSettle();
+
+      // 放大的對話框裡才給「換一張」——「每看不清一次就換一張」對學校那端
+      // 就是多一次請求，而且多半換完還是看不清。
+      expect(find.text('看清楚了'), findsOneWidget);
+      expect(find.text('換一張'), findsOneWidget);
+
+      await tester.tap(find.text('看清楚了'));
+      await tester.pumpAndSettle();
+      expect(find.text('看清楚了'), findsNothing);
+
+      await unmount(tester);
+    });
+  });
 }

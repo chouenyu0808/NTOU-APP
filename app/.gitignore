@@ -39,6 +39,10 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Kotlin 編譯器的 session 暫存檔。每次 build 產生新的、build 完刪掉 ——
+# 進版控只會讓每個人的 git status 都髒掉。（1b6048c 誤收了一個。）
+/android/.kotlin/
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

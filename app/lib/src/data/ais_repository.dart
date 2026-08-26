@@ -297,6 +297,100 @@ class AisRepository {
     );
   }
 
+  // ---------- 課程查詢 ----------
+
+  /// 打開課程查詢頁。
+  Future<FunctionView> openCourseSearch() async {
+    final session = _requireSession();
+    var page = await session.get(config.courseSearch.path);
+    page = await session.followJsRedirect(page);
+    session.checkSession(page);
+
+    final schema = FunctionSchema.fromPage(page);
+    return FunctionView(
+      // Course search is not in the normal function list we fetch dynamically. We create a dummy AisFunction.
+      function: AisFunction(
+        title: '課程課表查詢',
+        path: config.courseSearch.path,
+        trail: ['教務系統', '選課系統', '課程課表查詢'],
+      ),
+      page: page,
+      schema: schema,
+      cascadeFields: AisSession.autoPostBackFields(page),
+      values: {for (final f in schema.visibleFields) f.name: f.value},
+    );
+  }
+
+  /// 用課名關鍵字搜尋課程
+  Future<FunctionView> searchCourseByName(
+    FunctionView view,
+    String keyword,
+  ) async {
+    final t = config.courseSearch.lessonNameTab;
+    return runQuery(
+      view,
+      t.button,
+      values: {t.nameField: keyword},
+      tabIndex: 1, // lesson_name is index 1
+    );
+  }
+
+  /// 用系所搜尋課程
+  Future<FunctionView> searchCourseByFaculty(
+    FunctionView view,
+    String degree,
+    String faculty,
+    String grade,
+    String classId,
+  ) async {
+    final t = config.courseSearch.facultyTab;
+    return runQuery(
+      view,
+      t.button,
+      values: {
+        t.degreeField: degree,
+        t.facultyField: faculty,
+        t.gradeField: grade,
+        t.classField: classId,
+      },
+      tabIndex: 0, // faculty is index 0
+    );
+  }
+
+  /// 點課號進課程詳細頁，把「上課時間」抓回來。
+  ///
+  /// [eventTarget] 是那一列課號連結上的 `__doPostBack` 目標，
+  /// 用 [courseDetailTarget] 從查詢結果讀出來 —— **不要自己組**，
+  /// 那串 id 是 ASP.NET 依列數編的（`DataGrid$ctl02$COSID`）。
+  ///
+  /// 抓不到時間就回空的。**這件事必須是可以失敗的**：使用者要的是
+  /// 「把課加進預排」，時間抓不到頂多回頭手動填，不該讓整個動作失敗。
+  Future<List<TimeSlot>> fetchCourseTimeSlots(
+    FunctionView view,
+    String eventTarget,
+  ) async {
+    final session = _requireSession();
+    var page = await session.postback(
+      view.page,
+      eventTarget,
+      values: _sendable(view, view.values),
+    );
+    session.checkSession(page);
+
+    // 詳細頁有時候是用 `window.open('TKE2220_1.aspx?…')` 另開視窗的，
+    // 那樣 postback 的回應裡只有一段 script，內容在它指的那一頁。
+    final openMatch = _windowOpenRe.firstMatch(page.html);
+    if (openMatch != null) {
+      page = await session.get(openMatch.group(1)!.replaceAll('&amp;', '&'));
+      page = await session.followJsRedirect(page);
+      session.checkSession(page);
+    }
+
+    return parseCourseTimeSlots(page.html);
+  }
+
+  static final RegExp _windowOpenRe = RegExp(r"""window\.open\(\s*['"]([^'"]+)""");
+
   /// 挑出「這一頁真的收得下」的值。
   ///
   /// 兩件事會被濾掉：

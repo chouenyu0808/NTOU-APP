@@ -5,6 +5,7 @@ import '../parsing/models.dart';
 import '../planner/plan_models.dart';
 import '../storage/plan_store.dart';
 import '../ui/app_controller.dart';
+import 'course_browser_page.dart';
 import 'timetable_grid.dart';
 
 /// 預排課表頁。
@@ -163,6 +164,51 @@ class _PlannerPageState extends State<PlannerPage> {
     }
   }
 
+  void _showAddOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.school_outlined),
+              title: const Text('從學校課程選'),
+              subtitle: const Text('用課名或系所搜尋，直接加入'),
+              onTap: () {
+                Navigator.pop(ctx);
+                if (widget.controller.phase != AppPhase.ready) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('請先登入才能查詢學校課程')),
+                  );
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CourseBrowserPage(
+                      controller: widget.controller,
+                      planStore: widget.store,
+                    ),
+                  ),
+                ).then((_) => _loadPlan()); // Reload when returning
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('手動輸入'),
+              subtitle: const Text('自己打課名和時段'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _addCourse();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -184,7 +230,7 @@ class _PlannerPageState extends State<PlannerPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addCourse,
+        onPressed: _showAddOptions,
         icon: const Icon(Icons.add),
         label: const Text('新增課程'),
       ),

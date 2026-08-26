@@ -17,6 +17,7 @@ class SelectorConfig {
     required this.timeout,
     required this.login,
     required this.timetable,
+    required this.courseSearch,
     this.logoutPath = 'LogOut.aspx',
   });
 
@@ -32,6 +33,7 @@ class SelectorConfig {
 
   final LoginConfig login;
   final TimetableConfig timetable;
+  final CourseSearchConfig courseSearch;
   final String logoutPath;
 
   static const String assetPath = 'assets/selectors.json';
@@ -59,6 +61,9 @@ class SelectorConfig {
       ),
       timetable: TimetableConfig.fromJson(
         (pages['timetable'] as Map<String, dynamic>?) ?? const {},
+      ),
+      courseSearch: CourseSearchConfig.fromJson(
+        (pages['course_search'] as Map<String, dynamic>?) ?? const {},
       ),
       logoutPath: json['logout_path'] as String? ?? 'LogOut.aspx',
     );
@@ -162,3 +167,72 @@ List<String> _strings(Object? v) =>
 
 Map<String, String> _stringMap(Object? v) =>
     (v as Map?)?.map((k, val) => MapEntry('$k', '$val')) ?? const {};
+
+class CourseSearchConfig {
+  const CourseSearchConfig({
+    required this.path,
+    required this.lessonNameTab,
+    required this.facultyTab,
+  });
+
+  final String path;
+  final CourseSearchLessonNameTab lessonNameTab;
+  final CourseSearchFacultyTab facultyTab;
+
+  factory CourseSearchConfig.fromJson(Map<String, dynamic> json) {
+    final tabs = (json['tabs'] as Map<String, dynamic>?) ?? const {};
+    return CourseSearchConfig(
+      path: json['path'] as String? ??
+          'Application/TKE/TKE22/TKE2211_.aspx?progcd=STU1250',
+      lessonNameTab: CourseSearchLessonNameTab.fromJson(
+        (tabs['lesson_name'] as Map<String, dynamic>?) ?? const {},
+      ),
+      facultyTab: CourseSearchFacultyTab.fromJson(
+        (tabs['faculty'] as Map<String, dynamic>?) ?? const {},
+      ),
+    );
+  }
+}
+
+class CourseSearchLessonNameTab {
+  const CourseSearchLessonNameTab({
+    required this.button,
+    required this.nameField,
+  });
+
+  final String button;
+  final String nameField;
+
+  factory CourseSearchLessonNameTab.fromJson(Map<String, dynamic> json) {
+    return CourseSearchLessonNameTab(
+      button: json['button'] as String? ?? 'QUERY_BTN7',
+      nameField: 'Q_CH_LESSON', // Always use Q_CH_LESSON based on fields array
+    );
+  }
+}
+
+class CourseSearchFacultyTab {
+  const CourseSearchFacultyTab({
+    required this.button,
+    required this.degreeField,
+    required this.facultyField,
+    required this.gradeField,
+    required this.classField,
+  });
+
+  final String button;
+  final String degreeField;
+  final String facultyField;
+  final String gradeField;
+  final String classField;
+
+  factory CourseSearchFacultyTab.fromJson(Map<String, dynamic> json) {
+    return CourseSearchFacultyTab(
+      button: json['button'] as String? ?? 'QUERY_BTN1',
+      degreeField: 'Q_DEGREE_CODE',
+      facultyField: 'Q_FACULTY_CODE',
+      gradeField: 'Q_GRADE',
+      classField: 'Q_CLASSID',
+    );
+  }
+}

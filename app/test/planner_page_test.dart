@@ -49,6 +49,9 @@ void main() {
 
     await tester.tap(find.text('新增課程')); // FAB
     await tester.pumpAndSettle();
+    
+    await tester.tap(find.text('手動輸入'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
         find.widgetWithText(TextFormField, '課名 *'), '演算法');
@@ -65,6 +68,9 @@ void main() {
 
     await tester.tap(find.text('新增課程'));
     await tester.pumpAndSettle();
+    
+    await tester.tap(find.text('手動輸入'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(FilledButton, '新增'));
     await tester.pumpAndSettle();
@@ -79,6 +85,9 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('新增課程'));
+    await tester.pumpAndSettle();
+    
+    await tester.tap(find.text('手動輸入'));
     await tester.pumpAndSettle();
     await tester.enterText(
         find.widgetWithText(TextFormField, '課名 *'), '離散數學');

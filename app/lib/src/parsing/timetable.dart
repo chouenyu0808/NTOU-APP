@@ -151,6 +151,147 @@ List<int> _periodsIn(String segment) {
   return only.length == 1 ? [int.parse(only)] : const [];
 }
 
+// ---------- 課程詳細頁 ----------
+
+/// `__doPostBack('DataGrid$ctl02$COSID','')` 裡的目標。反斜線是可選的。
+final RegExp _postBackTargetRe =
+    RegExp(r"""__doPostBack\(\s*\\?['"]([^'"\\]+)""");
+
+/// 查詢結果裡「課號」那一格的 `__doPostBack` 目標 —— 點下去會進課程詳細頁。
+///
+/// **一定要走 DOM，不能拿正則去比原始 HTML。** 頁面上的引號是 HTML 實體：
+/// ```
+/// href="javascript:__doPostBack(&#39;DataGrid$ctl02$COSID&#39;,&#39;&#39;)"
+/// ```
+/// 用 `__doPostBack\('…'` 去比原始碼**一列都對不到**，而且錯得很安靜：
+/// 使用者看到的是「加進預排了，只是沒有上課時間」，看不出是解析失敗。
+/// （`AisSession.autoPostBackFields` 為了同一件事也刻意走 DOM。）
+///
+/// 同一個課號可能有好幾列（不同班別開的同一門課），這裡回**第一列**。
+String? courseDetailTarget(String html, String code) {
+  final wanted = clean(code);
+  if (wanted.isEmpty) return null;
+
+  final doc = html_parser.parse(html);
+  for (final a in doc.querySelectorAll('a')) {
+    if (clean(a.text) != wanted) continue;
+    final href = a.attributes['href'] ?? a.attributes['onclick'] ?? '';
+    final m = _postBackTargetRe.firstMatch(href);
+    if (m != null) return m.group(1);
+  }
+  return null;
+}
+
+/// 學校的上課時間代碼：`102 103 104` = 週一第 2、3、4 節。
+///
+/// 第一碼是星期，跟查詢頁的 `Q_WEEK` 同一套（1 = 週一）；後兩碼是節次，
+/// 跟 `Q_CLASS` 同一套（`00`–`16` —— 海大有第 0 節，所以不能從 01 起算）。
+///
+/// [TimeSlot.weekday] 是 **0 起算**的，所以第一碼要減一。少減這一格，
+/// 整張課表會整個往後挪一天，而畫面上完全看不出來 ——
+/// 使用者就照著錯的格子去上課了。
+List<TimeSlot> parseTimeCodes(String text) {
+  final slots = <TimeSlot>{};
+  for (final m in _timeCodeRe.allMatches(text)) {
+    slots.add(TimeSlot(int.parse(m.group(1)!) - 1, int.parse(m.group(2)!)));
+  }
+  return slots.toList()..sort();
+}
+
+/// 一個代碼。前後不能再接數字，不然「1102」會被切成「110」。
+final RegExp _timeCodeRe =
+    RegExp(r'(?<![0-9])([1-7])(0[0-9]|1[0-6])(?![0-9])');
+
+/// 連在一起的一串代碼（兩個以上）。
+final RegExp _timeCodeGroupRe = RegExp(
+  r'(?<![0-9])[1-7](?:0[0-9]|1[0-6])'
+  r'(?:[\s,、;/]+[1-7](?:0[0-9]|1[0-6]))+(?![0-9])',
+);
+
+/// 「上課時間」在不同頁面上的幾種寫法。
+const List<String> _timeLabels = ['上課時間', '上課時段', '授課時間', '星期節次'];
+
+/// 標籤那一格後面**緊接著**的一串代碼（「上課時間：102 103 104 上課教室 …」）。
+/// 遇到第一個非數字就停 —— 再過去就是教室了，而「綜一301」裡的 301
+/// 長得跟時間代碼一模一樣。
+final RegExp _codesRightAfterLabelRe =
+    RegExp(r'^[\s:：]*((?:[0-9]{3}[\s,、;/]*)+)');
+
+/// 從課程詳細頁抓上課時間。
+///
+/// **只有看得見的文字算數，`<script>` 要先拿掉。** 課程查詢頁的 JS 驗證區塊裡
+/// 就寫著 `case "5": //上課時間`，而且在整份 HTML 的最前面 ——
+/// 直接對原始碼 `indexOf('上課時間')` 會先撞到那個註解，然後在一段 JavaScript
+/// 裡面找節次代碼。結果是永遠抓不到，但看起來像「這門課沒有排時間」。
+///
+/// 抓法是「找標籤那一格，讀它旁邊那一格」，不是「往後掃一段文字」——
+/// 隔壁欄就是教室，掃過頭會把教室代碼當成上課時間。
+///
+/// 完全找不到標籤時退一步找**連在一起的一串**代碼。單獨一個三位數不算：
+/// 人數、教室、學號都長那樣，猜錯會把課排到完全無關的格子裡。
+List<TimeSlot> parseCourseTimeSlots(String html) {
+  final doc = html_parser.parse(html);
+  for (final el in doc.querySelectorAll('script, style')) {
+    el.remove();
+  }
+
+  for (final cell in doc.querySelectorAll('th, td, dt, label, span')) {
+    final rest = _afterTimeLabel(clean(cell.text));
+    if (rest == null) continue;
+
+    // 標籤和值擠在同一格：「上課時間：102 103 104」
+    if (rest.isNotEmpty) {
+      final m = _codesRightAfterLabelRe.firstMatch(rest);
+      final slots = m == null ? const <TimeSlot>[] : parseTimeCodes(m.group(1)!);
+      if (slots.isNotEmpty) return slots;
+      continue;
+    }
+
+    // 這一格只是標籤，值在隔壁那一格
+    final next = cell.nextElementSibling;
+    if (next == null) continue;
+    final slots = parseTimeCodes(clean(next.text));
+    if (slots.isNotEmpty) return slots;
+  }
+
+  final group = _timeCodeGroupRe.firstMatch(clean(_visibleText(doc)));
+  return group == null ? const [] : parseTimeCodes(group.group(0)!);
+}
+
+/// 這一格是不是「上課時間」的標籤；是的話回標籤後面剩下的字。
+///
+/// 要求**開頭**就是標籤，不是「有出現」—— 不然整個 `<td>` 的外層容器也會中，
+/// 而那一格的文字連隔壁的教室都吃進來了。
+String? _afterTimeLabel(String text) {
+  for (final label in _timeLabels) {
+    if (text.startsWith(label)) return text.substring(label.length).trim();
+  }
+  return null;
+}
+
+/// 攤平可見文字，**每個元素之間補一個空白**。
+///
+/// `Element.text` 會把相鄰兩格直接黏起來：`<td>65</td><td>102</td>` 變成
+/// `65102`，於是「102」這個代碼就這樣消失了。
+String _visibleText(dom.Document doc) {
+  final buf = StringBuffer();
+  void walk(dom.Node node) {
+    for (final child in node.nodes) {
+      if (child is dom.Text) {
+        buf.write(child.text);
+      } else if (child is dom.Element) {
+        buf.write(' ');
+        walk(child);
+        buf.write(' ');
+      }
+    }
+  }
+
+  final body = doc.body ?? doc.documentElement;
+  if (body != null) walk(body);
+  return buf.toString();
+}
+
 // ---------- 課表格線 ----------
 
 /// 表頭文字 -> {欄索引: 星期索引}（0 = 週一）。
