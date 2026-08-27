@@ -1,3 +1,4 @@
+import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import 'html_text.dart';
@@ -76,6 +77,15 @@ final RegExp _pageNoRe =
 final RegExp _gotoPageRe =
     RegExp(r"gotoPage\(\s*'PC_PageNo'\s*,\s*(\d+)", caseSensitive: false);
 
+/// 查詢結果的表格。
+///
+/// **id 不是每一頁都叫 `DataGrid`。** 課程查詢是 `DataGrid`，但查詢必修科目表
+/// 是 **`DataGrid1`** —— 只認前者的話，那一頁在 App 裡會顯示「這一頁的結果
+/// 不是表格」，而使用者用瀏覽器看明明就有一張表。
+dom.Element? findDataGrid(dom.Document doc) =>
+    doc.querySelector('table#DataGrid') ??
+    doc.querySelector('table[id^="DataGrid"]');
+
 /// 解析查詢結果。
 ///
 /// 先找 `table#DataGrid`（這個系統所有查詢結果都用這個 id），
@@ -83,7 +93,7 @@ final RegExp _gotoPageRe =
 DataGridResult parseDataGrid(String html) {
   final empty = isEmptyResult(html);
   final doc = html_parser.parse(html);
-  final table = doc.querySelector('table#DataGrid');
+  final table = findDataGrid(doc);
 
   var rows = <List<String>>[];
   if (table != null) {
