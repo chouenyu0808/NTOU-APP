@@ -8,6 +8,7 @@ import '../parsing/timetable.dart';
 import '../planner/plan_models.dart';
 import '../storage/plan_store.dart';
 import 'app_controller.dart';
+import 'selection_tag.dart';
 
 class CourseBrowserPage extends StatefulWidget {
   const CourseBrowserPage({
@@ -385,8 +386,18 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final course = results[index];
+        final selection = widget.controller.repository.config.courseSearch
+            .selectionLabel(course.selectionType);
         return ListTile(
-          title: Text(course.name),
+          title: Row(
+            children: [
+              Flexible(child: Text(course.name)),
+              if (selection.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                SelectionTag(label: selection),
+              ],
+            ],
+          ),
           subtitle: Text('${course.teacher} • ${course.credits}學分 • ${course.classLabel}'),
           trailing: IconButton(
             icon: const Icon(Icons.add),

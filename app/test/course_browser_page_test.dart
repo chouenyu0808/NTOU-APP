@@ -660,6 +660,36 @@ void main() {
     });
   });
 
+  group('必修 / 選修', () {
+    testWidgets('結果清單上標出選別', (tester) async {
+      // 查詢結果的「選別」欄只有代碼（A / B），頁面上沒有對照表 ——
+      // 對照放在 selectors.json，A = 必修、B = 選修。
+      script(onKeyword: _searchPage(result: _resultTable()));
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+
+      expect(find.text('必修'), findsWidgets);
+      await unmount(tester);
+    });
+
+    testWidgets('認不得的代碼原樣顯示，不要猜', (tester) async {
+      // 猜錯比不翻譯更糟：使用者看到「選修」會照著排課，
+      // 看到「Z」至少知道要自己去查。
+      const table = '<table id="DataGrid">'
+          '<tr><th>課號</th><th>課名</th><th>年級班別</th>'
+          '<th>授課老師</th><th>學分</th><th>選別</th></tr>'
+          '<tr><td>X1</td><td>某課</td><td>1年A班</td>'
+          '<td>某師</td><td>3</td><td>Z</td></tr>'
+          '</table>';
+      script(onKeyword: _searchPage(result: table));
+      await open(tester);
+      await searchByKeyword(tester, '某');
+
+      expect(find.text('Z'), findsOneWidget);
+      await unmount(tester);
+    });
+  });
+
   group('課號連結的 postback 目標', () {
     test('引號是 HTML 實體也讀得出來', () {
       expect(courseDetailTarget(_resultTable(), 'B57011RQ'), _target('ctl02'));

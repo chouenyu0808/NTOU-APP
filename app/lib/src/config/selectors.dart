@@ -173,11 +173,23 @@ class CourseSearchConfig {
     required this.path,
     required this.lessonNameTab,
     required this.facultyTab,
+    this.selectionTypes = const {},
   });
 
   final String path;
   final CourseSearchLessonNameTab lessonNameTab;
   final CourseSearchFacultyTab facultyTab;
+
+  /// 查詢結果「選別」欄的代碼對照（`A` -> 必修、`B` -> 選修）。
+  ///
+  /// **頁面上沒有這份對照表**，結果表格裡只有代碼。放設定檔是因為它跟
+  /// 其他會因學校改版而爛掉的字串同一類 —— 而且只有兩筆，寫死在程式裡
+  /// 之後沒人會想到要去改。
+  final Map<String, String> selectionTypes;
+
+  /// 把代碼翻成中文。**認不得就原樣回傳** —— 猜錯比不翻譯更糟：
+  /// 使用者看到「選修」會真的照著排課，看到「B」至少知道要自己查。
+  String selectionLabel(String code) => selectionTypes[code] ?? code;
 
   factory CourseSearchConfig.fromJson(Map<String, dynamic> json) {
     final tabs = (json['tabs'] as Map<String, dynamic>?) ?? const {};
@@ -190,6 +202,14 @@ class CourseSearchConfig {
       facultyTab: CourseSearchFacultyTab.fromJson(
         (tabs['faculty'] as Map<String, dynamic>?) ?? const {},
       ),
+      selectionTypes: {
+        for (final e in
+            ((json['selection_types'] as Map<String, dynamic>?) ?? const {})
+                .entries)
+          // `_comment` 是給人看的說明，不是代碼
+          if (!e.key.startsWith('_') && e.value is String)
+            e.key: e.value as String,
+      },
     );
   }
 }

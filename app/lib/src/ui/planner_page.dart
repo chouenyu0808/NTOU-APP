@@ -6,6 +6,7 @@ import '../planner/plan_models.dart';
 import '../storage/plan_store.dart';
 import '../ui/app_controller.dart';
 import 'course_browser_page.dart';
+import 'selection_tag.dart';
 import 'timetable_grid.dart';
 
 /// 預排課表頁。
@@ -281,6 +282,9 @@ class _PlannerPageState extends State<PlannerPage> {
                     for (final pc in _plan.courses)
                       _CourseItem(
                         pc: pc,
+                        selection: widget.controller.repository.config
+                            .courseSearch
+                            .selectionLabel(pc.course.selectionType),
                         onEditSlots: () => _editSlots(pc),
                         onRemove: () => _removeCourse(pc.key),
                       ),
@@ -387,11 +391,16 @@ class _CourseItem extends StatelessWidget {
     required this.pc,
     required this.onEditSlots,
     required this.onRemove,
+    this.selection = '',
   });
 
   final PlannedCourse pc;
   final VoidCallback onEditSlots;
   final VoidCallback onRemove;
+
+  /// 必修 / 選修。認不得的代碼會原樣傳進來（見 `SelectorConfig.selectionLabel`）。
+  /// 手動輸入的課沒有這個欄位，就是空字串。
+  final String selection;
 
   @override
   Widget build(BuildContext context) {
@@ -401,7 +410,18 @@ class _CourseItem extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      title: Text(course.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(course.name,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          if (selection.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            SelectionTag(label: selection),
+          ],
+        ],
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

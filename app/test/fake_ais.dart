@@ -71,7 +71,17 @@ Dio fakeDio({String body = '<html><body>stub</body></html>'}) {
 /// 兩個都會排計時器，而 widget test 只要結束時還有計時器掛著就會失敗 ——
 /// 而且訊息是「A Timer is still pending」，完全看不出跟登入有關。
 SelectorConfig testConfig() => SelectorConfig.fromJson(
-      const {'min_interval_seconds': 0, 'timeout_seconds': 0},
+      const {
+        'min_interval_seconds': 0,
+        'timeout_seconds': 0,
+        // 選別的代碼對照跟著正式的 selectors.json 走 —— UI 靠它把 A/B
+        // 翻成必修／選修，測試用空設定的話會驗到「沒翻譯」的假象。
+        'pages': {
+          'course_search': {
+            'selection_types': {'A': '必修', 'B': '選修'},
+          },
+        },
+      },
     );
 
 /// 建一個不會碰網路的 controller。
