@@ -214,7 +214,7 @@ class _TodayCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   HomePage.periodLabel(today[i], weekday)

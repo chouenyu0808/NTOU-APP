@@ -473,7 +473,7 @@ class FunctionTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: (function.mutating ? scheme.error : tint)
               .withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(
           function.mutating ? Icons.edit_note : Icons.description_outlined,
