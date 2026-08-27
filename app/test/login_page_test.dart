@@ -138,6 +138,75 @@ void main() {
       await unmount(tester);
     });
 
+    testWidgets('帳號被自己佔住時，講的是「怎麼辦」而不是系統狀態', (tester) async {
+      // 學校原文是「系統同時一次僅許可一個帳號登入」—— 語法沒錯，但看到的人
+      // 不會知道兇手是自己五分鐘前在電腦上開的選課系統。
+      setPhoneSize(tester);
+      final controller = await testLoginController(
+        cached: TimetableResult(
+          year: '115',
+          semester: '1',
+          isEmpty: false,
+          fetchedAt: DateTime(2026, 8, 25),
+          courses: const [Course(name: '微積分')],
+        ),
+      );
+      await tester.pumpWidget(wrap(controller));
+      await tester.pump();
+
+      // error 要等 startLogin() 跑完才設 —— initState 的 postFrameCallback
+      // 會把它清成 null。
+      controller.error = '這個帳號目前在別的地方登入著。學校系統一次只允許一個登入。';
+      controller.notifyListeners();
+      await tester.pump();
+
+      expect(find.text('這個帳號已經在別的地方登入了'), findsOneWidget);
+      expect(find.textContaining('先去那邊按登出'), findsOneWidget);
+
+      // 唯一還看得到自己資料的路要在錯誤旁邊，不是在頁尾等他捲下去找；
+      // 而且只能有一顆，兩顆一樣的鈕會讓人以為它們做的是不同的事。
+      expect(find.text('先看上次抓到的課表'), findsOneWidget);
+
+      await unmount(tester);
+    });
+
+    testWidgets('翻譯過的錯誤仍然附上學校原文', (tester) async {
+      // 學校改措辭、或出現我們沒對應到的新錯誤時，使用者看到的還是真的那句。
+      // 蓋掉原文的話，回報問題的人會說「App 說我驗證碼錯了」，
+      // 而學校其實說的是別的。
+      setPhoneSize(tester);
+      final controller = await testLoginController();
+      await tester.pumpWidget(wrap(controller));
+      await tester.pump();
+
+      controller.error = '登入失敗：頁面出現「驗證碼錯誤」。';
+      controller.notifyListeners();
+      await tester.pump();
+
+      expect(find.text('驗證碼不對'), findsOneWidget);
+      expect(find.textContaining('學校原本的訊息'), findsOneWidget);
+      expect(find.textContaining('頁面出現「驗證碼錯誤」'), findsOneWidget);
+
+      await unmount(tester);
+    });
+
+    testWidgets('對不上的錯誤照原文顯示，不硬套一個可能是錯的解釋', (tester) async {
+      setPhoneSize(tester);
+      final controller = await testLoginController();
+      await tester.pumpWidget(wrap(controller));
+      await tester.pump();
+
+      controller.error = '伺服器回了 503，學校那邊可能在維護。';
+      controller.notifyListeners();
+      await tester.pump();
+
+      expect(find.text('伺服器回了 503，學校那邊可能在維護。'), findsOneWidget);
+      // 沒有硬掰一個標題出來
+      expect(find.textContaining('學校原本的訊息'), findsNothing);
+
+      await unmount(tester);
+    });
+
     testWidgets('記住密碼 Checkbox 點擊切換狀態', (tester) async {
       setPhoneSize(tester);
       final controller = await testLoginController();

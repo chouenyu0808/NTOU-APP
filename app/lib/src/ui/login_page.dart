@@ -50,6 +50,16 @@ class _LoginPageState extends State<LoginPage> {
     if (saved != null && mounted) _password.text = saved;
   }
 
+  void _openCached() => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => CachedTimetablePage(controller: _c),
+        ),
+      );
+
+  /// 錯誤卡自己有沒有給「看快取課表」那顆鈕。
+  bool get _errorOffersCache =>
+      _c.error != null && _Explained.of(_c.error!).showCached;
+
   Uint8List? _lastCaptcha;
 
   void _onControllerChanged() {
@@ -262,7 +272,12 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 36),
 
               if (_c.error != null) ...[
-                _ErrorCard(message: _c.error!),
+                _ErrorCard(
+                  message: _c.error!,
+                  // 帳號被自己在瀏覽器上佔住的時候，這條路要出現在**錯誤旁邊**，
+                  // 不是在頁尾等他捲下去找。
+                  onViewCached: _c.timetable == null ? null : _openCached,
+                ),
                 const SizedBox(height: 16),
               ],
 
@@ -351,14 +366,14 @@ class _LoginPageState extends State<LoginPage> {
 
               // 帳號在瀏覽器登著的時候 App 根本登不進去 —— 那時候這是唯一
               // 還看得到自己資料的路。只有真的有快取才顯示。
-              if (_c.timetable != null) ...[
+              // 錯誤卡上已經給過同一條路的時候就不要再給一次 ——
+              // 同一頁上兩顆一模一樣的按鈕會讓人以為它們做的是不同的事。
+              // 反過來，卡片沒給的時候（例如只是驗證碼打錯）這裡還是要有，
+              // 不然帳號被佔住以外的失敗就沒路可走了。
+              if (_c.timetable != null && !_errorOffersCache) ...[
                 const SizedBox(height: 8),
                 TextButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => CachedTimetablePage(controller: _c),
-                    ),
-                  ),
+                  onPressed: _openCached,
                   icon: const Icon(Icons.history, size: 18),
                   label: const Text('先看上次抓到的課表'),
                 ),
@@ -419,8 +434,13 @@ class _Wordmark extends StatelessWidget {
 /// 驗證碼圖 + 輸入框。
 ///
 /// 圖是伺服器產的實體檔（`/Temp/Captcha/<每個 session 隨機>.png`），
-/// 只能從頁面上抓、不能寫死。**刻意不做 OCR** —— 讓使用者自己打，
-/// 體驗差不了多少，也不會踩到繞過防護那條線。
+/// 只能從頁面上抓、不能寫死。
+///
+/// 這裡原本的註解寫「刻意不做 OCR」，但 `_autoRecognizeCaptcha` 已經在做了
+/// （commit 1f6acb3，專案作者自己加的）。註解跟程式相反比沒有註解更糟 ——
+/// 照著推論的人會得到錯的結論，所以改成寫現況：圖抓回來之後會先送 ML Kit
+/// 辨識，辨識得到四碼就自動填入並送出，失敗或位數不對就留在欄位裡等使用者
+/// 自己改。輸入框任何時候都能手動編輯。
 class _CaptchaField extends StatelessWidget {
   const _CaptchaField({
     required this.controller,
@@ -541,14 +561,74 @@ class _CaptchaField extends StatelessWidget {
       );
 }
 
+/// 一則登入失敗，翻成「你現在該做什麼」。
+///
+/// 學校給的是狀態描述，不是指示：「系統同時一次僅許可一個帳號登入」語法沒錯，
+/// 但看到的人不會知道兇手是自己五分鐘前在電腦上開的選課系統。這裡對已知的
+/// 幾種失敗給標題和下一步。
+///
+/// **原文一定留著。** 學校哪天改了措辭、或出現我們沒對應到的新錯誤，
+/// 使用者看到的還是真的那句話 —— 翻譯蓋掉原文的話，回報問題的人會說
+/// 「App 說我驗證碼錯了」，而學校其實說的是別的。
+class _Explained {
+  const _Explained(this.title, this.body, {this.showCached = false});
+
+  final String title;
+  final String body;
+
+  /// 要不要給「先看上次抓到的課表」那條路。
+  final bool showCached;
+
+  static _Explained of(String message) {
+    if (message.contains('別的地方登入') || message.contains('僅許可一個帳號')) {
+      return const _Explained(
+        '這個帳號已經在別的地方登入了',
+        '學校系統一次只允許一個地方登入。你在電腦上開著選課系統或成績查詢的'
+            '時候，這裡就會被擋下來。\n\n'
+            '先去那邊按登出，或等幾分鐘讓它自己逾時，再回來重試。',
+        showCached: true,
+      );
+    }
+    if (message.contains('驗證碼')) {
+      return const _Explained(
+        '驗證碼不對',
+        '圖已經換成新的一張了，重打一次就好。學號和密碼不用重打。',
+      );
+    }
+    if (message.contains('密碼') || message.contains('帳號')) {
+      return const _Explained(
+        '學號或密碼不對',
+        '這是學校單一入口的密碼，跟校務系統是同一組。'
+            '連錯幾次學校會鎖帳號，不確定的話先去網頁版試一次。',
+      );
+    }
+    if (message.contains('逾時') || message.contains('重新登入')) {
+      return const _Explained(
+        '登入逾時了',
+        '這一頁放太久，學校那邊的表單已經失效。重新填一次就好。',
+        showCached: true,
+      );
+    }
+    // 對不上的就照原文顯示，不要硬套一個可能是錯的解釋。
+    return const _Explained('', '');
+  }
+}
+
 class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.message});
+  const _ErrorCard({required this.message, this.onViewCached});
 
   final String message;
 
+  /// 有快取課表時才給。`null` 代表沒有東西可看，那就不要給一個空的承諾。
+  final VoidCallback? onViewCached;
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final e = _Explained.of(message);
+    final on = scheme.onErrorContainer;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -558,12 +638,46 @@ class _ErrorCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline, color: scheme.onErrorContainer, size: 20),
+          Icon(Icons.error_outline, color: on, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: scheme.onErrorContainer, height: 1.4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (e.title.isEmpty)
+                  Text(
+                    message,
+                    style: TextStyle(color: on, height: 1.4),
+                  )
+                else ...[
+                  Text(
+                    e.title,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(color: on, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(e.body, style: TextStyle(color: on, height: 1.5)),
+                  const SizedBox(height: 10),
+                  // 學校的原文。壓小、但不藏起來 —— 見上面的說明。
+                  Text(
+                    '學校原本的訊息：$message',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: on.withValues(alpha: 0.7)),
+                  ),
+                ],
+                if (e.showCached && onViewCached != null) ...[
+                  const SizedBox(height: 4),
+                  TextButton.icon(
+                    onPressed: onViewCached,
+                    style: TextButton.styleFrom(
+                      foregroundColor: on,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    icon: const Icon(Icons.history, size: 18),
+                    label: const Text('先看上次抓到的課表'),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
