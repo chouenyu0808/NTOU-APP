@@ -241,12 +241,41 @@ class _Thresholds extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 18),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+        child: Column(
           children: [
-            cell('必修', r.requiredCredits),
-            cell('選修最低', r.electiveMinimum),
-            cell('畢業最低', r.graduationMinimum, strong: true),
+            Row(
+              children: [
+                cell('必修', r.requiredCredits),
+                cell('選修最低', r.electiveMinimum),
+                cell('畢業最低', r.graduationMinimum, strong: true),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // **這一句要留著。** 三個大數字並排長得就像進度條的兩端，
+            // 使用者很容易讀成「我修到 135 了」。成績查詢不在這套系統的
+            // 學生選單裡 —— App 拿不到已修學分，所以這裡永遠只有門檻。
+            // 沒有說清楚的話，這一頁會被當成他根本沒有的那份進度表。
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 15,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '這是門檻，不是進度。成績查詢不在這套系統裡，'
+                    'App 拿不到你已經修了幾學分。',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
