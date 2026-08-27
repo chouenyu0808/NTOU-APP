@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../parsing/models.dart';
 import '../planner/plan_models.dart';
 import '../storage/plan_store.dart';
 import '../ui/app_controller.dart';
 import 'course_browser_page.dart';
+import 'plan_dialogs.dart';
 import 'selection_tag.dart';
 import 'theme.dart';
 import 'timetable_grid.dart';
@@ -101,18 +101,10 @@ class _PlannerPageState extends State<PlannerPage> {
     _save();
   }
 
-  Future<void> _addCourse() async {
-    final result = await showDialog<PlannedCourse>(
-      context: context,
-      builder: (_) => const _AddCourseDialog(),
-    );
-    if (result != null) _updatePlan(_plan.add(result));
-  }
-
   Future<void> _editSlots(PlannedCourse pc) async {
     final result = await showDialog<List<TimeSlot>>(
       context: context,
-      builder: (_) => _EditSlotsDialog(initial: pc.slots),
+      builder: (_) => EditSlotsDialog(initial: pc.slots),
     );
     if (result != null) {
       _updatePlan(_plan.update(pc.copyWith(slots: result, slotsAreManual: true)));
@@ -174,49 +166,25 @@ class _PlannerPageState extends State<PlannerPage> {
     }
   }
 
-  void _showAddOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.school_outlined),
-              title: const Text('從學校課程選'),
-              subtitle: const Text('用課名或系所搜尋，直接加入'),
-              onTap: () {
-                Navigator.pop(ctx);
-                if (widget.controller.phase != AppPhase.ready) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('請先登入才能查詢學校課程')),
-                  );
-                  return;
-                }
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CourseBrowserPage(
-                      controller: widget.controller,
-                      planStore: widget.store,
-                    ),
-                  ),
-                ).then((_) => _loadPlan()); // Reload when returning
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('手動輸入'),
-              subtitle: const Text('自己打課名和時段'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _addCourse();
-              },
-            ),
-          ],
+  /// 開課程瀏覽頁。
+  ///
+  /// 以前這裡先跳一層 bottom sheet 問「從學校課程選」還是「手動輸入」。
+  /// 那層 sheet 逼每個人在「我要找課」之前先回答「你想用哪種方式找課」，
+  /// 而九成的答案都一樣 —— 手動輸入是查不到的時候才要的退路，不是入口。
+  /// 現在直接進瀏覽頁，手動輸入放在那一頁的 ⋮ 和查詢失敗的畫面上。
+  ///
+  /// 沒登入也照樣進得去：瀏覽頁自己會顯示「連不上」並在那裡給手動輸入，
+  /// 比在這裡攔下來丟一句 SnackBar 有用。
+  Future<void> _openBrowser() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CourseBrowserPage(
+          controller: widget.controller,
+          planStore: widget.store,
         ),
       ),
     );
+    await _loadPlan();
   }
 
   @override
@@ -240,14 +208,14 @@ class _PlannerPageState extends State<PlannerPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddOptions,
+        onPressed: _openBrowser,
         icon: const Icon(Icons.add),
         label: const Text('新增課程'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _plan.courses.isEmpty
-              ? _EmptyPlanner(onAdd: _addCourse)
+              ? _EmptyPlanner(onAdd: _openBrowser)
               : ListView(
                   padding: const EdgeInsets.only(bottom: 96),
                   children: [
@@ -321,7 +289,7 @@ class _EmptyPlanner extends StatelessWidget {
           Text('還沒有預排的課程', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
-            '點下方按鈕新增課程，確認時間不衝突',
+            '從學校的開課清單挑，或自己打。加進來會當場檢查衝堂。',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -329,7 +297,7 @@ class _EmptyPlanner extends StatelessWidget {
           const SizedBox(height: 24),
           FilledButton.tonal(
             onPressed: onAdd,
-            child: const Text('新增第一門課'),
+            child: const Text('去挑第一門課'),
           ),
         ],
       ),
@@ -482,294 +450,6 @@ class _CourseItem extends StatelessWidget {
         tooltip: '從預排移除',
         onPressed: onRemove,
       ),
-    );
-  }
-}
-
-// ─── 新增課程 Dialog ──────────────────────────────────────────────────────────
-
-class _AddCourseDialog extends StatefulWidget {
-  const _AddCourseDialog();
-
-  @override
-  State<_AddCourseDialog> createState() => _AddCourseDialogState();
-}
-
-class _AddCourseDialogState extends State<_AddCourseDialog> {
-  final _name = TextEditingController();
-  final _code = TextEditingController();
-  final _teacher = TextEditingController();
-  final _credits = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  final Set<TimeSlot> _slots = {};
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _code.dispose();
-    _teacher.dispose();
-    _credits.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    final course = Course(
-      name: _name.text.trim(),
-      code: _code.text.trim(),
-      teacher: _teacher.text.trim(),
-      credits: double.tryParse(_credits.text.trim()),
-    );
-    Navigator.pop(
-      context,
-      PlannedCourse(
-        course: course,
-        slots: _slots.toList()..sort(),
-        slotsAreManual: _slots.isNotEmpty,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('新增課程'),
-      scrollable: true,
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextFormField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: '課名 *'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? '請輸入課名' : null,
-              autofocus: true,
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _code,
-              decoration: const InputDecoration(labelText: '課號（選填）'),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _teacher,
-              decoration: const InputDecoration(labelText: '老師（選填）'),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _credits,
-              decoration: const InputDecoration(labelText: '學分數（選填）'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
-            ),
-            const SizedBox(height: 16),
-            Text('上課時段', style: Theme.of(context).textTheme.labelMedium),
-            const SizedBox(height: 8),
-            _SlotPicker(
-              selected: _slots,
-              onChanged: (s) => setState(() {
-                if (_slots.contains(s)) {
-                  _slots.remove(s);
-                } else {
-                  _slots.add(s);
-                }
-              }),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-        FilledButton(onPressed: _submit, child: const Text('新增')),
-      ],
-    );
-  }
-}
-
-// ─── 編輯時段 Dialog ──────────────────────────────────────────────────────────
-
-class _EditSlotsDialog extends StatefulWidget {
-  const _EditSlotsDialog({required this.initial});
-  final List<TimeSlot> initial;
-
-  @override
-  State<_EditSlotsDialog> createState() => _EditSlotsDialogState();
-}
-
-class _EditSlotsDialogState extends State<_EditSlotsDialog> {
-  late final Set<TimeSlot> _slots;
-
-  @override
-  void initState() {
-    super.initState();
-    _slots = Set.from(widget.initial);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('編輯上課時段'),
-      scrollable: true,
-      content: _SlotPicker(
-        selected: _slots,
-        onChanged: (s) => setState(() {
-          if (_slots.contains(s)) {
-            _slots.remove(s);
-          } else {
-            _slots.add(s);
-          }
-        }),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, _slots.toList()..sort()),
-          child: const Text('儲存'),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── 時段格子選擇器 ───────────────────────────────────────────────────────────
-
-/// 星期 × 節次的格子，點一下選/取消。
-///
-/// 平常只畫「一～五 × 第 1–13 節」。第 0 節、第 14–16 節和週六日，學校的下拉
-/// **選得出來**（`Q_CLASS` 是 `00`–`16`、`Q_WEEK` 是 1–7），但絕大多數課排不到
-/// 那裡 —— 全部攤開的話手機上每一格會細到點不準。
-///
-/// **有時段真的落在那些格子時才展開。** 這在手動填的時候不會發生（使用者只填得到
-/// 畫得出來的格子），是「從學校課程自動帶入」之後才會的：parser 收得下 1–7 ×
-/// 00–16，畫不出來的話使用者看到的是「加進來了但格子是空的」，而且那一節點不掉。
-class _SlotPicker extends StatelessWidget {
-  const _SlotPicker({required this.selected, required this.onChanged});
-
-  final Set<TimeSlot> selected;
-  final ValueChanged<TimeSlot> onChanged;
-
-  static const _weekdays = ['一', '二', '三', '四', '五', '六', '日'];
-
-  /// 預設只畫到週五，第 1–13 節。
-  ///
-  /// 第 0 節（早自習）刻意收起來：學校的 `Q_CLASS` 有 `00`，但實際上幾乎沒課
-  /// 排在那裡，白留一列只是讓每一格更細。
-  static const int _defaultDays = 5;
-  static const int _defaultFirstPeriod = 1;
-  static const int _defaultLastPeriod = 13;
-
-  /// 學校那邊的上限：`Q_WEEK` 到 7、`Q_CLASS` 到 16。
-  static const int _maxDays = 7;
-  static const int _maxPeriod = 16;
-
-  /// 要畫幾天 —— 有時段落在六日就展開到那一天。
-  int get _days {
-    var n = _defaultDays;
-    for (final s in selected) {
-      if (s.weekday >= n) n = s.weekday + 1;
-    }
-    return n.clamp(_defaultDays, _maxDays);
-  }
-
-  /// 要畫哪幾節 —— 往兩端各自展開到真的有時段的那一節。
-  List<int> get _periods {
-    var first = _defaultFirstPeriod;
-    var last = _defaultLastPeriod;
-    for (final s in selected) {
-      if (s.period < first) first = s.period;
-      if (s.period > last) last = s.period;
-    }
-    first = first.clamp(0, _defaultFirstPeriod);
-    last = last.clamp(_defaultLastPeriod, _maxPeriod);
-    return [for (var p = first; p <= last; p++) p];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    final days = _days;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Column(
-        children: [
-          // 表頭
-          Row(
-            children: [
-              _cell('節', null, scheme, isHeader: true),
-              for (var d = 0; d < days; d++)
-                _cell(_weekdays[d], null, scheme, isHeader: true),
-            ],
-          ),
-          // 各節
-          for (final p in _periods)
-            Row(
-              children: [
-                _cell('$p', null, scheme, isHeader: true),
-                for (var d = 0; d < days; d++)
-                  _cell(
-                    '',
-                    TimeSlot(d, p),
-                    scheme,
-                    onTap: onChanged,
-                    isSelected: selected.contains(TimeSlot(d, p)),
-                  ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _cell(
-    String label,
-    TimeSlot? slot,
-    ColorScheme scheme, {
-    bool isHeader = false,
-    bool isSelected = false,
-    ValueChanged<TimeSlot>? onTap,
-  }) {
-    // 44 是可以穩定點中的最小尺寸。40 加上 1.5 的邊距，實際可點區域更小 ——
-    // 這是一個 5×14 的密集格子，點錯一格就是排錯一節課。
-    const size = 44.0;
-    final bg = isSelected
-        ? scheme.primaryContainer
-        : isHeader
-            ? scheme.surfaceContainerHighest
-            : scheme.surfaceContainer;
-    final fg = isSelected ? scheme.onPrimaryContainer : scheme.onSurface;
-
-    final cell = GestureDetector(
-      onTap: slot != null && onTap != null ? () => onTap(slot) : null,
-      child: Container(
-        width: size,
-        height: size,
-        margin: const EdgeInsets.all(1.5),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(NtouTheme.radiusXs),
-        ),
-        alignment: Alignment.center,
-        child: label.isNotEmpty
-            ? Text(label, style: TextStyle(fontSize: 12, color: fg, fontWeight: FontWeight.w500))
-            : isSelected
-                ? Icon(Icons.check, size: 16, color: fg)
-                : null,
-      ),
-    );
-
-    if (slot == null) return cell;
-
-    // 空格子只有底色，螢幕閱讀器讀不出任何東西 —— 使用者聽到的是一片沉默，
-    // 完全不知道游標停在哪一格。
-    return Semantics(
-      label: '星期${_weekdays[slot.weekday.clamp(0, 6)]}第 ${slot.period} 節',
-      selected: isSelected,
-      button: true,
-      child: cell,
     );
   }
 }

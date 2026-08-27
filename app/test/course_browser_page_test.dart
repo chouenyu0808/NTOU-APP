@@ -199,6 +199,11 @@ void main() {
 
   Future<CoursePlan?> readPlan() => store.read('114', '1');
 
+  /// 先放幾門課進預排，用來測「加進去就撞堂」。
+  Future<void> seedPlan(List<PlannedCourse> courses) => store.write(
+        CoursePlan(year: '114', semester: '1', courses: courses),
+      );
+
   group('開啟課程查詢頁', () {
     testWidgets('跟完派發器的 JS 導向才拿得到查詢表單', (tester) async {
       script();
@@ -415,9 +420,22 @@ void main() {
   });
 
   group('加入預排時自動抓上課時間', () {
-    Future<void> addFirstCourse(WidgetTester tester) async {
+    /// 加第一門課。
+    ///
+    /// 抓不到上課時間的時候，加完會**當場跳出時段格子**擋住畫面。這個 helper
+    /// 的用途是「把課弄進預排」，所以預設把它關掉 —— 不關的話後面每一個 tap
+    /// 都打在對話框的遮罩上，測試看起來還是綠的，但其實什麼都沒點到。
+    /// 要驗那個對話框本身的，傳 keepPicker: true。
+    Future<void> addFirstCourse(
+      WidgetTester tester, {
+      bool keepPicker = false,
+    }) async {
       await tester.tap(find.byIcon(Icons.add).first);
       await tester.pumpAndSettle();
+      if (!keepPicker && find.byType(AlertDialog).evaluate().isNotEmpty) {
+        await tester.tap(find.widgetWithText(TextButton, '取消'));
+        await tester.pumpAndSettle();
+      }
     }
 
     testWidgets('點的是那一列課號自己的 __doPostBack 目標', (tester) async {
@@ -534,19 +552,94 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('抓不到上課時間也要加得進去，並提醒回去手動填', (tester) async {
+    testWidgets('抓不到上課時間就當場問，不是叫他回預排頁自己想辦法', (tester) async {
+      // 「加進來但沒有時段」是常態不是例外：查詢結果那 17 欄結構上就沒有時間，
+      // 詳細頁那一趟又可能失敗。而沒時段的課排不進格子、也驗不了衝堂。
+      // 以前只丟一句「請記得回預排頁面填入上課時段」—— 那句話要成立，
+      // 使用者得記住是哪一門課還沒填、而且真的會回去。
       script(
         onKeyword: _searchPage(result: _resultTable()),
         onDetail: '<html><body><p>這一頁沒有時間</p></body></html>',
       );
       await open(tester);
       await searchByKeyword(tester, '計算機');
-      await addFirstCourse(tester);
+      await addFirstCourse(tester, keepPicker: true);
 
+      // 課先進去了 —— 時段填不填得成都不該讓「加入」失敗。
       final planned = (await readPlan())!.courses.single;
       expect(planned.course.name, '計算機概論');
       expect(planned.slots, isEmpty);
-      expect(find.textContaining('請記得回預排頁面填入上課時段'), findsOneWidget);
+
+      // 時段格子當場跳出來
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('一'),
+        ),
+        findsOneWidget,
+      );
+      await unmount(tester);
+    });
+
+    testWidgets('當場填的時段直接寫進預排', (tester) async {
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: '<html><body><p>這一頁沒有時間</p></body></html>',
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+      await addFirstCourse(tester, keepPicker: true);
+
+      await tester.tap(find.bySemanticsLabel('星期二第 3 節'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '儲存'));
+      await tester.pumpAndSettle();
+
+      final planned = (await readPlan())!.courses.single;
+      expect(planned.slots, const [TimeSlot(1, 3)]);
+      // 使用者自己填的，下次重新查詢不要蓋掉
+      expect(planned.slotsAreManual, isTrue);
+      await unmount(tester);
+    });
+
+    testWidgets('時段格子按取消，課還是留著', (tester) async {
+      // 取消的是「填時段」，不是「加入這門課」。把課一起收回去的話，
+      // 使用者會覺得剛剛那一下沒有反應。
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: '<html><body><p>這一頁沒有時間</p></body></html>',
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+      await addFirstCourse(tester, keepPicker: true);
+
+      await tester.tap(find.widgetWithText(TextButton, '取消'));
+      await tester.pumpAndSettle();
+
+      expect((await readPlan())!.courses, hasLength(1));
+      expect(find.textContaining('還沒有上課時段'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('加進去就撞堂的話，當場講出來撞到哪一門', (tester) async {
+      // 衝堂本來只在預排頁上顯示。在這一頁連加五門課的話，撞在一起的那兩門
+      // 要等他離開這一頁才知道，那時候他已經不記得是為了什麼加的了。
+      await seedPlan(const [
+        PlannedCourse(
+          course: Course(name: '線性代數', code: 'ZZ01'),
+          slots: [TimeSlot(0, 2)],
+        ),
+      ]);
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage('102 103 104'),
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+      await addFirstCourse(tester);
+
+      expect(find.textContaining('和「線性代數」撞在'), findsOneWidget);
       await unmount(tester);
     });
 
@@ -665,9 +758,22 @@ void main() {
   });
 
   group('已加入預排的課不再出現在搜尋結果', () {
-    Future<void> addFirstCourse(WidgetTester tester) async {
+    /// 加第一門課。
+    ///
+    /// 抓不到上課時間的時候，加完會**當場跳出時段格子**擋住畫面。這個 helper
+    /// 的用途是「把課弄進預排」，所以預設把它關掉 —— 不關的話後面每一個 tap
+    /// 都打在對話框的遮罩上，測試看起來還是綠的，但其實什麼都沒點到。
+    /// 要驗那個對話框本身的，傳 keepPicker: true。
+    Future<void> addFirstCourse(
+      WidgetTester tester, {
+      bool keepPicker = false,
+    }) async {
       await tester.tap(find.byIcon(Icons.add).first);
       await tester.pumpAndSettle();
+      if (!keepPicker && find.byType(AlertDialog).evaluate().isNotEmpty) {
+        await tester.tap(find.widgetWithText(TextButton, '取消'));
+        await tester.pumpAndSettle();
+      }
     }
 
     testWidgets('加過之後再搜同一門課，整門課都不見了', (tester) async {

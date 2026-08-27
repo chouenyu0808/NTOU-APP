@@ -4,6 +4,7 @@ import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/planner/plan_models.dart';
 import 'package:ntou_app/src/storage/plan_store.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
+import 'package:ntou_app/src/ui/course_browser_page.dart';
 import 'package:ntou_app/src/ui/planner_page.dart';
 import 'package:ntou_app/src/ui/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,63 +41,36 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('還沒有預排的課程'), findsOneWidget);
-    expect(find.text('新增第一門課'), findsOneWidget);
+    expect(find.text('去挑第一門課'), findsOneWidget);
   });
 
-  testWidgets('新增課程：填課名送出後出現在清單，空白引導消失', (tester) async {
+  testWidgets('新增課程直接進課程瀏覽頁，不先問「你想用哪種方式找課」', (tester) async {
+    // 以前 FAB 會先跳一層 bottom sheet 問「從學校課程選 / 手動輸入」。
+    // 那層 sheet 逼每個人在「我要找課」之前先回答一個九成答案都一樣的問題；
+    // 手動輸入是查不到時候的退路，不是入口，所以搬到瀏覽頁的 ⋮ 去了。
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('新增課程')); // FAB
     await tester.pumpAndSettle();
-    
-    await tester.tap(find.text('手動輸入'));
-    await tester.pumpAndSettle();
 
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '課名 *'), '演算法');
-    await tester.tap(find.widgetWithText(FilledButton, '新增'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('演算法'), findsOneWidget);
-    expect(find.text('還沒有預排的課程'), findsNothing);
+    expect(find.byType(CourseBrowserPage), findsOneWidget);
+    // 中間那層選單不該再出現。（「從學校課程選」不能拿來驗 ——
+    // 那是瀏覽頁自己的標題，本來就會在。）
+    expect(find.text('手動輸入'), findsNothing);
+    expect(find.byType(BottomSheet), findsNothing);
+    await unmount(tester);
   });
 
-  testWidgets('新增課程沒填課名會被擋下並提示', (tester) async {
+  testWidgets('空白引導的按鈕跟 FAB 去同一個地方', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('新增課程'));
-    await tester.pumpAndSettle();
-    
-    await tester.tap(find.text('手動輸入'));
+    await tester.tap(find.text('去挑第一門課'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, '新增'));
-    await tester.pumpAndSettle();
-
-    // 驗證訊息出現，Dialog 沒有關掉。
-    expect(find.text('請輸入課名'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, '新增'), findsOneWidget);
-  });
-
-  testWidgets('新增的課程有寫進 store', (tester) async {
-    await tester.pumpWidget(wrap());
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('新增課程'));
-    await tester.pumpAndSettle();
-    
-    await tester.tap(find.text('手動輸入'));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '課名 *'), '離散數學');
-    await tester.tap(find.widgetWithText(FilledButton, '新增'));
-    await tester.pumpAndSettle();
-
-    final saved = await store.read(defaultYear(), '1');
-    expect(saved, isNotNull);
-    expect(saved!.courses.single.course.name, '離散數學');
+    expect(find.byType(CourseBrowserPage), findsOneWidget);
+    await unmount(tester);
   });
 
   testWidgets('有衝堂的預排會顯示紅色警告', (tester) async {
