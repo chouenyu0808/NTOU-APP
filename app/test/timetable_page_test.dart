@@ -146,6 +146,6 @@ void main() {
     expect(find.byType(HomePage), findsOneWidget);
     expect(find.byType(TimetablePage, skipOffstage: false), findsOneWidget);
     // 限定在導覽列 —— 首頁上也有一個叫「校務系統」的快捷。
-    expect(find.widgetWithText(NavigationBar, '校務系統'), findsOneWidget);
+    expect(find.widgetWithText(NavigationBar, '校務'), findsOneWidget);
   });
 }

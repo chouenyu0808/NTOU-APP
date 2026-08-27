@@ -121,13 +121,15 @@ class _HomePageState extends State<HomePage> {
               icon: Icons.calendar_month_outlined,
               title: '完整課表',
               subtitle: '這學期每一天',
-              onTap: () => widget.onOpenTab(1),
+              onTap: () => widget.onOpenTab(1),  // 課表
             ),
             _Shortcut(
               icon: Icons.event_note_outlined,
               title: '預排課表',
               subtitle: '從學校課程挑，先排排看',
-              onTap: () => widget.onOpenTab(2),
+              // 預排併進課表分頁了，切過去看到的是「本學期」那一份 ——
+              // 使用者再按一下切換鈕即可，比多開一個分頁單純。
+              onTap: () => widget.onOpenTab(1),
             ),
             _Shortcut(
               icon: Icons.school_outlined,
@@ -143,7 +145,7 @@ class _HomePageState extends State<HomePage> {
               icon: Icons.apps_outlined,
               title: '校務系統',
               subtitle: '成績以外的 50 個功能',
-              onTap: () => widget.onOpenTab(3),
+              onTap: () => widget.onOpenTab(2),
             ),
           ],
         ),

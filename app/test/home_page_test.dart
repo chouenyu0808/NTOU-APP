@@ -210,7 +210,8 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      expect(opened, [1, 2, 3]);
+      // 預排併進課表分頁了，所以前兩個都是 1
+      expect(opened, [1, 1, 2]);
       await unmount(tester);
     });
   });

@@ -9,10 +9,14 @@ import 'module_list_page.dart';
 import 'planner_page.dart';
 import 'timetable_page.dart';
 
-/// App 的骨架：課表在前面，校務系統的 13 個模組在後面。
+/// App 的骨架：首頁 / 課表 / 校務。
 ///
 /// 課表為什麼獨立一頁而不是塞進「教務系統」底下：那是每天都會看好幾次的東西，
 /// 藏在三層選單裡等於沒做。其餘 49 個功能是一年用幾次的，放在選單裡剛好。
+///
+/// **「本學期」和「預排」合併成同一個分頁。** 兩者畫的是同一種東西（一週的
+/// 格子），底部分成兩個按鈕的話，使用者得先看標題才知道自己在看哪一份。
+/// 改成同一頁上的切換鈕，兩份課表的關係就變成「同一件事的兩個版本」。
 class HomeShell extends StatefulWidget {
   const HomeShell({
     super.key,
@@ -39,6 +43,9 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
+  /// 課表分頁裡看的是哪一份：0 = 本學期、1 = 預排。
+  int _schedule = 0;
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +71,17 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  /// 課表分頁標題位置的切換鈕。
+  Widget _scheduleSwitch() => SegmentedButton<int>(
+        segments: const [
+          ButtonSegment(value: 0, label: Text('本學期')),
+          ButtonSegment(value: 1, label: Text('預排')),
+        ],
+        selected: {_schedule},
+        showSelectedIcon: false,
+        onSelectionChanged: (v) => setState(() => _schedule = v.first),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,8 +92,16 @@ class _HomeShellState extends State<HomeShell> {
             controller: widget.controller,
             onOpenTab: (i) => setState(() => _index = i),
           ),
-          TimetablePage(controller: widget.controller),
-          PlannerPage(controller: widget.controller, store: widget.planStore),
+          _schedule == 0
+              ? TimetablePage(
+                  controller: widget.controller,
+                  titleWidget: _scheduleSwitch(),
+                )
+              : PlannerPage(
+                  controller: widget.controller,
+                  store: widget.planStore,
+                  titleWidget: _scheduleSwitch(),
+                ),
           ModuleListPage(
             controller: widget.controller,
             catalog: widget.catalog,
@@ -97,14 +123,9 @@ class _HomeShellState extends State<HomeShell> {
             label: '課表',
           ),
           NavigationDestination(
-            icon: Icon(Icons.event_note_outlined),
-            selectedIcon: Icon(Icons.event_note),
-            label: '預排',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.apps_outlined),
             selectedIcon: Icon(Icons.apps),
-            label: '校務系統',
+            label: '校務',
           ),
         ],
       ),

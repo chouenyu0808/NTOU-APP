@@ -11,9 +11,16 @@ class TimetablePage extends StatelessWidget {
     super.key,
     required this.controller,
     this.showLoginAction = true,
+    this.titleWidget,
   });
 
   final AppController controller;
+
+  /// 蓋掉 AppBar 的標題。
+  ///
+  /// 課表和預排合併成同一個分頁之後，標題位置放的是那組切換鈕 ——
+  /// 那個切換本身就是這一頁的身分，再加一列標題只是重複。
+  final Widget? titleWidget;
 
   /// 顯示「登入更新」那顆 FAB。
   ///
@@ -28,15 +35,8 @@ class TimetablePage extends StatelessWidget {
         final c = controller;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('我的課表'),
-            actions: [
-              if (c.phase == AppPhase.ready)
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  tooltip: '登出',
-                  onPressed: () => _confirmLogout(context, c),
-                ),
-            ],
+            title: titleWidget ?? const Text('我的課表'),
+            // 登出搬到「校務系統 > 帳號」了 —— 那不屬於課表。
             bottom: c.years.isEmpty
                 ? null
                 : PreferredSize(
@@ -72,7 +72,13 @@ class TimetablePage extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmLogout(BuildContext context, AppController c) async {
+}
+
+/// 登出前先講清楚會發生什麼事。
+///
+/// 學校系統一次只允許一個 session，App 沒登出的話使用者在瀏覽器登入會被
+/// 自己的 App 擋掉 —— 而那個錯誤訊息完全看不出原因。
+Future<void> confirmLogout(BuildContext context, AppController c) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -95,8 +101,7 @@ class TimetablePage extends StatelessWidget {
         ],
       ),
     );
-    if (ok ?? false) await c.logout();
-  }
+  if (ok ?? false) await c.logout();
 }
 
 class _SemesterBar extends StatelessWidget {

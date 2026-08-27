@@ -5,6 +5,7 @@ import 'app_controller.dart';
 import 'function_list_page.dart';
 import 'function_page.dart';
 import 'theme.dart';
+import 'timetable_page.dart' show confirmLogout;
 
 /// 學校系統的 13 個模組。
 ///
@@ -166,6 +167,16 @@ class _ModuleListPageState extends State<ModuleListPage> {
                 for (final f in catalog.standalone)
                   if (!f.path.contains('LogOut') && !f.path.contains('Portal'))
                     FunctionTile(controller: controller, function: f),
+                // 登出從課表頁的 AppBar 搬過來 —— 那不屬於課表。
+                if (controller.phase == AppPhase.ready)
+                  ListTile(
+                    leading: Icon(Icons.logout,
+                        color: Theme.of(context).colorScheme.error),
+                    title: Text('登出',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error)),
+                    onTap: () => confirmLogout(context, controller),
+                  ),
               ],
             ),
           ),

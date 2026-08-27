@@ -13,7 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_ais.dart';
 
-/// 骨架這一層要鎖的是：四個分頁都接上了、切換有反應。
+/// 骨架這一層要鎖的是：三個分頁都接上了、切換有反應，
+/// 而且課表分頁上的「本學期 / 預排」切得動。
 ///
 /// promptLoginOnOpen 關掉 —— 開著的話一掛載就去打學校的伺服器，
 /// 而 widget test 裡的 HttpClient 是被擋住的。
@@ -36,26 +37,28 @@ void main() {
         ),
       );
 
-  testWidgets('底部有首頁 / 課表 / 預排 / 校務系統四個分頁', (tester) async {
+  testWidgets('底部是首頁 / 課表 / 校務三個分頁', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
+    final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
+    expect(bar.destinations, hasLength(3));
     expect(find.text('首頁'), findsWidgets);
     expect(find.text('課表'), findsWidgets);
-    expect(find.text('預排'), findsWidgets);
-    expect(find.text('校務系統'), findsWidgets);
+    expect(find.text('校務'), findsWidgets);
   });
 
-  testWidgets('四頁都掛在骨架裡（IndexedStack）', (tester) async {
+  testWidgets('三頁都掛在骨架裡（IndexedStack）', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
     // IndexedStack 會把非當前頁放到 offstage，finder 預設會跳過，
-    // 所以這裡明確 skipOffstage: false，確認四頁都真的建進了樹裡。
+    // 所以這裡明確 skipOffstage: false。
     expect(find.byType(HomePage, skipOffstage: false), findsOneWidget);
-    expect(find.byType(TimetablePage, skipOffstage: false), findsOneWidget);
-    expect(find.byType(PlannerPage, skipOffstage: false), findsOneWidget);
     expect(find.byType(ModuleListPage, skipOffstage: false), findsOneWidget);
+    // 課表分頁一次只建其中一份 —— 預設是「本學期」。
+    expect(find.byType(TimetablePage, skipOffstage: false), findsOneWidget);
+    expect(find.byType(PlannerPage, skipOffstage: false), findsNothing);
   });
 
   testWidgets('一開始停在首頁（index 0）', (tester) async {
@@ -66,15 +69,24 @@ void main() {
     expect(bar.selectedIndex, 0);
   });
 
-  testWidgets('點「預排」切到預排頁', (tester) async {
+  testWidgets('課表分頁上用切換鈕換成預排，底部分頁不變', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('課表'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TimetablePage), findsOneWidget);
+
+    // 兩份課表畫的是同一種東西，用同一頁上的切換鈕換，
+    // 而不是底部再多一個分頁。
     await tester.tap(find.text('預排'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(PlannerPage), findsOneWidget);
+    expect(find.byType(TimetablePage), findsNothing);
+
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.selectedIndex, 2);
+    expect(bar.selectedIndex, 1, reason: '還在課表分頁上');
   });
 
   testWidgets('首頁的快捷可以切到別的分頁', (tester) async {
@@ -90,10 +102,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.selectedIndex, 2);
+    expect(bar.selectedIndex, 1, reason: '預排併進課表分頁了');
   });
 
-  testWidgets('點「校務系統」切到校務系統頁', (tester) async {
+  testWidgets('點「校務」切到校務系統頁', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
@@ -106,6 +118,6 @@ void main() {
     await tester.pumpAndSettle();
 
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.selectedIndex, 3);
+    expect(bar.selectedIndex, 2);
   });
 }

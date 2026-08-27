@@ -14,10 +14,18 @@ import 'timetable_grid.dart';
 /// 不需要登入也能使用 —— 預排是事前規劃，學校系統不提供時段資訊，
 /// 所有時段都由使用者自己填入。
 class PlannerPage extends StatefulWidget {
-  const PlannerPage({super.key, required this.controller, required this.store});
+  const PlannerPage({
+    super.key,
+    required this.controller,
+    required this.store,
+    this.titleWidget,
+  });
 
   final AppController controller;
   final PlanStore store;
+
+  /// 蓋掉 AppBar 的標題 —— 合併分頁之後那裡放的是切換鈕。
+  final Widget? titleWidget;
 
   @override
   State<PlannerPage> createState() => _PlannerPageState();
@@ -218,7 +226,7 @@ class _PlannerPageState extends State<PlannerPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('預排課表'),
+        title: widget.titleWidget ?? const Text('預排課表'),
         actions: [
           TextButton.icon(
             onPressed: _changeSemester,
