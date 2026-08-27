@@ -455,11 +455,16 @@ class FunctionTile extends StatelessWidget {
     required this.controller,
     required this.function,
     this.color,
+    this.subtitleOverride,
   });
 
   final AppController controller;
   final AisFunction function;
   final Color? color;
+
+  /// 蓋掉預設的副標。搜尋結果用它放「模組 › 群組」的麵包屑 ——
+  /// 50 個功能裡有好幾組名字很像的，只給名稱分不出來是哪一個。
+  final String? subtitleOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -483,8 +488,17 @@ class FunctionTile extends StatelessWidget {
       ),
       title: Text(function.title),
       subtitle: function.mutating
-          ? Text('會送出資料', style: TextStyle(color: scheme.error, fontSize: 12))
-          : null,
+          ? Text(
+              subtitleOverride == null
+                  ? '會送出資料'
+                  : '$subtitleOverride　·　會送出資料',
+              style: TextStyle(color: scheme.error, fontSize: 12),
+            )
+          : (subtitleOverride == null
+              ? null
+              : Text(subtitleOverride!,
+                  style: TextStyle(
+                      fontSize: 12, color: scheme.onSurfaceVariant))),
       trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: () => _open(context),
     );

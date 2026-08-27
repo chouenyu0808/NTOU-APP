@@ -14,7 +14,7 @@ import 'theme.dart';
 ///
 /// 路徑來自 `assets/menu_tree.json`（spike 遞迴展開整棵 TreeView 抓下來的），
 /// **App 不自己走選單** —— 那套 callback 是整個逆向裡最脆的一段。
-class ModuleListPage extends StatelessWidget {
+class ModuleListPage extends StatefulWidget {
   const ModuleListPage({
     super.key,
     required this.controller,
@@ -23,6 +23,46 @@ class ModuleListPage extends StatelessWidget {
 
   final AppController controller;
   final MenuCatalog catalog;
+
+  @override
+  State<ModuleListPage> createState() => _ModuleListPageState();
+}
+
+class _ModuleListPageState extends State<ModuleListPage> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  MenuCatalog get catalog => widget.catalog;
+  AppController get controller => widget.controller;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// 比對功能名稱和整條麵包屑。
+  ///
+  /// **純字串比對，不打學校的伺服器。** 選單那 50 個功能是登入時就抓下來的
+  /// （`menu_tree.json`），搜尋只是在本機的清單上過濾。
+  ///
+  /// 比 `trail` 而不只是名稱：使用者記得的常常是「請假那一區的東西」，
+  /// 不是「取消請假申請」這個確切的字。
+  List<AisFunction> get _matches {
+    final q = _query.trim();
+    if (q.isEmpty) return const [];
+    return [
+      for (final f in catalog.functions)
+        if (f.title.contains(q) || f.trail.join(' ').contains(q)) f,
+    ];
+  }
+
+  /// 這個功能屬於哪一個模組的顏色。顏色的位置是固定的（見 NtouTheme），
+  /// 所以搜尋結果的圓點跟網格上的顏色會對得起來。
+  Color _colorOf(AisFunction f) {
+    final i = catalog.modules.indexOf(f.module);
+    return i < 0 ? Theme.of(context).colorScheme.outline : NtouTheme.moduleColor(i);
+  }
 
   static const Map<String, IconData> _icons = {
     '教務系統': Icons.school_outlined,
@@ -62,6 +102,29 @@ class ModuleListPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
+          // 13 個模組底下有 50 個功能，光「學生請假」就 8 個 ——
+          // 顏色解的是「找模組」，沒解「找功能」。
+          TextField(
+            controller: _search,
+            decoration: InputDecoration(
+              hintText: '搜尋功能，例如「請假」',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: '清除',
+                      onPressed: () {
+                        _search.clear();
+                        setState(() => _query = '');
+                      },
+                    ),
+            ),
+            onChanged: (v) => setState(() => _query = v),
+          ),
+          const SizedBox(height: 16),
+
+          if (_query.trim().isNotEmpty) ..._searchResults(theme) else ...[
           Card(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -106,8 +169,78 @@ class ModuleListPage extends StatelessWidget {
               ],
             ),
           ),
+          ],
         ],
       ),
+    );
+  }
+
+  List<Widget> _searchResults(ThemeData theme) {
+    final hits = _matches;
+    if (hits.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: Center(
+            child: Text(
+              '這 ${catalog.functions.length} 個功能裡沒有符合「$_query」的。',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ];
+    }
+    return [
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 8),
+        child: Text('${hits.length} 個功能', style: theme.textTheme.titleSmall),
+      ),
+      Card(
+        child: Column(
+          children: [
+            for (var i = 0; i < hits.length; i++) ...[
+              if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
+              _SearchHit(
+                controller: controller,
+                function: hits[i],
+                color: _colorOf(hits[i]),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ];
+  }
+}
+
+/// 一筆搜尋結果。
+///
+/// 附上「模組 › 群組」的麵包屑：50 個功能裡有好幾組名字很像的
+/// （「查詢減免補助歷年申請資料」和「查詢就學貸款歷年申請資料」），
+/// 只給名稱分不出來是哪一個。
+class _SearchHit extends StatelessWidget {
+  const _SearchHit({
+    required this.controller,
+    required this.function,
+    required this.color,
+  });
+
+  final AppController controller;
+  final AisFunction function;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final trail = function.trail.length > 1
+        ? function.trail.sublist(0, function.trail.length - 1).join(' › ')
+        : function.module;
+
+    return FunctionTile(
+      controller: controller,
+      function: function,
+      color: color,
+      subtitleOverride: trail,
     );
   }
 }
