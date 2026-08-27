@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/period_times.dart';
 import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../parsing/timetable.dart' show kWeekdays;
@@ -16,21 +17,9 @@ class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.controller,
-    required this.onOpenTab,
-    required this.onOpenPlanner,
   });
 
   final AppController controller;
-
-  /// 切到別的分頁（課表 / 校務系統）。
-  final ValueChanged<int> onOpenTab;
-
-  /// 切到課表分頁，並且看的是「預排」那一份。
-  ///
-  /// 跟 [onOpenTab] 分開，是因為預排**不是一個分頁** —— 它是課表分頁上的
-  /// 另一份。共用 `onOpenTab(1)` 的話「完整課表」和「預排課表」兩張卡
-  /// 按下去會跑到同一個地方，可是兩張的副標各自承諾了不同的東西。
-  final VoidCallback onOpenPlanner;
 
   /// 今天是星期幾（0 = 週一），跟 [TimeSlot.weekday] 同一套。
   ///
@@ -58,6 +47,50 @@ class HomePage extends StatefulWidget {
       .where((s) => s.weekday == weekday)
       .map((s) => s.period)
       .reduce((a, b) => a < b ? a : b);
+
+  /// 今天這門課最後一節是第幾節。
+  static int lastPeriod(Course c, int weekday) => c.slots
+      .where((s) => s.weekday == weekday)
+      .map((s) => s.period)
+      .reduce((a, b) => a > b ? a : b);
+
+  /// 把今天的課切成「已經上完的 / 接下來那一堂 / 今天剩下的」。
+  ///
+  /// [now] 是當天的分鐘數（`PeriodTimes.minutesOf`）。
+  ///
+  /// **[times] 沒有資料時全部算成「還沒上」**（`done` 空、`next` 是第一堂）。
+  /// 節次對時鐘的表學校系統裡沒有，猜一組看起來合理的時間，錯了畫面上完全
+  /// 看不出來 —— 使用者會看到「已結束」而錯過一堂還沒上的課。分不出來的時候
+  /// 就不要分，比分錯好。
+  static ({List<Course> done, Course? next, List<Course> later}) split(
+    List<Course> today,
+    int weekday,
+    PeriodTimes times,
+    int now,
+  ) {
+    if (!times.isKnown || today.isEmpty) {
+      return (
+        done: const [],
+        next: today.isEmpty ? null : today.first,
+        later: today.skip(1).toList(),
+      );
+    }
+
+    final done = <Course>[];
+    final rest = <Course>[];
+    for (final c in today) {
+      if (times.hasEnded(lastPeriod(c, weekday), now)) {
+        done.add(c);
+      } else {
+        rest.add(c);
+      }
+    }
+    return (
+      done: done,
+      next: rest.isEmpty ? null : rest.first,
+      later: rest.skip(1).toList(),
+    );
+  }
 
   /// 「第 2-4 節」；不連續就列出來（「第 2、5 節」）。
   static String periodLabel(Course c, int weekday) {
@@ -105,39 +138,32 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
           children: [
-            Text('首頁', style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 4),
+            // 日期直接當標題。原本上面還有一行 headlineMedium 的「首頁」，
+            // 那佔掉整個第一屏最上面那一行，而且它說的事使用者從底部
+            // 分頁列已經知道了。
             Text(
-              '${now.month} 月 ${now.day} 日 · 星期${kWeekdays[weekday.clamp(0, 6)]}',
+              '${now.month} 月 ${now.day} 日',
+              style: theme.textTheme.headlineSmall,
+            ),
+            Text(
+              '星期${kWeekdays[weekday.clamp(0, 6)]}',
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            Text('今日課程', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 10),
-            _TodayCard(controller: _c, weekday: weekday),
+            _TodayCard(controller: _c, weekday: weekday, now: now),
 
             const SizedBox(height: 28),
             Text('校園公告', style: theme.textTheme.titleMedium),
             const SizedBox(height: 10),
             _Announcements(items: _c.announcements),
 
+            // 快捷本來有四張，其中三張（完整課表 / 預排課表 / 校務系統）
+            // 只是把底部分頁列再列一次 —— 同一個目的地給兩個入口，
+            // 沒有讓人更快到，只是讓首頁更長。留下的這張是唯一
+            // 不在分頁列上的。
             const SizedBox(height: 28),
-            Text('快捷', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 10),
-            _Shortcut(
-              icon: Icons.calendar_month_outlined,
-              title: '完整課表',
-              subtitle: '這學期每一天',
-              onTap: () => widget.onOpenTab(1),  // 課表
-            ),
-            _Shortcut(
-              icon: Icons.event_note_outlined,
-              title: '預排課表',
-              subtitle: '從學校課程挑，先排排看',
-              onTap: widget.onOpenPlanner,
-            ),
             _Shortcut(
               icon: Icons.school_outlined,
               title: '畢業必修',
@@ -148,12 +174,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            _Shortcut(
-              icon: Icons.apps_outlined,
-              title: '校務系統',
-              subtitle: '成績以外的 50 個功能',
-              onTap: () => widget.onOpenTab(2),
-            ),
           ],
         ),
       ),
@@ -163,10 +183,15 @@ class _HomePageState extends State<HomePage> {
 
 /// 今日課程那一塊。四種狀態要**分開講**，因為使用者要做的事不一樣。
 class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.controller, required this.weekday});
+  const _TodayCard({
+    required this.controller,
+    required this.weekday,
+    required this.now,
+  });
 
   final AppController controller;
   final int weekday;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
@@ -211,41 +236,235 @@ class _TodayCard extends StatelessWidget {
       ));
     }
 
+    final times = PeriodTimes.ntou;
+    final split = HomePage.split(
+      today,
+      weekday,
+      times,
+      PeriodTimes.minutesOf(now),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 已經上完的收成一行。它們還有用（「我今天到底去了沒」），
+        // 但不該跟等一下要去的課搶同樣的位置。
+        if (split.done.isNotEmpty) ...[
+          _DoneRow(courses: split.done, weekday: weekday),
+          const SizedBox(height: 10),
+        ],
+
+        if (split.next != null) ...[
+          _NextClass(
+            course: split.next!,
+            weekday: weekday,
+            times: times,
+            now: PeriodTimes.minutesOf(now),
+          ),
+          const SizedBox(height: 10),
+        ],
+
+        if (split.later.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
+              times.isKnown ? '今天還有' : '今天的課',
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Column(
+              children: [
+                for (var i = 0; i < split.later.length; i++) ...[
+                  if (i > 0)
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                  _CourseRow(course: split.later[i], weekday: weekday),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 一堂課的一列：左邊節次、右邊課名和老師 / 教室。
+class _CourseRow extends StatelessWidget {
+  const _CourseRow({required this.course, required this.weekday});
+
+  final Course course;
+  final int weekday;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Container(
+        width: 44,
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: scheme.primaryContainer,
+          borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
+        ),
+        child: Text(
+          HomePage.periodLabel(course, weekday)
+              .replaceAll('第 ', '')
+              .replaceAll(' 節', ''),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: scheme.onPrimaryContainer,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+        ),
+      ),
+      title: Text(course.name),
+      subtitle: Text(
+        [
+          if (course.teacher.isNotEmpty) course.teacher,
+          if (course.room.isNotEmpty) course.room,
+        ].join(' · '),
+      ),
+    );
+  }
+}
+
+/// 接下來那一堂 —— 首頁真正要回答的問題。
+///
+/// 「等一下有什麼課、在哪間教室」值得整張卡，而不是清單裡長得跟其他人
+/// 一模一樣的第三列。
+class _NextClass extends StatelessWidget {
+  const _NextClass({
+    required this.course,
+    required this.weekday,
+    required this.times,
+    required this.now,
+  });
+
+  final Course course;
+  final int weekday;
+  final PeriodTimes times;
+  final int now;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    final start = course.slots
+        .where((s) => s.weekday == weekday)
+        .map((s) => s.period)
+        .reduce((a, b) => a < b ? a : b);
+
+    final slot = times[start];
+    final until = times.minutesUntil(start, now);
+    final started = slot != null && now >= slot.start;
+
+    // 沒有節次時間表的時候不寫「下一堂」——
+    // 我們分不出哪幾堂已經上完了，說「下一堂」會是錯的。
+    final label = !times.isKnown
+        ? '今天第一堂'
+        : started
+            ? '現在'
+            : '下一堂';
+
     return Card(
       margin: EdgeInsets.zero,
-      child: Column(
-        children: [
-          for (var i = 0; i < today.length; i++) ...[
-            if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              leading: Container(
-                width: 44,
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
-                ),
-                child: Text(
-                  HomePage.periodLabel(today[i], weekday)
-                      .replaceAll('第 ', '')
-                      .replaceAll(' 節', ''),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+      color: scheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onPrimaryContainer.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              title: Text(today[i].name),
-              subtitle: Text(
-                [
-                  if (today[i].teacher.isNotEmpty) today[i].teacher,
-                  if (today[i].room.isNotEmpty) today[i].room,
-                ].join(' · '),
+                const Spacer(),
+                // 時間只有真的知道才寫。**不要猜** —— 猜錯的話畫面上看不出來，
+                // 使用者只會照著遲到。
+                if (slot != null)
+                  Text(
+                    '${PeriodTimes.hhmm(slot.start)}'
+                    '–${PeriodTimes.hhmm(slot.end)}',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: scheme.onPrimaryContainer.withValues(alpha: 0.8),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              course.name,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: scheme.onPrimaryContainer,
               ),
             ),
+            const SizedBox(height: 6),
+            Text(
+              [
+                HomePage.periodLabel(course, weekday),
+                if (course.room.isNotEmpty) course.room,
+                if (course.teacher.isNotEmpty) course.teacher,
+              ].join(' · '),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onPrimaryContainer.withValues(alpha: 0.85),
+              ),
+            ),
+            if (until != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                until >= 60
+                    ? '還有 ${until ~/ 60} 小時 ${until % 60} 分'
+                    : '還有 $until 分鐘',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 今天已經上完的課，收成一行可展開的。
+class _DoneRow extends StatelessWidget {
+  const _DoneRow({required this.courses, required this.weekday});
+
+  final List<Course> courses;
+  final int weekday;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: Icon(Icons.check_circle_outline,
+            size: 20, color: scheme.onSurfaceVariant),
+        title: Text(
+          '今天已經上完 ${courses.length} 堂',
+          style: theme.textTheme.bodyMedium
+              ?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        children: [
+          for (final c in courses) _CourseRow(course: c, weekday: weekday),
         ],
       ),
     );

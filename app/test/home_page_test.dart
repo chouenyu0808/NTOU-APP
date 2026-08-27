@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ntou_app/src/config/period_times.dart';
 import 'package:ntou_app/src/parsing/announcements.dart';
 import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
@@ -25,11 +26,7 @@ void main() {
 
   Widget wrap(AppController c) => MaterialApp(
         theme: NtouTheme.of(Brightness.light),
-        home: HomePage(
-          controller: c,
-          onOpenTab: (_) {},
-          onOpenPlanner: () {},
-        ),
+        home: HomePage(controller: c),
       );
 
   group('今天是星期幾', () {
@@ -57,6 +54,72 @@ void main() {
 
     test('沒有課表就是空的，不要爆掉', () {
       expect(HomePage.coursesOn(null, 0), isEmpty);
+    });
+  });
+
+  group('已結束 / 下一堂 / 今天還有', () {
+    // 節次時間表學校系統裡沒有（見 PeriodTimes 的說明），所以正式執行時
+    // PeriodTimes.ntou 是空的。這裡塞一份假的進去測邏輯本身 ——
+    // 資料到手的那天只要填 PeriodTimes.ntou，這些行為就會照著亮起來。
+    const times = PeriodTimes({
+      1: (start: 8 * 60 + 10, end: 9 * 60),
+      2: (start: 9 * 60 + 10, end: 10 * 60),
+      3: (start: 10 * 60 + 10, end: 11 * 60),
+      4: (start: 11 * 60 + 10, end: 12 * 60),
+    });
+
+    Course at(String name, List<int> periods) =>
+        Course(name: name, slots: [for (final p in periods) TimeSlot(0, p)]);
+
+    test('上完的歸「已結束」，接下來那堂是 next', () {
+      final today = [at('微積分', [1]), at('演算法', [3, 4])];
+
+      // 09:30 —— 微積分（8:10–9:00）上完了，演算法還沒開始
+      final r = HomePage.split(today, 0, times, 9 * 60 + 30);
+      expect(r.done.map((c) => c.name), ['微積分']);
+      expect(r.next!.name, '演算法');
+      expect(r.later, isEmpty);
+    });
+
+    test('正在上的那堂算 next，不算已結束', () {
+      // 10:30 落在演算法（第 3 節 10:10–11:00）之內。
+      // 算成「已結束」的話，人還在教室裡，首頁卻說今天沒課了。
+      final r = HomePage.split(
+        [at('演算法', [3, 4])],
+        0,
+        times,
+        10 * 60 + 30,
+      );
+      expect(r.done, isEmpty);
+      expect(r.next!.name, '演算法');
+    });
+
+    test('連堂要整堂上完才算結束', () {
+      // 11:30 —— 第 3 節結束了，但第 4 節（11:10–12:00）還在上。
+      final r = HomePage.split(
+        [at('演算法', [3, 4])],
+        0,
+        times,
+        11 * 60 + 30,
+      );
+      expect(r.done, isEmpty);
+      expect(r.next!.name, '演算法');
+    });
+
+    test('全部上完就沒有 next', () {
+      final r = HomePage.split([at('微積分', [1])], 0, times, 23 * 60);
+      expect(r.done.map((c) => c.name), ['微積分']);
+      expect(r.next, isNull);
+    });
+
+    test('沒有節次時間表時全部算成還沒上', () {
+      // 分不出來的時候就不要分。猜錯的代價是使用者看到「已結束」
+      // 而錯過一堂還沒上的課 —— 而且畫面上完全看不出來是猜的。
+      final today = [at('微積分', [1]), at('演算法', [3])];
+      final r = HomePage.split(today, 0, PeriodTimes.unknown, 23 * 60);
+      expect(r.done, isEmpty);
+      expect(r.next!.name, '微積分');
+      expect(r.later.map((c) => c.name), ['演算法']);
     });
   });
 
@@ -128,7 +191,9 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('今天有課：課名、老師、教室都列出來', (tester) async {
+    testWidgets('接下來那一堂放大成一整張卡，教室和老師都在上面', (tester) async {
+      // 首頁真正要回答的問題只有一個：「等一下有什麼課、在哪間教室」。
+      // 那不該是清單裡長得跟其他人一樣的第三列。
       final today = HomePage.todayIndex(DateTime.now());
       final c = await newController(
         cached: result(courses: [
@@ -144,9 +209,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('計算機概論'), findsOneWidget);
-      expect(find.text('許為元 · INS105'), findsOneWidget);
-      // 左邊那格是節次範圍
-      expect(find.text('2-4'), findsOneWidget);
+      expect(find.text('第 2-4 節 · INS105 · 許為元'), findsOneWidget);
+
+      // 沒有節次時間表就不能寫「下一堂」—— 我們分不出哪幾堂已經上完了。
+      // 猜一組看起來合理的時間，錯了畫面上完全看不出來，
+      // 使用者只會照著遲到或錯過。
+      expect(find.text('今天第一堂'), findsOneWidget);
+      expect(find.text('下一堂'), findsNothing);
+      expect(find.textContaining('還有'), findsNothing);
       await unmount(tester);
     });
   });
@@ -197,33 +267,17 @@ void main() {
   });
 
   group('快捷', () {
-    testWidgets('每個快捷各自去到不同的地方', (tester) async {
-      // 「完整課表」和「預排課表」曾經都接 onOpenTab(1)：兩張副標各自承諾了
-      // 不同東西的卡，按下去卻跑到同一個畫面。預排不是一個分頁，是課表分頁上
-      // 的另一份，所以它走自己的 callback。
+    testWidgets('只留「畢業必修」—— 其餘三張只是把底部分頁列再列一次', (tester) async {
+      // 「完整課表」「預排課表」「校務系統」在分頁列上都各有一個入口。
+      // 同一個目的地給兩個入口沒有讓人更快到，只是讓首頁更長。
       final c = await newController();
-      final opened = <int>[];
-      var planner = 0;
-      await tester.pumpWidget(MaterialApp(
-        theme: NtouTheme.of(Brightness.light),
-        home: HomePage(
-          controller: c,
-          onOpenTab: opened.add,
-          onOpenPlanner: () => planner++,
-        ),
-      ));
+      await tester.pumpWidget(wrap(c));
       await tester.pumpAndSettle();
 
-      for (final label in ['完整課表', '預排課表', '校務系統']) {
-        // 公告區塊把快捷推到畫面外了 —— 捲過去再點，不然 tap 會靜靜地沒反應。
-        await tester.ensureVisible(find.text(label));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text(label));
-        await tester.pumpAndSettle();
-      }
-
-      expect(opened, [1, 2]);
-      expect(planner, 1);
+      expect(find.text('畢業必修'), findsOneWidget);
+      expect(find.text('完整課表'), findsNothing);
+      expect(find.text('預排課表'), findsNothing);
+      expect(find.text('校務系統'), findsNothing);
       await unmount(tester);
     });
   });

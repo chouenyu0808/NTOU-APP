@@ -88,14 +88,7 @@ class _HomeShellState extends State<HomeShell> {
       body: IndexedStack(
         index: _index,
         children: [
-          HomePage(
-            controller: widget.controller,
-            onOpenTab: (i) => setState(() => _index = i),
-            onOpenPlanner: () => setState(() {
-              _index = 1;
-              _schedule = 1;
-            }),
-          ),
+          HomePage(controller: widget.controller),
           _schedule == 0
               ? TimetablePage(
                   controller: widget.controller,

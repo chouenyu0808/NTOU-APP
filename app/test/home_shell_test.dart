@@ -89,39 +89,9 @@ void main() {
     expect(bar.selectedIndex, 1, reason: '還在課表分頁上');
   });
 
-  testWidgets('首頁的「預排課表」快捷直接落在預排那一份上', (tester) async {
-    await tester.pumpWidget(wrap());
-    await tester.pumpAndSettle();
-
-    // 首頁上的「預排課表」快捷 —— 對新生來說那是開學前唯一用得到的東西，
-    // 不該要他先知道底部有幾個分頁。
-    // 公告區塊把快捷推到畫面外了 —— 捲過去再點，不然 tap 會靜靜地沒反應。
-    await tester.ensureVisible(find.text('預排課表'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('預排課表'));
-    await tester.pumpAndSettle();
-
-    final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.selectedIndex, 1, reason: '預排併進課表分頁了');
-
-    // **這兩行是重點。** 只驗分頁編號的話，兩張快捷都導到本學期也會過 ——
-    // 那正是這裡曾經發生的事。
-    expect(find.byType(PlannerPage), findsOneWidget);
-    expect(find.byType(TimetablePage), findsNothing);
-  });
-
-  testWidgets('「完整課表」快捷落在本學期那一份上', (tester) async {
-    await tester.pumpWidget(wrap());
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('完整課表'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('完整課表'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(TimetablePage), findsOneWidget);
-    expect(find.byType(PlannerPage), findsNothing);
-  });
+  // 首頁上原本有「完整課表」和「預排課表」兩張快捷，兩張都導到同一個地方
+  // （見 35eae1e）。後來整批砍掉了 —— 它們只是把底部分頁列再列一次。
+  // 那個 bug 現在結構上不可能再發生，所以驗它的兩條測試也跟著走。
 
   testWidgets('點「校務」切到校務系統頁', (tester) async {
     await tester.pumpWidget(wrap());
