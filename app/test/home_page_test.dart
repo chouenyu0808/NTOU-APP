@@ -25,7 +25,11 @@ void main() {
 
   Widget wrap(AppController c) => MaterialApp(
         theme: NtouTheme.of(Brightness.light),
-        home: HomePage(controller: c, onOpenTab: (_) {}),
+        home: HomePage(
+          controller: c,
+          onOpenTab: (_) {},
+          onOpenPlanner: () {},
+        ),
       );
 
   group('今天是星期幾', () {
@@ -193,12 +197,20 @@ void main() {
   });
 
   group('快捷', () {
-    testWidgets('三個快捷各自切到對應的分頁', (tester) async {
+    testWidgets('每個快捷各自去到不同的地方', (tester) async {
+      // 「完整課表」和「預排課表」曾經都接 onOpenTab(1)：兩張副標各自承諾了
+      // 不同東西的卡，按下去卻跑到同一個畫面。預排不是一個分頁，是課表分頁上
+      // 的另一份，所以它走自己的 callback。
       final c = await newController();
       final opened = <int>[];
+      var planner = 0;
       await tester.pumpWidget(MaterialApp(
         theme: NtouTheme.of(Brightness.light),
-        home: HomePage(controller: c, onOpenTab: opened.add),
+        home: HomePage(
+          controller: c,
+          onOpenTab: opened.add,
+          onOpenPlanner: () => planner++,
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -210,8 +222,8 @@ void main() {
         await tester.pumpAndSettle();
       }
 
-      // 預排併進課表分頁了，所以前兩個都是 1
-      expect(opened, [1, 1, 2]);
+      expect(opened, [1, 2]);
+      expect(planner, 1);
       await unmount(tester);
     });
   });

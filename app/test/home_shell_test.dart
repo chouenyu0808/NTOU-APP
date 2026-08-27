@@ -89,7 +89,7 @@ void main() {
     expect(bar.selectedIndex, 1, reason: '還在課表分頁上');
   });
 
-  testWidgets('首頁的快捷可以切到別的分頁', (tester) async {
+  testWidgets('首頁的「預排課表」快捷直接落在預排那一份上', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
@@ -103,6 +103,24 @@ void main() {
 
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
     expect(bar.selectedIndex, 1, reason: '預排併進課表分頁了');
+
+    // **這兩行是重點。** 只驗分頁編號的話，兩張快捷都導到本學期也會過 ——
+    // 那正是這裡曾經發生的事。
+    expect(find.byType(PlannerPage), findsOneWidget);
+    expect(find.byType(TimetablePage), findsNothing);
+  });
+
+  testWidgets('「完整課表」快捷落在本學期那一份上', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('完整課表'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('完整課表'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TimetablePage), findsOneWidget);
+    expect(find.byType(PlannerPage), findsNothing);
   });
 
   testWidgets('點「校務」切到校務系統頁', (tester) async {

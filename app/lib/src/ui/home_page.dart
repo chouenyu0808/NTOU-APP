@@ -16,12 +16,20 @@ class HomePage extends StatefulWidget {
     super.key,
     required this.controller,
     required this.onOpenTab,
+    required this.onOpenPlanner,
   });
 
   final AppController controller;
 
-  /// 切到別的分頁（課表 / 預排 / 校務系統）。
+  /// 切到別的分頁（課表 / 校務系統）。
   final ValueChanged<int> onOpenTab;
+
+  /// 切到課表分頁，並且看的是「預排」那一份。
+  ///
+  /// 跟 [onOpenTab] 分開，是因為預排**不是一個分頁** —— 它是課表分頁上的
+  /// 另一份。共用 `onOpenTab(1)` 的話「完整課表」和「預排課表」兩張卡
+  /// 按下去會跑到同一個地方，可是兩張的副標各自承諾了不同的東西。
+  final VoidCallback onOpenPlanner;
 
   /// 今天是星期幾（0 = 週一），跟 [TimeSlot.weekday] 同一套。
   ///
@@ -127,9 +135,7 @@ class _HomePageState extends State<HomePage> {
               icon: Icons.event_note_outlined,
               title: '預排課表',
               subtitle: '從學校課程挑，先排排看',
-              // 預排併進課表分頁了，切過去看到的是「本學期」那一份 ——
-              // 使用者再按一下切換鈕即可，比多開一個分頁單純。
-              onTap: () => widget.onOpenTab(1),
+              onTap: widget.onOpenPlanner,
             ),
             _Shortcut(
               icon: Icons.school_outlined,

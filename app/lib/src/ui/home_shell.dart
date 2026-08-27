@@ -91,6 +91,10 @@ class _HomeShellState extends State<HomeShell> {
           HomePage(
             controller: widget.controller,
             onOpenTab: (i) => setState(() => _index = i),
+            onOpenPlanner: () => setState(() {
+              _index = 1;
+              _schedule = 1;
+            }),
           ),
           _schedule == 0
               ? TimetablePage(
