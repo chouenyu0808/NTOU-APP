@@ -15,6 +15,11 @@ import 'timetable_page.dart' show confirmLogout;
 ///
 /// 路徑來自 `assets/menu_tree.json`（spike 遞迴展開整棵 TreeView 抓下來的），
 /// **App 不自己走選單** —— 那套 callback 是整個逆向裡最脆的一段。
+///
+/// 設計稿上還有一區「最近用過」的 chips，這裡刻意沒做：那要記錄使用者開過
+/// 哪些功能，而現在沒有任何地方在記。塞幾個看起來合理的假 chips 上去，
+/// 使用者按下第一個就會發現那不是他用過的東西 —— 那比空著更糟。
+/// 等到真的有使用紀錄了再補，不是排版問題。
 class ModuleListPage extends StatefulWidget {
   const ModuleListPage({
     super.key,
