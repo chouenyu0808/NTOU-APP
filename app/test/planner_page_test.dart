@@ -149,6 +149,19 @@ void main() {
           matching: find.text(label),
         );
 
+    testWidgets('格子讀得出「星期幾第幾節」', (tester) async {
+      // 空格子只有底色，沒有 Semantics 的話螢幕閱讀器一片沉默 ——
+      // 使用者不知道游標停在哪一格。
+      await openPicker(tester, const [TimeSlot(0, 3)]);
+
+      expect(
+        find.bySemanticsLabel('星期一第 3 節'),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel('星期三第 5 節'), findsOneWidget);
+      await unmount(tester);
+    });
+
     testWidgets('預設只畫一～五、第 1–13 節', (tester) async {
       await openPicker(tester, const [TimeSlot(0, 3)]);
 

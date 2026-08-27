@@ -723,7 +723,9 @@ class _SlotPicker extends StatelessWidget {
     bool isSelected = false,
     ValueChanged<TimeSlot>? onTap,
   }) {
-    const size = 40.0;
+    // 44 是可以穩定點中的最小尺寸。40 加上 1.5 的邊距，實際可點區域更小 ——
+    // 這是一個 5×14 的密集格子，點錯一格就是排錯一節課。
+    const size = 44.0;
     final bg = isSelected
         ? scheme.primaryContainer
         : isHeader
@@ -731,7 +733,7 @@ class _SlotPicker extends StatelessWidget {
             : scheme.surfaceContainer;
     final fg = isSelected ? scheme.onPrimaryContainer : scheme.onSurface;
 
-    return GestureDetector(
+    final cell = GestureDetector(
       onTap: slot != null && onTap != null ? () => onTap(slot) : null,
       child: Container(
         width: size,
@@ -748,6 +750,17 @@ class _SlotPicker extends StatelessWidget {
                 ? Icon(Icons.check, size: 16, color: fg)
                 : null,
       ),
+    );
+
+    if (slot == null) return cell;
+
+    // 空格子只有底色，螢幕閱讀器讀不出任何東西 —— 使用者聽到的是一片沉默，
+    // 完全不知道游標停在哪一格。
+    return Semantics(
+      label: '星期${_weekdays[slot.weekday.clamp(0, 6)]}第 ${slot.period} 節',
+      selected: isSelected,
+      button: true,
+      child: cell,
     );
   }
 }
