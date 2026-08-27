@@ -561,12 +561,16 @@ void main() {
       await addFirstCourse(tester);
 
       expect((await readPlan())!.courses, hasLength(1));
-      // 查詢結果也不能被錯誤畫面蓋掉
-      expect(find.text('計算機概論'), findsOneWidget);
+      // 查詢結果也不能被錯誤畫面蓋掉。
+      // （加進去的那門會被濾掉，所以看沒加的那門還在不在。）
+      expect(find.text('離散數學'), findsOneWidget);
       await unmount(tester);
     });
 
-    testWidgets('同一門課不會重複加入，也不會白跑一次詳細頁', (tester) async {
+    testWidgets('加過的那一列按不下去，也不會白跑一次詳細頁', (tester) async {
+      // 加過之後那門課就從清單濾掉了，所以「重複加入」在畫面上已經走不到。
+      // `_addToPlan` 裡那道重複檢查留著當保險（清單過期時還是會擋），
+      // 但使用者實際碰得到的是這裡：切回來看，那一列是打勾不是加號。
       script(
         onKeyword: _searchPage(result: _resultTable()),
         onDetail: _detailPage('102 103 104'),
@@ -575,16 +579,16 @@ void main() {
       await searchByKeyword(tester, '計算機');
       await addFirstCourse(tester);
 
-      // 上一則 SnackBar 還在的話，第二則會被排隊排到後面而看不到。
-      await tester.pump(const Duration(seconds: 5));
+      final before = ais.posts.length;
+
+      await tester.tap(find.widgetWithText(TextButton, '顯示'));
       await tester.pumpAndSettle();
 
-      final before = ais.posts.length;
-      await addFirstCourse(tester);
-
-      expect(find.text('這門課已經在預排清單中了'), findsOneWidget);
-      expect((await readPlan())!.courses, hasLength(1));
+      expect(find.byIcon(Icons.check), findsOneWidget);
+      // 打勾那一列沒有加入鈕，所以不可能再送一次詳細頁的請求
+      expect(find.byIcon(Icons.add), findsOneWidget); // 只剩沒加過的那門
       expect(ais.posts.length, before);
+      expect((await readPlan())!.courses, hasLength(1));
       await unmount(tester);
     });
   });
@@ -657,6 +661,55 @@ void main() {
         ),
         const [TimeSlot(0, 2), TimeSlot(0, 3)],
       );
+    });
+  });
+
+  group('已加入預排的課不再出現在搜尋結果', () {
+    Future<void> addFirstCourse(WidgetTester tester) async {
+      await tester.tap(find.byIcon(Icons.add).first);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('加過之後再搜同一門課，整門課都不見了', (tester) async {
+      script(onKeyword: _searchPage(result: _resultTable()));
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+
+      expect(find.text('計算機概論'), findsOneWidget);
+      await addFirstCourse(tester);
+
+      // 再搜一次
+      await searchByKeyword(tester, '計算機');
+      expect(find.text('計算機概論'), findsNothing);
+      expect(find.text('離散數學'), findsOneWidget); // 沒加過的照常顯示
+      await unmount(tester);
+    });
+
+    testWidgets('要說有幾門被藏起來 —— 不然使用者以為搜尋壞了', (tester) async {
+      script(onKeyword: _searchPage(result: _resultTable()));
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+      await addFirstCourse(tester);
+      await searchByKeyword(tester, '計算機');
+
+      expect(find.textContaining('已隱藏 1 門'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('可以切回來看，而且已排的那門不能再按加入', (tester) async {
+      script(onKeyword: _searchPage(result: _resultTable()));
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+      await addFirstCourse(tester);
+      await searchByKeyword(tester, '計算機');
+
+      await tester.tap(find.widgetWithText(TextButton, '顯示'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('計算機概論'), findsOneWidget);
+      // 已排的那一列是打勾，不是加號
+      expect(find.byIcon(Icons.check), findsOneWidget);
+      await unmount(tester);
     });
   });
 

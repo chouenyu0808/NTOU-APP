@@ -35,6 +35,15 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
 
   List<Course>? _results;
 
+  /// 目前這個學期的預排。用來把**已經加進去的課**從搜尋結果裡濾掉。
+  CoursePlan? _plan;
+
+  /// 使用者把已排的課切回來看。
+  ///
+  /// 預設藏起來，但**一定要留一個切回來的開關**：默默少掉幾筆結果，
+  /// 使用者第一個念頭是「搜尋壞了」，不是「喔那門我加過了」。
+  bool _showPlanned = false;
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +66,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     await _guard(() async {
       _view = await widget.controller.repository.openCourseSearch();
     });
+    await _loadPlan();
   }
 
   Future<void> _guard(Future<void> Function() body) async {
@@ -128,6 +138,29 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     });
   }
 
+  Future<void> _loadPlan() async {
+    final year = widget.controller.year;
+    final semester = widget.controller.semester;
+    if (year == null || semester == null) return;
+    final plan = await widget.planStore.read(year, semester);
+    if (mounted) setState(() => _plan = plan);
+  }
+
+  /// 這門課是不是已經在預排裡了。
+  ///
+  /// **比課號，不比班別。** 同一門課的 A 班和 B 班課號一樣
+  /// （計算機概論兩班都是 B57011RQ）—— 已經選了 B 班之後，A 班對使用者
+  /// 就沒有意義了，整門課一起藏掉才是他要的。
+  ///
+  /// 沒有課號的（手動輸入過的）退而求其次比課名。
+  bool _isPlanned(Course c) {
+    final plan = _plan;
+    if (plan == null) return false;
+    return plan.courses.any((p) => c.code.isNotEmpty
+        ? p.course.code == c.code
+        : p.course.name == c.name);
+  }
+
   void _parseResults(String html) {
     if (isEmptyResult(html)) {
       _results = const [];
@@ -196,6 +229,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       ],
     );
     await widget.planStore.write(newPlan);
+    await _loadPlan();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -381,6 +415,36 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       return const Center(child: Text('查無符合資料'));
     }
 
+    final planned = results.where(_isPlanned).length;
+    final shown = _showPlanned
+        ? results
+        : results.where((c) => !_isPlanned(c)).toList();
+
+    if (shown.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            '這 ${results.length} 筆都已經在預排裡了。',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        if (planned > 0) _PlannedFilterBar(
+          hidden: planned,
+          showing: _showPlanned,
+          onToggle: () => setState(() => _showPlanned = !_showPlanned),
+        ),
+        Expanded(child: _list(shown)),
+      ],
+    );
+  }
+
+  Widget _list(List<Course> results) {
     return ListView.separated(
       itemCount: results.length,
       separatorBuilder: (context, index) => const Divider(height: 1),
@@ -399,13 +463,60 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
             ],
           ),
           subtitle: Text('${course.teacher} • ${course.credits}學分 • ${course.classLabel}'),
-          trailing: IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: '加入預排',
-            onPressed: () => _addToPlan(course),
-          ),
+          trailing: _isPlanned(course)
+              ? const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Icon(Icons.check, size: 20),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.add),
+                  tooltip: '加入預排',
+                  onPressed: () => _addToPlan(course),
+                ),
         );
       },
+    );
+  }
+}
+
+/// 「藏了幾門已排的課」那一條。
+///
+/// 存在的理由是**不要讓人以為搜尋壞了**：搜出 8 筆卻只看到 5 筆，
+/// 第一個念頭永遠是「怎麼少了」，不是「喔那三門我加過了」。
+class _PlannedFilterBar extends StatelessWidget {
+  const _PlannedFilterBar({
+    required this.hidden,
+    required this.showing,
+    required this.onToggle,
+  });
+
+  final int hidden;
+  final bool showing;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      color: scheme.surfaceContainerHighest,
+      padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+      child: Row(
+        children: [
+          Icon(Icons.filter_alt_outlined, size: 16, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              showing ? '含已加入預排的 $hidden 門' : '已隱藏 $hidden 門已加入預排的課',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          TextButton(
+            onPressed: onToggle,
+            child: Text(showing ? '隱藏' : '顯示'),
+          ),
+        ],
+      ),
     );
   }
 }
