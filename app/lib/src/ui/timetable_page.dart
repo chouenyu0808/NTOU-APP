@@ -5,6 +5,7 @@ import '../parsing/models.dart';
 import 'app_controller.dart';
 import 'login_page.dart';
 import 'timetable_grid.dart';
+import 'theme.dart';
 
 class TimetablePage extends StatelessWidget {
   const TimetablePage({
@@ -331,7 +332,7 @@ class _Banner extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(NtouTheme.radiusSm)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -276,7 +276,7 @@ class _ModuleTile extends StatelessWidget {
     final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(NtouTheme.radiusLg),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -285,7 +285,7 @@ class _ModuleTile extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(NtouTheme.radiusLg),
             ),
             child: Icon(icon, color: color, size: 26),
           ),

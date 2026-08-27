@@ -7,6 +7,7 @@ import '../storage/plan_store.dart';
 import '../ui/app_controller.dart';
 import 'course_browser_page.dart';
 import 'selection_tag.dart';
+import 'theme.dart';
 import 'timetable_grid.dart';
 
 /// 預排課表頁。
@@ -349,7 +350,7 @@ class _ConflictBanner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
       ),
       child: Row(
         children: [
@@ -749,7 +750,7 @@ class _SlotPicker extends StatelessWidget {
         margin: const EdgeInsets.all(1.5),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(NtouTheme.radiusXs),
         ),
         alignment: Alignment.center,
         child: label.isNotEmpty

@@ -391,7 +391,7 @@ class _Wordmark extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: [scheme.primary, NtouTheme.surf],
             ),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(NtouTheme.radiusPill),
           ),
           child: const Icon(Icons.sailing, size: 40, color: Colors.white),
         ),
@@ -474,13 +474,13 @@ class _CaptchaField extends StatelessWidget {
             // （每換一張就是學校那端一次請求），不如先讓他放大看清楚。
             onTap: image == null ? onRefresh : () => _enlarge(context, image),
             onLongPress: onRefresh,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
             child: Ink(
               width: 116,
               height: 54,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
                 border: Border.all(color: scheme.outlineVariant),
               ),
               child: image != null
@@ -553,7 +553,7 @@ class _ErrorCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(NtouTheme.radiusLg),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -270,7 +270,7 @@ class _CourseBlock extends StatelessWidget {
           // 色盤裡的琥珀 #F9A825、黃綠 #7CB342 在白底上當文字色只有 2:1 上下，
           // 那是讀不了的。
           color: color.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
           border: Border(left: BorderSide(color: color, width: 3)),
         ),
         padding: const EdgeInsets.fromLTRB(6, 4, 4, 4),

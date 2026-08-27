@@ -5,6 +5,7 @@ import '../parsing/models.dart';
 import '../parsing/timetable.dart' show kWeekdays;
 import 'app_controller.dart';
 import 'required_courses_page.dart';
+import 'theme.dart';
 
 /// 首頁：今天要上什麼課，一眼看完。
 ///
@@ -222,7 +223,7 @@ class _TodayCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
                 ),
                 child: Text(
                   HomePage.periodLabel(today[i], weekday)

@@ -6,6 +6,7 @@ import '../data/function_view.dart';
 import '../menu/menu_catalog.dart';
 import '../parsing/data_grid.dart';
 import 'app_controller.dart';
+import 'theme.dart';
 
 /// 通用的功能頁。
 ///
@@ -377,7 +378,7 @@ class _MutatingBanner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
       ),
       child: Row(
         children: [
@@ -409,7 +410,7 @@ class _ErrorBanner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,7 +479,7 @@ class FunctionTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: (function.mutating ? scheme.error : tint)
               .withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
         ),
         child: Icon(
           function.mutating ? Icons.edit_note : Icons.description_outlined,

@@ -5,6 +5,7 @@ import '../ais/form_schema.dart';
 import '../data/function_view.dart';
 import '../parsing/required_courses.dart';
 import 'app_controller.dart';
+import 'theme.dart';
 
 /// 畢業必修 —— 你這個系四年要修哪些課、門檻是多少。
 ///
@@ -290,7 +291,7 @@ class _CourseRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
           color: scheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
         ),
         child: Text(
           cell.isEmpty ? '—' : cell,
@@ -415,7 +416,7 @@ class _ErrorBanner extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

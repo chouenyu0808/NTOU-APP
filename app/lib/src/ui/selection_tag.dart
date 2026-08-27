@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'theme.dart';
+
 /// 必修 / 選修的標籤。
 ///
 /// 必修用強調色 —— 那是「非修不可」，跟選修在畫面上要一眼分得開。
@@ -18,7 +20,7 @@ class SelectionTag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: required ? scheme.errorContainer : scheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(NtouTheme.radiusXs),
       ),
       child: Text(
         label,
