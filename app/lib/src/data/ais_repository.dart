@@ -420,6 +420,19 @@ class AisRepository {
     return parseCourseTimeSlots(page.html);
   }
 
+  /// 打開「查詢必修科目表」。
+  ///
+  /// 這一頁沒有專屬的解析 —— 表單欄位（入學年度、部別、系所、入學身分）
+  /// 全部由 `FunctionSchema` 從頁面自己的宣告讀出來，跟通用功能頁同一套。
+  /// 學校加一個查詢條件，這裡自動就多一個下拉。
+  Future<FunctionView> openRequiredCourses() => openFunction(
+        AisFunction(
+          title: '查詢必修科目表',
+          path: config.requiredCoursesPath,
+          trail: const ['教務系統', '選課系統', '查詢必修科目表'],
+        ),
+      );
+
   /// 挑出「這一頁真的收得下」的值。
   ///
   /// 兩件事會被濾掉：

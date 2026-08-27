@@ -4,6 +4,7 @@ import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../parsing/timetable.dart' show kWeekdays;
 import 'app_controller.dart';
+import 'required_courses_page.dart';
 
 /// 首頁：今天要上什麼課，一眼看完。
 ///
@@ -127,6 +128,16 @@ class _HomePageState extends State<HomePage> {
               title: '預排課表',
               subtitle: '從學校課程挑，先排排看',
               onTap: () => widget.onOpenTab(2),
+            ),
+            _Shortcut(
+              icon: Icons.school_outlined,
+              title: '畢業必修',
+              subtitle: '四年要修哪些課、門檻多少',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => RequiredCoursesPage(controller: _c),
+                ),
+              ),
             ),
             _Shortcut(
               icon: Icons.apps_outlined,

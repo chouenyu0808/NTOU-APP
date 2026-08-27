@@ -18,6 +18,8 @@ class SelectorConfig {
     required this.login,
     required this.timetable,
     required this.courseSearch,
+    this.requiredCoursesPath =
+        'Application/ENR/ENRA0/ENRA120_.aspx?progcd=STU1101',
     this.logoutPath = 'LogOut.aspx',
   });
 
@@ -34,6 +36,10 @@ class SelectorConfig {
   final LoginConfig login;
   final TimetableConfig timetable;
   final CourseSearchConfig courseSearch;
+
+  /// 查詢必修科目表。畢業門檻（必修 / 選修 / 畢業最低學分）都在這一頁上。
+  final String requiredCoursesPath;
+
   final String logoutPath;
 
   static const String assetPath = 'assets/selectors.json';
@@ -65,6 +71,10 @@ class SelectorConfig {
       courseSearch: CourseSearchConfig.fromJson(
         (pages['course_search'] as Map<String, dynamic>?) ?? const {},
       ),
+      requiredCoursesPath:
+          (pages['required_courses'] as Map<String, dynamic>?)?['path']
+                  as String? ??
+              'Application/ENR/ENRA0/ENRA120_.aspx?progcd=STU1101',
       logoutPath: json['logout_path'] as String? ?? 'LogOut.aspx',
     );
   }
