@@ -104,8 +104,19 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
+# 圖示是 tool/render_icon.py 出的 —— 造型改那裡，不要手動修圖。
+#
+# 為什麼要拆成兩層：Android 8 以後系統會自己套遮罩（圓形、方形、水滴，各家不同）
+# 而且會視差移動，中央 72/108 以外隨時會被切掉。整張圖丟進去是不夠的 ——
+# 舊的 icon.jpg 自己還帶了一圈圓角，等於被裁兩次。
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/icon.jpg"
+  # iOS 自己套 squircle 遮罩，而且不吃 alpha。這張畫滿、不自帶圓角。
+  image_path: "assets/icon.png"
+  remove_alpha_ios: true
+  # 背景是純色，不用出圖。跟 NtouTheme.seed 同一個值。
+  adaptive_icon_background: "#00506B"
+  # 前景的標只佔中央五成，圓形／方形／圓角方三種遮罩都切不到。
+  adaptive_icon_foreground: "assets/icon_foreground.png"
 

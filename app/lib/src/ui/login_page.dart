@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app_controller.dart';
 import 'cached_timetable_page.dart';
+import 'ntou_mark.dart';
 import 'theme.dart';
 
 /// 登入畫面。
@@ -403,15 +404,16 @@ class _Wordmark extends StatelessWidget {
         Container(
           width: 76,
           height: 76,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [scheme.primary, NtouTheme.surf],
-            ),
+            // 實色，不是漸層。兩個理由：稜面用的青跟原本漸層的尾端是同一個色
+            // （`NtouTheme.surf`），鋪上去會有一片直接消失；而且這一格就是要跟
+            // 桌面上的圖示長得一模一樣 —— 桌面舵輪、開 App 帆船，正是換掉它的理由。
+            color: NtouTheme.seed,
             borderRadius: BorderRadius.circular(NtouTheme.radiusPill),
           ),
-          child: const Icon(Icons.sailing, size: 40, color: Colors.white),
+          // 字身佔的比例跟 assets/icon.png 一樣，兩邊才對得起來。
+          child: const NtouMark(size: 76.0 * NtouMark.iconSpan),
         ),
         const SizedBox(height: 18),
         Text(
