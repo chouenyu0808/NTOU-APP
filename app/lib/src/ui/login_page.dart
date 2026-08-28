@@ -29,6 +29,10 @@ class _LoginPageState extends State<LoginPage> {
   final _password = TextEditingController();
   final _captcha = TextEditingController();
   final _captchaFocus = FocusNode();
+  // 學號和密碼也要有 FocusNode —— 驗證碼回來時要看使用者是不是正在打它們，
+  // 見 [_focusCaptcha]。
+  final _accountFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
   bool _remember = false;
   bool _showPassword = false;
@@ -65,28 +69,43 @@ class _LoginPageState extends State<LoginPage> {
   void _onControllerChanged() {
     if (!mounted) return;
     setState(() {});
-    if (_c.phase == AppPhase.awaitingCaptcha) {
-      if (_c.captcha != null && _c.captcha != _lastCaptcha) {
-        _lastCaptcha = _c.captcha;
-        _autoRecognizeCaptcha(_c.captcha!);
-      }
-      _captchaFocus.requestFocus();
-    } else {
+    if (_c.phase != AppPhase.awaitingCaptcha) {
       _lastCaptcha = null;
+      return;
+    }
+    if (_c.captcha != null && _c.captcha != _lastCaptcha) {
+      _lastCaptcha = _c.captcha;
+      _autoRecognizeCaptcha(_c.captcha!);
+      _focusCaptcha();
     }
   }
 
-  Future<void> _autoRecognizeCaptcha(Uint8List bytes) async {
-    // 顯示「辨識中」提示
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('正在自動辨識驗證碼…'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-    }
+  /// 把游標移到驗證碼欄 —— **只有在使用者沒有正在打別的欄位的時候**。
+  ///
+  /// 驗證碼是三個請求、好幾秒之後才回來的，而那幾秒正好是使用者在打學號和
+  /// 密碼的時候。原本這裡是每次 notify 都無條件 requestFocus，症狀是
+  /// 密碼打到一半游標自己跳到驗證碼欄，後面幾個字打進錯的格子 ——
+  /// 而密碼欄是遮起來的，使用者要到登入失敗才會發現。
+  void _focusCaptcha() {
+    if (_accountFocus.hasFocus || _passwordFocus.hasFocus) return;
+    _captchaFocus.requestFocus();
+  }
 
+  /// 試著把驗證碼認出來，**填進欄位就停手**。
+  ///
+  /// 認出來之後不自動送出。這不是保守，是這條路徑上唯一站得住的做法：
+  ///
+  ///   - 驗證碼是**一次性**的。送出去那張圖就作廢，不管對錯。
+  ///   - 學校的失敗是**靜默**的：重畫一次登入頁配一張新圖，不給任何訊息。
+  ///   - 圖只有 116×54，四個字裡有一兩個看不清是常態，OCR 認錯很正常。
+  ///
+  /// 三件事湊在一起就是一個自己會轉的迴圈：認成 4 碼 → 自動送 → 靜默失敗 →
+  /// [AppController.submitLogin] 自動換一張 → 又自動認、又自動送。存了密碼的話
+  /// 開 App 就開始連環重試，使用者插不進手，也看不出來為什麼一直失敗。
+  ///
+  /// 所以這裡只負責填。要不要送是使用者按下去的那一下 ——
+  /// 這跟 [_onCaptchaChanged] 只認「使用者親手打完第 4 碼」是同一條線。
+  Future<void> _autoRecognizeCaptcha(Uint8List bytes) async {
     try {
       // ML Kit 要求圖片最小 32x32，先放大再送去辨識
       final scaledBytes = await _scaleUpToMinSize(bytes, minSize: 64);
@@ -104,46 +123,26 @@ class _LoginPageState extends State<LoginPage> {
       // 只保留英文字母和數字（過濾掉空白、雜訊標點符號）
       final text = rawText.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-      if (!mounted) return;
-      // 顯示辨識結果（不管長度），方便診斷
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            text.isEmpty
-                ? '辨識失敗（圖太難辨識），請手動輸入'
-                : text.length == 4
-                    ? '自動辨識：$text，嘗試登入中…'
-                    : '辨識到「$text」(${text.length}碼)，請確認後手動修改',
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      // 認不出來就當沒發生過。**不要跳訊息說「辨識失敗」** ——
+      // 使用者本來就要自己打，那句話只是在報告一件他不需要知道的內部狀況。
+      if (text.isEmpty || !mounted) return;
+      if (_c.phase != AppPhase.awaitingCaptcha) return;
 
-      // 如果過濾後剛好是 4 碼，就填入並嘗試送出
-      if (text.length == 4 && mounted && _c.phase == AppPhase.awaitingCaptcha) {
-        _captcha.text = text;
-        setState(() {});
-        if (_canSubmit) {
-          _submit();
-        }
-      } else if (text.isNotEmpty && text.length != 4 && mounted) {
-        // 辨識到但長度不對，先填進去讓使用者修正
-        _captcha.text = text;
-        setState(() {});
-        _captchaFocus.requestFocus();
-      }
-    } catch (e, st) {
-      debugPrint('OCR failed: $e\n$st');
-      if (mounted) {
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('OCR 錯誤：$e'),
-            duration: const Duration(seconds: 10),
-          ),
-        );
-      }
+      // 使用者已經自己動手了就不要蓋掉他打的東西。
+      if (_captcha.text.isNotEmpty) return;
+
+      _captcha.text = text;
+      // `TextEditingController` 直接設值不會觸發 onChanged，`_captchaLength`
+      // 要自己跟上 —— 不同步的話，使用者刪掉一個字再補回來會被當成
+      // 「剛打完第 4 碼」而自動送出，等於繞回原本那個迴圈。
+      _captchaLength = text.length;
+      setState(() {});
+      _focusCaptcha();
+    } catch (e) {
+      // **只進 debug log，不給使用者看。** 這條路徑上的例外文字可能夾著
+      // 頁面或檔案路徑的碎片，而這一頁其他每一處都刻意只說類型不說內容。
+      // 對使用者來說「OCR 掛了」跟「沒認出來」要做的事一模一樣：自己打。
+      debugPrint('OCR failed: ${e.runtimeType}');
     }
   }
 
@@ -197,6 +196,8 @@ class _LoginPageState extends State<LoginPage> {
     _password.dispose();
     _captcha.dispose();
     _captchaFocus.dispose();
+    _accountFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -288,6 +289,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       TextField(
                         controller: _account,
+                        focusNode: _accountFocus,
                         decoration: const InputDecoration(
                           labelText: '學號',
                           prefixIcon: Icon(Icons.badge_outlined),
@@ -300,6 +302,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 14),
                       TextField(
                         controller: _password,
+                        focusNode: _passwordFocus,
                         obscureText: !_showPassword,
                         autocorrect: false,
                         enableSuggestions: false,
@@ -437,10 +440,12 @@ class _Wordmark extends StatelessWidget {
 /// 只能從頁面上抓、不能寫死。
 ///
 /// 這裡原本的註解寫「刻意不做 OCR」，但 `_autoRecognizeCaptcha` 已經在做了
-/// （commit 1f6acb3，專案作者自己加的）。註解跟程式相反比沒有註解更糟 ——
-/// 照著推論的人會得到錯的結論，所以改成寫現況：圖抓回來之後會先送 ML Kit
-/// 辨識，辨識得到四碼就自動填入並送出，失敗或位數不對就留在欄位裡等使用者
-/// 自己改。輸入框任何時候都能手動編輯。
+/// （commit 1f6acb3，專案作者自己加的）。註解跟程式相反比沒有註解更糟，
+/// 所以寫現況：圖抓回來之後會先送 ML Kit 辨識，**認到什麼就填什麼，不送出**。
+///
+/// 為什麼不自動送見 [_LoginPageState._autoRecognizeCaptcha] ——
+/// 一句話版本：驗證碼是一次性的、學校的失敗是靜默的，兩件事加上會認錯的 OCR
+/// 就是一個使用者插不進手的重試迴圈。輸入框任何時候都能手動編輯。
 class _CaptchaField extends StatelessWidget {
   const _CaptchaField({
     required this.controller,

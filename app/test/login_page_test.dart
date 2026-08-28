@@ -305,5 +305,34 @@ void main() {
 
       await unmount(tester);
     });
+
+    testWidgets('驗證碼回來時不要把游標從正在打的欄位搶走', (tester) async {
+      // 驗證碼是三個請求、好幾秒之後才回來的，而那幾秒正好是使用者在打
+      // 學號和密碼的時候。原本每次 notify 都無條件 requestFocus，症狀是
+      // 密碼打到一半游標自己跳走，後面幾個字打進驗證碼欄 ——
+      // 而密碼欄是遮起來的，使用者要到登入失敗才會發現。
+      setPhoneSize(tester);
+      final controller = await testLoginController();
+      await tester.pumpWidget(wrap(controller));
+      await tester.pump();
+
+      // 使用者正在打密碼。
+      final password = find.widgetWithText(TextField, '密碼');
+      await tester.tap(password);
+      await tester.pump();
+      expect(tester.widget<TextField>(password).focusNode!.hasFocus, isTrue);
+
+      // 驗證碼這時候才回來。
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump();
+
+      expect(
+        tester.widget<TextField>(password).focusNode!.hasFocus,
+        isTrue,
+        reason: '游標要留在使用者正在打的那一格',
+      );
+
+      await unmount(tester);
+    });
   });
 }
