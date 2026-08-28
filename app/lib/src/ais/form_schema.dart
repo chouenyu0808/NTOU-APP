@@ -5,7 +5,34 @@ import 'forms.dart';
 import 'page.dart';
 
 /// 一個查詢欄位長什麼樣。
-enum FieldKind { select, text, number, date, hidden }
+///
+/// 這個系統的表單不是只有下拉和文字框。維護新生資料那一頁上就有 2 個
+/// `<textarea>`（自傳 2000 字）、9 個 radio、37 個 checkbox ——
+/// 只認得 select / text 的話，那一頁 151 個欄位全部會被畫成文字框或整個消失。
+enum FieldKind {
+  select,
+  text,
+  number,
+  date,
+  hidden,
+
+  /// `<textarea>`。自傳、備註那一類，要多行。
+  textarea,
+
+  /// 一組 `<input type="radio">`，同名的算一組。單選。
+  radio,
+
+  /// 一組 `<input type="checkbox">`（ASP.NET 的 CheckBoxList，
+  /// 名字是 `群組$0`、`群組$1`…）。複選。
+  checkboxes,
+
+  /// `<input type="password">`。畫面上要遮起來。
+  password,
+
+  /// `<input type="file">`。**App 還不能上傳檔案** ——
+  /// 畫成文字框的話使用者會在裡面打字，然後送出一個伺服器看不懂的值。
+  file,
+}
 
 class SchemaField {
   const SchemaField({
@@ -15,6 +42,7 @@ class SchemaField {
     this.value = '',
     this.options = const [],
     this.maxLength,
+    this.readOnly = false,
   });
 
   final String name;
@@ -37,6 +65,24 @@ class SchemaField {
   /// 實際案例：教師查詢的 `Q_LECTR_TCH_CH` 初始 0 個選項，
   /// 要先選系所觸發連動 postback 才會填入。
   bool get needsCascade => kind == FieldKind.select && options.isEmpty;
+
+  /// 學校那邊標成 `disabled` 的欄位（自己的性別、學生類別那一類）。
+  ///
+  /// **瀏覽器完全不送 disabled 的欄位。** 我們照樣送的話，輕則被
+  /// event validation 擋成一句看不懂的 403，重則真的把一個使用者
+  /// 根本不該改的欄位寫進去。畫面上要顯示（那是他的資料）但不能編輯。
+  final bool readOnly;
+
+  /// 複選群組裡選中的那幾個 —— 存的是各自的欄位名（`M_PRESENT_TYPE\$0`）。
+  ///
+  /// 用換行分隔而不是逗號：ASP.NET 的欄位名裡有 `\$`，但不會有換行。
+  static const String checkedSeparator = '\n';
+
+  static List<String> splitChecked(String value) =>
+      value.isEmpty ? const [] : value.split(checkedSeparator);
+
+  static String joinChecked(Iterable<String> names) =>
+      names.join(checkedSeparator);
 }
 
 /// 一顆送出按鈕。
@@ -161,41 +207,7 @@ class FunctionSchema {
 
     final labels = _visibleLabels(scope);
 
-    final fields = <SchemaField>[];
-    for (final el in scope.querySelectorAll('select')) {
-      final name = el.attributes['name'];
-      if (name == null || name.isEmpty) continue;
-      if (_isInternal(name)) continue;
-      final label = _labelOf(el, labels);
-      if (label == null) continue;
-      fields.add(SchemaField(
-        name: name,
-        label: label,
-        kind: FieldKind.select,
-        value: selectedOption(doc, name) ?? '',
-        options: selectOptions(doc, name),
-      ));
-    }
-
-    for (final el in scope.querySelectorAll('input')) {
-      final name = el.attributes['name'];
-      if (name == null || name.isEmpty) continue;
-      final type = (el.attributes['type'] ?? 'text').toLowerCase();
-      if (type == 'submit' || type == 'button' || type == 'image' ||
-          type == 'reset' || type == 'hidden') {
-        continue;
-      }
-      if (_isInternal(name)) continue;
-      final label = _labelOf(el, labels);
-      if (label == null) continue;
-      fields.add(SchemaField(
-        name: name,
-        label: label,
-        kind: type == 'number' ? FieldKind.number : FieldKind.text,
-        value: el.attributes['value'] ?? '',
-        maxLength: int.tryParse(el.attributes['maxlength'] ?? ''),
-      ));
-    }
+    final fields = _collectFields(doc, scope, labels);
 
     final buttons = <SchemaButton>[];
     for (final el in scope.querySelectorAll('input')) {
@@ -224,6 +236,217 @@ class FunctionSchema {
       buttons: buttons,
       groups: _group(doc, fields, buttons),
     );
+  }
+
+  /// 掃出這一頁使用者要填的欄位，**照文件順序**。
+  ///
+  /// 原本是先掃完所有 `<select>` 再掃所有 `<input>`，畫面上的順序就跟學校那一頁
+  /// 對不起來 —— 使用者照著網頁的記憶去找某一格會找錯位置。一次走完整棵樹
+  /// 順便解決那件事。
+  ///
+  /// 認得的控制項（以前只有 select 和 text）：
+  ///   - `<textarea>` —— **以前整個不存在**。維護新生資料的「自傳」（2000 字）
+  ///     和「兄弟姐妹備註」都是 textarea，畫面上找不到那兩格。
+  ///   - 一組同名的 `<input type="radio">` 收成一個單選欄位。以前是一個 radio
+  ///     一個文字框：「自我認同性別」在畫面上是**三個一模一樣的文字框**。
+  ///   - ASP.NET 的 CheckBoxList（`群組$0`、`群組$1`…）收成一個複選欄位。
+  ///     以前「目前身分」那 37 個 checkbox 是一個文字框。
+  ///   - `type="password"` 要遮起來（修改密碼那一頁）。
+  ///   - `type="file"` 標成不支援 —— 畫成文字框的話使用者會在裡面打字。
+  static List<SchemaField> _collectFields(
+    dom.Document doc,
+    dom.Element scope,
+    Map<String, String> labels,
+  ) {
+    final fields = <SchemaField>[];
+    final done = <String>{};
+
+    for (final el in scope.querySelectorAll('*')) {
+      final tag = el.localName;
+      final name = el.attributes['name'];
+
+      if (tag == 'select') {
+        if (name == null || name.isEmpty || _isInternal(name)) continue;
+        if (!done.add(name)) continue;
+        final label = _labelOf(el, labels);
+        if (label == null) continue;
+        fields.add(SchemaField(
+          name: name,
+          label: label,
+          kind: FieldKind.select,
+          value: selectedOption(doc, name) ?? '',
+          options: selectOptions(doc, name),
+          readOnly: _isDisabled(el),
+        ));
+        continue;
+      }
+
+      if (tag == 'textarea') {
+        if (name == null || name.isEmpty || _isInternal(name)) continue;
+        if (!done.add(name)) continue;
+        final label = _labelOf(el, labels);
+        if (label == null) continue;
+        fields.add(SchemaField(
+          name: name,
+          label: label,
+          kind: FieldKind.textarea,
+          // `<textarea>` 的值是它的內容，不是 value 屬性。
+          value: el.text,
+          maxLength: int.tryParse(el.attributes['maxlength'] ?? ''),
+          readOnly: _isDisabled(el),
+        ));
+        continue;
+      }
+
+      if (tag != 'input') continue;
+      if (name == null || name.isEmpty) continue;
+      final type = (el.attributes['type'] ?? 'text').toLowerCase();
+      if (type == 'submit' ||
+          type == 'button' ||
+          type == 'image' ||
+          type == 'reset' ||
+          type == 'hidden') {
+        continue;
+      }
+
+      if (type == 'radio') {
+        // 同名的 radio 是**一組**，不是好幾個欄位。
+        if (_isInternal(name) || !done.add(name)) continue;
+        final group = [
+          for (final r in scope.querySelectorAll('input'))
+            if ((r.attributes['type'] ?? '').toLowerCase() == 'radio' &&
+                r.attributes['name'] == name)
+              r,
+        ];
+        final label = _groupLabel(scope, name, name, labels);
+        if (label == null) continue;
+        final checked =
+            group.where((r) => r.attributes.containsKey('checked')).firstOrNull;
+        fields.add(SchemaField(
+          name: name,
+          label: label,
+          kind: FieldKind.radio,
+          value: checked?.attributes['value'] ?? '',
+          options: [
+            for (final r in group)
+              (value: r.attributes['value'] ?? '', label: _optionLabel(scope, r)),
+          ],
+          // 一組裡有一顆是 disabled，整組就是唯讀（學校是整組一起關的）。
+          readOnly: group.any(_isDisabled),
+        ));
+        continue;
+      }
+
+      if (type == 'checkbox') {
+        // `M_PRESENT_TYPE$0` -> 群組 `M_PRESENT_TYPE`。沒有編號的就是自己一組。
+        final groupName = _checkboxGroup(name);
+        if (_isInternal(groupName) || !done.add(groupName)) continue;
+        final group = [
+          for (final c in scope.querySelectorAll('input'))
+            if ((c.attributes['type'] ?? '').toLowerCase() == 'checkbox' &&
+                _checkboxGroup(c.attributes['name'] ?? '') == groupName)
+              c,
+        ];
+        final label = _groupLabel(scope, groupName, name, labels);
+        if (label == null) continue;
+        fields.add(SchemaField(
+          // 群組本身不是表單欄位名 —— 送出時要展開成各自的 `群組$N`，
+          // 見 [AisRepository.sendableValues]。
+          name: groupName,
+          label: label,
+          kind: FieldKind.checkboxes,
+          value: SchemaField.joinChecked([
+            for (final c in group)
+              if (c.attributes.containsKey('checked'))
+                c.attributes['name'] ?? '',
+          ]),
+          options: [
+            for (final c in group)
+              (
+                value: c.attributes['name'] ?? '',
+                label: _optionLabel(scope, c),
+              ),
+          ],
+          readOnly: group.any(_isDisabled),
+        ));
+        continue;
+      }
+
+      if (_isInternal(name) || !done.add(name)) continue;
+      final label = _labelOf(el, labels);
+      if (label == null) continue;
+      fields.add(SchemaField(
+        name: name,
+        label: label,
+        kind: switch (type) {
+          'number' => FieldKind.number,
+          'password' => FieldKind.password,
+          'file' => FieldKind.file,
+          _ => FieldKind.text,
+        },
+        value: el.attributes['value'] ?? '',
+        maxLength: int.tryParse(el.attributes['maxlength'] ?? ''),
+        readOnly: _isDisabled(el),
+      ));
+    }
+
+    return fields;
+  }
+
+  /// `M_PRESENT_TYPE$3` -> `M_PRESENT_TYPE`。
+  static String _checkboxGroup(String name) {
+    final i = name.lastIndexOf(r'$');
+    if (i <= 0) return name;
+    // 只有後面全是數字才算 CheckBoxList 的編號 —— 學校的欄位名裡
+    // `$` 也可能是控制項階層（`PC$PageSize`），那不是同一回事。
+    final suffix = name.substring(i + 1);
+    if (suffix.isEmpty || int.tryParse(suffix) == null) return name;
+    return name.substring(0, i);
+  }
+
+  /// radio / checkbox 每一顆自己的說明文字（`<label for="...">Male(男)</label>`）。
+  static String _optionLabel(dom.Element scope, dom.Element input) {
+    final id = input.attributes['id'];
+    if (id != null && id.isNotEmpty) {
+      for (final l in scope.querySelectorAll('label')) {
+        if (l.attributes['for'] == id) {
+          final text = clean(l.text);
+          if (text.isNotEmpty) return text;
+        }
+      }
+    }
+    // 沒有 label 就退回值本身 —— 至少看得出兩個選項不一樣。
+    return input.attributes['value'] ?? '';
+  }
+
+  /// 一組 radio / checkbox 的標題。
+  ///
+  /// ASP.NET 把 `CNAME` 放在**包住整組的那個 `<span id="群組名">`** 上，
+  /// 不是每一顆 input 上（見 `spike/fixtures/…ENR3030_01.html`）。
+  /// 只找 input 的話這一組會沒有名字，整組被丟掉。
+  static String? _groupLabel(
+    dom.Element scope,
+    String groupName,
+    String firstFieldName,
+    Map<String, String> labels,
+  ) {
+    for (final el in scope.querySelectorAll('[id="$groupName"]')) {
+      final cname = el.attributes['cname'] ?? el.attributes['CNAME'];
+      if (cname != null && clean(cname).isNotEmpty) return clean(cname);
+    }
+    return labels[firstFieldName] ?? labels[groupName];
+  }
+
+  /// 這個欄位是不是被關掉了。
+  ///
+  /// **要往上找**：學校是把 `disabled` 放在包住整組的 `<span>` 上，
+  /// 個別的 input 有時候有、有時候沒有。
+  static bool _isDisabled(dom.Element el) {
+    for (dom.Element? n = el; n != null; n = n.parent) {
+      if (n.attributes.containsKey('disabled')) return true;
+      if (n.localName == 'form') break;
+    }
+    return false;
   }
 
   /// 同一組裡重複的按鈕只留一顆。

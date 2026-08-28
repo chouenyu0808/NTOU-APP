@@ -262,13 +262,15 @@ class AisRepository {
   ) async {
     final session = _requireSession();
     final values = {...view.values, field: value};
+    // 只送得出去的那些。**這裡漏掉過一次**：連動 postback 如果把 0 個選項的
+    // 下拉也一起送，會被 event validation 擋下來 —— 而使用者看到的是
+    // 「某個他根本沒碰過的欄位不是合法選項」，完全不知道發生什麼事。
+    final sendable = _sendable(view, values);
     final page = await session.postback(
       view.page,
       field,
-      // 只送得出去的那些。**這裡漏掉過一次**：連動 postback 如果把 0 個選項的
-      // 下拉也一起送，會被 event validation 擋下來 —— 而使用者看到的是
-      // 「某個他根本沒碰過的欄位不是合法選項」，完全不知道發生什麼事。
-      values: _sendable(view, values),
+      values: sendable.values,
+      omit: sendable.omit,
     );
     session.checkSession(page);
 
@@ -298,18 +300,25 @@ class AisRepository {
     final session = _requireSession();
     final merged = {...view.values, ...?values};
     final sendable = _sendable(view, merged);
-    sendable['PC\$PageSize'] = '$_pageSize';
-    if (pageNo != null) sendable['PC\$PageNo'] = '$pageNo';
+    final fields = sendable.values;
+    fields['PC\$PageSize'] = '$_pageSize';
+    if (pageNo != null) fields['PC\$PageNo'] = '$pageNo';
 
     // 分頁式的頁面靠這個欄位決定用哪一組條件。差一個就會拿別組的空欄位去查，
     // 而回應是「查無符合資料」—— 看起來像沒資料，其實是問錯問題。
-    if (tabIndex != null) sendable['hdnSelectedTab'] = '$tabIndex';
+    if (tabIndex != null) fields['hdnSelectedTab'] = '$tabIndex';
 
-    // [extra] 走 `_sendable` 之後才加：radio 沒有 `CNAME`，進不了 schema，
-    // 照一般欄位送會被濾掉。而那幾顆正是決定「用課號還是課名查」的開關。
-    if (extra != null) sendable.addAll(extra);
+    // [extra] 走 `_sendable` 之後才加：呼叫端要蓋掉頁面預設值的那幾顆
+    // （例如「用課號還是課名查」）不一定進得了 schema。
+    if (extra != null) fields.addAll(extra);
 
-    final page = await session.submitForm(view.page, button, values: sendable);
+    final page = await session.submitForm(
+      view.page,
+      button,
+      values: fields,
+      // 明確指定的值優先於「拿掉」—— extra 蓋上去的不該又被 omit 掉。
+      omit: sendable.omit.difference(fields.keys.toSet()),
+    );
     session.checkSession(page);
 
     return view.copyWith(
@@ -399,10 +408,12 @@ class AisRepository {
     String eventTarget,
   ) async {
     final session = _requireSession();
+    final sendable = _sendable(view, view.values);
     final posted = await session.postback(
       view.page,
       eventTarget,
-      values: _sendable(view, view.values),
+      values: sendable.values,
+      omit: sendable.omit,
     );
     session.checkSession(posted);
 
@@ -433,23 +444,60 @@ class AisRepository {
         ),
       );
 
-  /// 挑出「這一頁真的收得下」的值。
+  /// 送出去的欄位，加上**要從基底裡拿掉**的那些。
   ///
-  /// 兩件事會被濾掉：
+  /// 為什麼需要 [omit]：`submitForm` 是先用頁面上的現值當基底，再把這裡的值
+  /// 蓋上去（`fields.addAll(values)`）。蓋得上去、拿不掉 —— 而使用者把一個
+  /// 原本打勾的 checkbox 取消掉，正是「要拿掉」。少了這條路，取消勾選在
+  /// 送出時完全不會發生。
+  ///
+  /// 被濾掉的：
   ///   - **0 個 option 的下拉。** 瀏覽器根本不送它；我們送空字串會被 ASP.NET 的
   ///     event validation 判定「這不是我渲染出來的值」而拋例外。
+  ///   - **`disabled` 的欄位。** 瀏覽器不送 disabled 的東西。照樣送輕則被
+  ///     event validation 擋成一句看不懂的 403，重則真的寫進一個使用者
+  ///     不該改的欄位（性別、學生類別那一類）。
+  ///   - **檔案欄位。** App 還不能上傳，送一個假值只會讓伺服器困惑。
   ///   - 頁面上沒有的欄位。切換標籤頁之後，上一組的欄位可能已經不在了。
-  static Map<String, String> _sendable(
+  static ({Map<String, String> values, Set<String> omit}) _sendable(
     FunctionView view,
     Map<String, String> values,
   ) {
     final out = <String, String>{};
+    final omit = <String>{};
+
     for (final f in view.schema.fields) {
-      if (f.needsCascade) continue;
+      if (f.needsCascade || f.readOnly || f.kind == FieldKind.file) continue;
       final v = values[f.name];
-      if (v != null) out[f.name] = v;
+      if (v == null) continue;
+
+      switch (f.kind) {
+        // 複選群組在 schema 裡是**一個**欄位，送出時要展開成各自的
+        // `群組$N`。勾起來的送 `on`（瀏覽器就是送這個字），沒勾的
+        // 完全不送 —— 而且要主動從基底裡拿掉。
+        case FieldKind.checkboxes:
+          final checked = SchemaField.splitChecked(v).toSet();
+          for (final o in f.options) {
+            if (checked.contains(o.value)) {
+              out[o.value] = 'on';
+            } else {
+              omit.add(o.value);
+            }
+          }
+
+        // 單選：送選中的那個值。一個都沒選就整個欄位不送。
+        case FieldKind.radio:
+          if (v.isEmpty) {
+            omit.add(f.name);
+          } else {
+            out[f.name] = v;
+          }
+
+        default:
+          out[f.name] = v;
+      }
     }
-    return out;
+    return (values: out, omit: omit);
   }
 
   AisSession _requireSession() {

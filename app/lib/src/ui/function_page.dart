@@ -6,6 +6,7 @@ import '../data/function_view.dart';
 import '../menu/menu_catalog.dart';
 import '../parsing/data_grid.dart';
 import 'app_controller.dart';
+import 'schema_field_input.dart';
 import 'theme.dart';
 
 /// 通用的功能頁。
@@ -174,7 +175,7 @@ class _FunctionPageState extends State<FunctionPage> {
       for (final f in fields)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: _FieldInput(
+          child: SchemaFieldInput(
             field: f,
             value: view.values[f.name] ?? f.value,
             enabled: !_busy,
@@ -275,69 +276,6 @@ class _FunctionPageState extends State<FunctionPage> {
     final buttons = _groupOf(view).queryButtons;
     if (buttons.isEmpty) return;
     _run(buttons.first.name, pageNo: pageNo);
-  }
-}
-
-class _FieldInput extends StatelessWidget {
-  const _FieldInput({
-    required this.field,
-    required this.value,
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final SchemaField field;
-  final String value;
-  final bool enabled;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (field.kind == FieldKind.select) {
-      if (field.needsCascade) {
-        // 0 個選項的下拉。送出去會踩 event validation，所以擋在這裡，
-        // 並且說清楚要先動哪一格 —— 不然使用者只會覺得這個欄位壞了。
-        return TextField(
-          enabled: false,
-          decoration: InputDecoration(
-            labelText: field.label,
-            border: const OutlineInputBorder(),
-            helperText: '要先選上面的條件，這一格才會有選項',
-          ),
-        );
-      }
-      final values = field.options.map((o) => o.value).toList();
-      return DropdownButtonFormField<String>(
-        initialValue: values.contains(value) ? value : values.firstOrNull,
-        isExpanded: true,
-        decoration: InputDecoration(
-          labelText: field.label,
-          border: const OutlineInputBorder(),
-        ),
-        items: [
-          for (final o in field.options)
-            DropdownMenuItem(
-              value: o.value,
-              child: Text(o.label, overflow: TextOverflow.ellipsis),
-            ),
-        ],
-        onChanged: enabled ? (v) => onChanged(v ?? '') : null,
-      );
-    }
-
-    return TextFormField(
-      initialValue: value,
-      enabled: enabled,
-      maxLength: field.maxLength,
-      keyboardType:
-          field.kind == FieldKind.number ? TextInputType.number : null,
-      decoration: InputDecoration(
-        labelText: field.label,
-        border: const OutlineInputBorder(),
-        counterText: '',
-      ),
-      onChanged: onChanged,
-    );
   }
 }
 

@@ -178,6 +178,10 @@ class AisSession {
     AisPage page,
     String button, {
     Map<String, String>? values,
+    // [omit]：要從基底裡**拿掉**的欄位。基底是頁面上的現值，[values] 只能
+    // 蓋上去、蓋不掉。而「使用者把一個原本打勾的 checkbox 取消掉」正是要
+    // 拿掉 —— 少了這條路，取消勾選在送出時完全不會發生，畫面上卻是取消了的。
+    Set<String> omit = const {},
   }) async {
     final fields = formFields(page.doc)..addAll(_hidden);
     final el = page.doc.querySelector('input[name="$button"]');
@@ -197,6 +201,8 @@ class AisSession {
       checkValues(page.doc, values);
       fields.addAll(values);
     }
+
+    fields.removeWhere((k, _) => omit.contains(k));
 
     fields[button] = el?.attributes['value'] ?? '';
     fields['__EVENTTARGET'] = '';
@@ -222,12 +228,14 @@ class AisSession {
     String target, {
     String argument = '',
     Map<String, String>? values,
+    Set<String> omit = const {},
   }) async {
     final fields = formFields(page.doc)..addAll(_hidden);
     if (values != null) {
       checkValues(page.doc, values);
       fields.addAll(values);
     }
+    fields.removeWhere((k, _) => omit.contains(k));
     fields['__EVENTTARGET'] = target;
     fields['__EVENTARGUMENT'] = argument;
     return post(Uri.parse(page.url), fields);

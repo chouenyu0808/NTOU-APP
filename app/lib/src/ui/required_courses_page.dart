@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../ais/exceptions.dart';
-import '../ais/form_schema.dart';
 import '../data/function_view.dart';
 import '../parsing/required_courses.dart';
 import 'app_controller.dart';
+import 'schema_field_input.dart';
 import 'theme.dart';
 
 /// 畢業必修 —— 你這個系四年要修哪些課、門檻是多少。
@@ -122,7 +122,7 @@ class _RequiredCoursesPageState extends State<RequiredCoursesPage> {
         for (final f in view.schema.visibleFields)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: _FieldInput(
+            child: SchemaFieldInput(
               field: f,
               value: view.values[f.name] ?? f.value,
               enabled: !_busy,
@@ -384,51 +384,6 @@ class _Notes extends StatelessWidget {
           ],
         ),
       );
-}
-
-class _FieldInput extends StatelessWidget {
-  const _FieldInput({
-    required this.field,
-    required this.value,
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final SchemaField field;
-  final String value;
-  final bool enabled;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (field.kind != FieldKind.select || field.needsCascade) {
-      return TextField(
-        enabled: false,
-        decoration: InputDecoration(
-          labelText: field.label,
-          border: const OutlineInputBorder(),
-          helperText: field.needsCascade ? '要先選上面的條件' : null,
-        ),
-      );
-    }
-    final values = field.options.map((o) => o.value).toList();
-    return DropdownButtonFormField<String>(
-      initialValue: values.contains(value) ? value : values.firstOrNull,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: field.label,
-        border: const OutlineInputBorder(),
-      ),
-      items: [
-        for (final o in field.options)
-          DropdownMenuItem(
-            value: o.value,
-            child: Text(o.label, overflow: TextOverflow.ellipsis),
-          ),
-      ],
-      onChanged: enabled ? (v) => onChanged(v ?? '') : null,
-    );
-  }
 }
 
 class _ErrorBanner extends StatelessWidget {

@@ -366,5 +366,110 @@ void main() {
         }
       }
     }, skip: missing);
+
+    group('維護新生資料：不是只有下拉和文字框', () {
+      // 這一頁是全 App 表單最複雜的一頁，而且會**真的寫學籍資料**。
+      // 以前 schema 只認得 `<select>` 和 `<input type=text>`，那一頁 151 個
+      // 可見欄位裡沒有一個是勾選型，還有兩格整個不存在。
+      FunctionSchema schema() => FunctionSchema.fromDocument(html_parser.parse(
+          fixture('Application_ENR_ENR30_ENR3030_01.html')));
+
+      SchemaField? field(FunctionSchema s, String name) =>
+          s.fields.where((f) => f.name == name).firstOrNull;
+
+      test('textarea 讀得到 —— 以前「自傳」那 2000 字整格不存在', () {
+        final autobiography = field(schema(), 'M_AUTOBI');
+
+        expect(autobiography, isNotNull,
+            reason: '<textarea> 以前完全沒被掃進來，畫面上找不到這一格');
+        expect(autobiography!.label, '自傳');
+        expect(autobiography.kind, FieldKind.textarea);
+        // 值在元素內容裡，不在 value 屬性 —— 拿 value 會永遠是空的。
+        expect(autobiography.value, isNotEmpty);
+        expect(autobiography.maxLength, 2000);
+      });
+
+      test('同名的 radio 收成一組，不是三個一模一樣的文字框', () {
+        final s = schema();
+        final identity = s.fields.where((f) => f.name == 'M_GENDER_IDENTITY');
+
+        expect(identity, hasLength(1),
+            reason: '以前一個 radio 一個欄位，畫面上是三個都叫「自我認同性別」的文字框');
+        expect(identity.single.kind, FieldKind.radio);
+        expect(identity.single.label, '自我認同性別');
+        expect(identity.single.value, '1', reason: 'checked 的那一顆');
+        expect(
+          identity.single.options.map((o) => o.label),
+          ['Male(男)', 'Female(女)', 'Other(其他)'],
+          reason: '選項的字要來自 <label for=...>，不是 value',
+        );
+      });
+
+      test('CheckBoxList 收成一個複選欄位，不是 37 個文字框', () {
+        final present = field(schema(), 'M_PRESENT_TYPE');
+
+        expect(present, isNotNull);
+        expect(present!.kind, FieldKind.checkboxes);
+        // CNAME 在包住整組的 <span id="M_PRESENT_TYPE"> 上，不在 input 上。
+        expect(present.label, '目前身份');
+        expect(present.options.length, greaterThan(30));
+        expect(present.options.first.label, '01-一般生');
+        // 選中的存的是各自的欄位名，送出時才展開成 `名字=on`。
+        expect(SchemaField.splitChecked(present.value),
+            [r'M_PRESENT_TYPE$0']);
+      });
+
+      test('學校鎖住的欄位標成唯讀 —— 瀏覽器根本不送 disabled 的東西', () {
+        final s = schema();
+
+        // disabled 放在包住整組的 <span> 上，個別 input 不一定有，要往上找。
+        expect(field(s, 'M_SEX')!.readOnly, isTrue, reason: '性別整組 disabled');
+        expect(field(s, 'M_PRESENT_TYPE')!.readOnly, isTrue);
+        // <select disabled> 也一樣 —— 以前這一格是可以拉的，
+        // 拉完送出去等於改一個使用者不該改的欄位。
+        expect(field(s, 'M_ST_TYPE')!.readOnly, isTrue, reason: '學生類別');
+
+        expect(field(s, 'M_GENDER_IDENTITY')!.readOnly, isFalse,
+            reason: '這一組沒有 disabled，不要連坐');
+      });
+
+      test('沒有兩個欄位共用同一個名字', () {
+        final s = schema();
+        final counts = <String, int>{};
+        for (final f in s.visibleFields) {
+          counts[f.name] = (counts[f.name] ?? 0) + 1;
+        }
+        final dupes = counts.entries.where((e) => e.value > 1).toList();
+
+        // 重複的欄位在送出時後面會蓋掉前面 —— 使用者填的是哪一格
+        // 完全不可預測。
+        expect(dupes, isEmpty,
+            reason: '重複：${dupes.map((e) => '${e.key} x${e.value}').join(', ')}');
+      });
+    }, skip: missing);
+
+    test('課程課表查詢的關鍵字分頁：「類別」和「查詢模式」是選項，不是文字框', () {
+      // 這兩組 radio 決定「用課號還是課名查」「精準還是模糊」。頁面預設是
+      // 課號＋精準 —— 拿「微積分」去做課號的精準比對，永遠是「查無符合資料」，
+      // 而畫面上看起來就像這門課不存在。
+      //
+      // 以前它們被畫成 5 個文字框（類別 3 個、查詢模式 2 個），同名欄位
+      // 後蓋前，送出去的是一個沒人選過的值。
+      final schema = FunctionSchema.fromDocument(html_parser.parse(
+          fixture('Application_TKE_TKE22_TKE2211_01.html')));
+
+      final keyword =
+          schema.groups.firstWhere((g) => g.label == '關鍵字查詢');
+      final byName = {for (final f in keyword.visibleFields) f.name: f};
+
+      expect(keyword.visibleFields.map((f) => f.name).toSet(),
+          {'radioButtonClass', 'Q_CH_LESSON', 'radioButtonQuery'});
+
+      final kind = byName['radioButtonClass']!;
+      expect(kind.kind, FieldKind.radio);
+      expect(kind.options.map((o) => o.label), ['課號', '課名', '老師']);
+
+      expect(byName['radioButtonQuery']!.kind, FieldKind.radio);
+    }, skip: missing);
   });
 }
