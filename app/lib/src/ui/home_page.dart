@@ -18,9 +18,17 @@ class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
     required this.controller,
+    this.now,
   });
 
   final AppController controller;
+
+  /// 現在幾點。**測試用；正式執行時是 null，讀真正的時鐘。**
+  ///
+  /// 這一頁的內容跟時間有關（哪幾堂上完了、下一堂還有幾分鐘），
+  /// 直接讀 `DateTime.now()` 的話測試就變成看時鐘的 —— 同一份程式早上綠、
+  /// 晚上紅，而失敗訊息完全看不出跟時間有關。
+  final DateTime? now;
 
   /// 今天是星期幾（0 = 週一），跟 [TimeSlot.weekday] 同一套。
   ///
@@ -131,7 +139,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
+    final now = widget.now ?? DateTime.now();
     final weekday = HomePage.todayIndex(now);
 
     return Scaffold(

@@ -25,9 +25,19 @@ void main() {
         fetchedAt: DateTime(2026, 8, 27),
       );
 
-  Widget wrap(AppController c) => MaterialApp(
+  /// 今天，但時間固定在 [hour]:[minute]。
+  ///
+  /// 日期跟著今天走（課要排在「今天」才看得到），但**時鐘一定要固定**：
+  /// 節次時間表填進去之後這一頁的內容就跟現在幾點有關，讀真正的時鐘的話
+  /// 同一份測試早上綠、晚上紅，而失敗訊息完全看不出跟時間有關。
+  DateTime todayAt(int hour, int minute) {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day, hour, minute);
+  }
+
+  Widget wrap(AppController c, {DateTime? now}) => MaterialApp(
         theme: NtouTheme.of(Brightness.light),
-        home: HomePage(controller: c),
+        home: HomePage(controller: c, now: now),
       );
 
   group('今天是星期幾', () {
@@ -217,11 +227,10 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('接下來那一堂放大成一整張卡，教室和老師都在上面', (tester) async {
-      // 首頁真正要回答的問題只有一個：「等一下有什麼課、在哪間教室」。
-      // 那不該是清單裡長得跟其他人一樣的第三列。
+    /// 今天第 2–4 節有一門課（09:20 開始、12:05 結束）。
+    Future<AppController> withMorningClass() async {
       final today = HomePage.todayIndex(DateTime.now());
-      final c = await newController(
+      return newController(
         cached: result(courses: [
           Course(
             name: '計算機概論',
@@ -231,18 +240,62 @@ void main() {
           ),
         ]),
       );
-      await tester.pumpWidget(wrap(c));
+    }
+
+    testWidgets('還沒開始：說「下一堂」、幾點到幾點、還有多久', (tester) async {
+      // 首頁真正要回答的問題只有一個：「等一下有什麼課、在哪間教室」。
+      // 那不該是清單裡長得跟其他人一樣的第三列。
+      await tester.pumpWidget(
+        wrap(await withMorningClass(), now: todayAt(7, 0)),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('計算機概論'), findsOneWidget);
       expect(find.text('第 2-4 節 · INS105 · 許為元'), findsOneWidget);
+      expect(find.text('下一堂'), findsOneWidget);
+      // 第 2 節是 09:20–10:10（教務處的節次時間對照表）
+      expect(find.text('09:20–10:10'), findsOneWidget);
+      // 07:00 到 09:20 是 140 分鐘
+      expect(find.text('還有 2 小時 20 分'), findsOneWidget);
+      await unmount(tester);
+    });
 
-      // 沒有節次時間表就不能寫「下一堂」—— 我們分不出哪幾堂已經上完了。
-      // 猜一組看起來合理的時間，錯了畫面上完全看不出來，
-      // 使用者只會照著遲到或錯過。
-      expect(find.text('今天第一堂'), findsOneWidget);
+    testWidgets('正在上：說「現在」，而且不要再倒數', (tester) async {
+      // 09:40 落在第 2 節（09:20–10:10）之內。
+      await tester.pumpWidget(
+        wrap(await withMorningClass(), now: todayAt(9, 40)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('現在'), findsOneWidget);
       expect(find.text('下一堂'), findsNothing);
+      // 已經開始了就沒有「還有幾分鐘」可言
       expect(find.textContaining('還有'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('連堂要整堂上完才算結束', (tester) async {
+      // 11:30 —— 第 2、3 節結束了，但第 4 節（11:15–12:05）還在上。
+      // 算成已結束的話，人還在教室裡，首頁卻說今天的課上完了。
+      await tester.pumpWidget(
+        wrap(await withMorningClass(), now: todayAt(11, 30)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('現在'), findsOneWidget);
+      expect(find.text('今天已經上完 1 堂'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('全部上完：收成一行，不再有主角', (tester) async {
+      await tester.pumpWidget(
+        wrap(await withMorningClass(), now: todayAt(20, 0)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('今天已經上完 1 堂'), findsOneWidget);
+      expect(find.text('現在'), findsNothing);
+      expect(find.text('下一堂'), findsNothing);
       await unmount(tester);
     });
   });
