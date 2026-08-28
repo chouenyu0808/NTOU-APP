@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../config/period_times.dart';
+import '../parsing/academic_calendar.dart';
 import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../parsing/timetable.dart' show kWeekdays;
@@ -153,6 +154,16 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 20),
 
             _TodayCard(controller: _c, weekday: weekday, now: now),
+
+            // 行事曆抓不到就整區不畫。它是學校官網上的東西，官網掛掉或手機
+            // 沒網路都會是空的 —— 那時候放一張「載入失敗」的卡沒有幫到任何人，
+            // 使用者也不能拿它做什麼。
+            if (_c.calendarEvents.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              Text('近期行事曆', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 10),
+              _Calendar(events: _c.calendarEvents, now: now),
+            ],
 
             const SizedBox(height: 28),
             Text('校園公告', style: theme.textTheme.titleMedium),
@@ -465,6 +476,80 @@ class _DoneRow extends StatelessWidget {
         ),
         children: [
           for (final c in courses) _CourseRow(course: c, weekday: weekday),
+        ],
+      ),
+    );
+  }
+}
+
+/// 近期行事曆。
+///
+/// 只列接下來幾筆，**而且進行中的算「接下來」** —— 選課週開始了還沒結束的
+/// 時候，那正是最需要看到的一條（見 `upcoming()`）。
+class _Calendar extends StatelessWidget {
+  const _Calendar({required this.events, required this.now});
+
+  final List<CalendarEvent> events;
+  final DateTime now;
+
+  /// 首頁顯示幾筆。要全部的話官網那一頁就是全部。
+  static const int _limit = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final shown = upcoming(events, now, limit: _limit);
+    if (shown.isEmpty) return const SizedBox.shrink();
+
+    final today = DateTime(now.year, now.month, now.day);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var i = 0; i < shown.length; i++) ...[
+            if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
+            Builder(builder: (context) {
+              final e = shown[i];
+              final ongoing = e.covers(today);
+              // 起訖日**不要疊成兩行塞進 leading** —— ListTile 的 leading
+              // 高度是有限的，兩行 Text 會把它撐破（RenderFlex overflow）。
+              // 左邊只放開始日，結束日跟「進行中」一起放到副標。
+              final note = [
+                if (!e.isSingleDay) '到 ${e.end.month}/${e.end.day}',
+                // 「進行中」要標出來 —— 一條開始日在上禮拜的事件，
+                // 光看日期會被當成已經過去了。
+                if (ongoing) '進行中',
+              ].join(' · ');
+
+              return ListTile(
+                leading: SizedBox(
+                  width: 44,
+                  child: Center(
+                    child: Text(
+                      '${e.start.month}/${e.start.day}',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: ongoing ? scheme.primary : scheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                title: Text(e.title, style: theme.textTheme.bodyMedium),
+                subtitle: note.isEmpty
+                    ? null
+                    : Text(
+                        note,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: ongoing
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant,
+                        ),
+                      ),
+              );
+            }),
+          ],
         ],
       ),
     );

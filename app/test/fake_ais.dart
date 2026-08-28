@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ntou_app/src/config/selectors.dart';
+import 'package:ntou_app/src/data/academic_calendar_source.dart';
 import 'package:ntou_app/src/data/ais_repository.dart';
 import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/storage/credential_store.dart';
@@ -85,7 +86,19 @@ SelectorConfig testConfig() => SelectorConfig.fromJson(
     );
 
 /// 建一個不會碰網路的 controller。
-Future<AppController> newController({TimetableResult? cached}) async {
+/// 測試用的行事曆來源。
+///
+/// **一定要注入。** 不給的話 `AppController` 會自己開一個真的 Dio 去打
+/// `www.ntou.edu.tw` —— widget test 裡那個請求會被擋下來（所以不會錯），
+/// 但每一條測試都白排一個網路請求和它的計時器，而且哪天環境變了就會變成
+/// 難查的間歇性失敗。
+AcademicCalendarSource fakeCalendar({String body = ''}) =>
+    AcademicCalendarSource(dio: fakeDio(body: body));
+
+Future<AppController> newController({
+  TimetableResult? cached,
+  AcademicCalendarSource? calendar,
+}) async {
   SharedPreferences.setMockInitialValues({});
   FlutterSecureStorage.setMockInitialValues({});
 
@@ -99,6 +112,7 @@ Future<AppController> newController({TimetableResult? cached}) async {
       dio: fakeDio(),
     ),
     credentials: CredentialStore(),
+    calendar: calendar ?? fakeCalendar(),
   );
   await controller.init();
   return controller;
@@ -251,5 +265,9 @@ Future<AisRepository> loggedInRepository(ScriptedAis ais) async {
 Future<AppController> loggedInController(ScriptedAis ais) async {
   FlutterSecureStorage.setMockInitialValues({});
   final repo = await loggedInRepository(ais);
-  return AppController(repository: repo, credentials: CredentialStore());
+  return AppController(
+    repository: repo,
+    credentials: CredentialStore(),
+    calendar: fakeCalendar(),
+  );
 }

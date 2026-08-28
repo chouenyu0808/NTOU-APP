@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import '../ais/exceptions.dart';
 import '../ais/forms.dart';
 import '../data/ais_repository.dart';
+import '../data/academic_calendar_source.dart';
+import '../parsing/academic_calendar.dart';
 import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../storage/credential_store.dart';
@@ -35,10 +37,17 @@ enum AppPhase {
 /// 學年學期的選項來自登入後才打得開的查詢頁，而 session 一失效就要退回登入。
 /// 拆開只會多出一堆同步兩邊狀態的程式碼。
 class AppController extends ChangeNotifier {
-  AppController({required this.repository, required this.credentials});
+  AppController({
+    required this.repository,
+    required this.credentials,
+    AcademicCalendarSource? calendar,
+  }) : calendar = calendar ?? AcademicCalendarSource();
 
   final AisRepository repository;
   final CredentialStore credentials;
+
+  /// 校園行事曆。**不是 AIS 的東西** —— 學校官網的公開頁面，不用登入。
+  final AcademicCalendarSource calendar;
 
   AppPhase phase = AppPhase.starting;
 
@@ -61,6 +70,9 @@ class AppController extends ChangeNotifier {
 
   /// 電子公布欄。登入握手時順便讀到的，不是另外打一次伺服器換來的。
   List<Announcement> announcements = const [];
+
+  /// 校園行事曆。跟登入無關，開 App 就有。
+  List<CalendarEvent> calendarEvents = const [];
 
   /// 現在顯示的是快取，還沒跟學校核對過。
   bool showingCache = false;
@@ -85,6 +97,17 @@ class AppController extends ChangeNotifier {
     }
 
     phase = AppPhase.loggedOut;
+    notifyListeners();
+
+    // 行事曆放在最後，而且**不 await 進主流程**：它要打外部網站，慢或掛掉
+    // 都不該讓 App 開機卡住。抓到了再 notify 一次，那一區自己長出來。
+    unawaited(_loadCalendar());
+  }
+
+  Future<void> _loadCalendar() async {
+    final events = await calendar.load();
+    if (events.isEmpty) return;
+    calendarEvents = events;
     notifyListeners();
   }
 

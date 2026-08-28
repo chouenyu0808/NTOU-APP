@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ntou_app/src/config/period_times.dart';
+import 'package:ntou_app/src/parsing/academic_calendar.dart';
 import 'package:ntou_app/src/parsing/announcements.dart';
 import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
@@ -262,6 +263,71 @@ void main() {
       expect(find.text('公告 0'), findsOneWidget);
       expect(find.text('公告 4'), findsOneWidget);
       expect(find.text('公告 5'), findsNothing);
+      await unmount(tester);
+    });
+  });
+
+  group('近期行事曆', () {
+    CalendarEvent ev(String title, DateTime start, [DateTime? end]) =>
+        CalendarEvent(title: title, start: start, end: end ?? start);
+
+    testWidgets('抓不到就整區不畫，不要放一張「載入失敗」的卡', (tester) async {
+      // 行事曆在學校官網上，官網掛掉或手機沒網路都會是空的。
+      // 那時候放一張錯誤卡沒幫到任何人 —— 使用者也不能拿它做什麼。
+      final c = await newController();
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('近期行事曆'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('列出接下來幾筆，日期在左邊', (tester) async {
+      final c = await newController();
+      final now = DateTime.now();
+      c.calendarEvents = [
+        ev('開學', now.add(const Duration(days: 3))),
+        ev('加退選', now.add(const Duration(days: 10)),
+            now.add(const Duration(days: 17))),
+      ];
+      c.notifyListeners();
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('近期行事曆'), findsOneWidget);
+      expect(find.text('開學'), findsOneWidget);
+      expect(find.text('加退選'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('進行中的要標出來 —— 光看日期會被當成過去了', (tester) async {
+      final now = DateTime.now();
+      final c = await newController();
+      c.calendarEvents = [
+        ev('選課', now.subtract(const Duration(days: 2)),
+            now.add(const Duration(days: 5))),
+      ];
+      c.notifyListeners();
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('選課'), findsOneWidget);
+      // 副標是「到 X/Y · 進行中」——結束日和狀態併成一行，
+      // 兩行疊在 leading 裡會把 ListTile 撐破。
+      expect(find.textContaining('進行中'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('結束了的不再顯示', (tester) async {
+      final c = await newController();
+      c.calendarEvents = [
+        ev('去年的事', DateTime(2020, 1, 1)),
+      ];
+      c.notifyListeners();
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('去年的事'), findsNothing);
       await unmount(tester);
     });
   });
