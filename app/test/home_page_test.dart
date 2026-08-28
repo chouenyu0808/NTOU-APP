@@ -192,6 +192,31 @@ void main() {
       await unmount(tester);
     });
 
+    testWidgets('有課但一門都沒有時間：不要說「今天沒有課」', (tester) async {
+      // **這是真實資料的常態，不是例外。** 學校這個 UI 的選課清單檢視回的
+      // 17 欄裡完全沒有上課時間和教室（2026-08-25 實測），所以正常登入的
+      // 使用者拿到的每一門課 slots 都是空的。
+      //
+      // 舊的判斷只看「今天有沒有課」，而空 slots 永遠對不到今天 ——
+      // 結果首頁會拿一個咖啡杯圖示對每一個人說「今天沒有課」，
+      // 而他其實第二節就要進教室。編一個錯的答案比承認不知道糟得多。
+      final c = await newController(
+        cached: result(courses: const [
+          Course(name: '演算法'),
+          Course(name: '計算機組織'),
+        ]),
+      );
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('今天沒有課'), findsNothing,
+          reason: '我們不知道他今天有沒有課，不能說沒有');
+      expect(find.textContaining('沒有上課時間'), findsOneWidget);
+      // 有幾門課是我們真的知道的，講出來 —— 至少證明資料抓到了。
+      expect(find.textContaining('2 門課'), findsOneWidget);
+      await unmount(tester);
+    });
+
     testWidgets('接下來那一堂放大成一整張卡，教室和老師都在上面', (tester) async {
       // 首頁真正要回答的問題只有一個：「等一下有什麼課、在哪間教室」。
       // 那不該是清單裡長得跟其他人一樣的第三列。

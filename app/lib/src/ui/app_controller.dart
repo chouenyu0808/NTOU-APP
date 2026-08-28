@@ -149,6 +149,21 @@ class AppController extends ChangeNotifier {
         captcha: captchaText,
       );
 
+      // 換帳號了：把上一個人的課表快取整個丟掉。
+      //
+      // 快取平常是刻意留著的（學校一次只允許一個 session，帳號在瀏覽器登著
+      // 的時候那是唯一看得到的東西），登出也留 —— 登出對話框就是這樣講的。
+      // 但那個理由只在「同一個人」時成立。同一支手機換一個學號登入，
+      // 舊的課表會一路留到第一次查詢回來為止，中間他看到的是別人的課。
+      if (username.isNotEmpty && username != account) {
+        await repository.cache.clear();
+        timetable = null;
+        showingCache = false;
+        // 學年學期也要放掉 —— 那是上一個人選的，新的人要用他自己的預設值。
+        year = null;
+        semester = null;
+      }
+
       username = account;
       await credentials.saveUsername(account);
       if (remember) {

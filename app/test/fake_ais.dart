@@ -245,6 +245,9 @@ class ScriptedAis implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// 把 [ScriptedAis] 包成 dio。
+Dio dioFor(ScriptedAis ais) => Dio()..httpClientAdapter = ais;
+
 /// 建一個「已經有 session」的 repository，接上 [ais]。
 ///
 /// 只走 `beginLogin()`：`openFunction` 要的就只是 session 存在而已，
@@ -254,7 +257,7 @@ Future<AisRepository> loggedInRepository(ScriptedAis ais) async {
   final repo = AisRepository(
     config: testConfig(),
     cache: TimetableCache(prefs: await SharedPreferences.getInstance()),
-    dio: Dio()..httpClientAdapter = ais,
+    dio: dioFor(ais),
   );
   await repo.beginLogin();
   ais.seen.clear(); // 登入那兩個請求跟功能頁的斷言無關

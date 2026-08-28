@@ -235,6 +235,26 @@ class _TodayCard extends StatelessWidget {
       ));
     }
 
+    // 有課，但**一門都沒有上課時間** —— 那不是「今天沒有課」，
+    // 是「我們不知道你今天有沒有課」。這兩件事在畫面上一定要分得開。
+    //
+    // 這是真實資料的常態，不是例外：學校這個 UI 的選課清單檢視
+    // （`QUERY_BTN1`）回的 17 欄裡完全沒有上課時間和教室，也沒有隱藏欄位
+    // （2026-08-25 實測）。時間只存在於 Crystal Report 的課表檢視。
+    // 課表頁上有一段 `_NoSlotsNotice` 把這件事講清楚，首頁沒有 ——
+    // 結果首頁會拿一個咖啡杯圖示對每一個使用者說「今天沒有課」，
+    // 而他其實第二節就要進教室。**編一個錯的答案比承認不知道糟得多。**
+    if (!t.hasSlots) {
+      return wrap(_Notice(
+        icon: Icons.schedule_outlined,
+        title: '這學期有 ${t.courses.length} 門課，但沒有上課時間',
+        body: '${t.label}｜學校的選課清單沒有附時間和教室欄位，'
+            '所以排不出「今天上什麼」。\n'
+            '課表分頁看得到完整的修課清單；要看得到格子的話，'
+            '「預排」那一份會替你去每門課的詳細頁把時間抓回來。',
+      ));
+    }
+
     final today = HomePage.coursesOn(t, weekday);
 
     if (today.isEmpty) {

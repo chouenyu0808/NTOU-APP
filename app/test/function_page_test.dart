@@ -71,6 +71,19 @@ const _tabbedPage = '<html><head><title>TKE2211_課程課表查詢</title></head
     '</div>'
     '</form></body></html>';
 
+/// 只有列印鈕的功能頁。
+///
+/// 學生請假底下有三個這種功能（列印註冊/考試請假單、列印假單證明聯、
+/// 列印學期請假紀錄）。列印鈕會被 `queryButtons` 濾掉（掛在 Crystal Reports 上，
+/// 輸出不是網頁），濾完就一顆都不剩。
+const _printOnlyPage =
+    '<html><head><title>SEC5010_列印請假單</title></head><body><form>'
+    r'<input type="hidden" name="__VIEWSTATE" value="vs">'
+    '<select name="Q_AYEAR" cname="學年度">'
+    '<option value="115">115</option></select>'
+    r'<input type="submit" name="PRINT_BTN1" ml="CB_列印" value="列印">'
+    '</form></body></html>';
+
 /// 被踢回登入頁 —— **狀態碼一樣是 200**，只能靠指紋認出來。
 const _kickedToLogin =
     '<html><body><input name="M_PORTAL_LOGIN_ACNT"><input name="LoginPWD">'
@@ -82,6 +95,12 @@ const _fn = AisFunction(
   trail: ['教務系統', '選課系統', '課程課表查詢'],
 );
 
+const _printFn = AisFunction(
+  title: '列印註冊/考試請假單',
+  path: 'Application/SEC/SEC50/SEC5010_.aspx?progcd=x',
+  trail: ['學生請假', '列印註冊/考試請假單'],
+);
+
 const _mutatingFn = AisFunction(
   title: '線上加退選',
   path: 'Application/TKE/TKE20/TKE2011_.aspx?progcd=x',
@@ -90,7 +109,9 @@ const _mutatingFn = AisFunction(
 
 /// 派發器那一步（兩個功能頁共用同一個判斷）。
 bool _isDispatcher(FakeRequest r) =>
-    r.page.startsWith('TKE2211_.aspx') || r.page.startsWith('TKE2011_.aspx');
+    r.page.startsWith('TKE2211_.aspx') ||
+    r.page.startsWith('TKE2011_.aspx') ||
+    r.page.startsWith('SEC5010_.aspx');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -197,6 +218,19 @@ void main() {
       // 只會讓人以為自己少按了什麼。
       expect(find.text('按上面的按鈕開始查詢。'), findsNothing);
       expect(find.text('這一頁是填寫表單，填好上面的欄位再送出。'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('只有列印鈕的頁面要講一句，不要留一張沒有按鈕的表單', (tester) async {
+      // 學生請假底下有三個這種功能。列印鈕被 queryButtons 濾掉之後，
+      // 畫面上是一張表單配一句「按上面的按鈕開始查詢」，而上面沒有任何按鈕
+      // —— 使用者會一直找那顆不存在的鈕。
+      ais.reply = (r) => _isDispatcher(r) ? _dispatcher : _printOnlyPage;
+      await open(tester, fn: _printFn);
+
+      expect(find.text('按上面的按鈕開始查詢。'), findsNothing,
+          reason: '上面沒有按鈕可以按');
+      expect(find.textContaining('只有列印功能'), findsOneWidget);
       await unmount(tester);
     });
   });

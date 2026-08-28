@@ -197,12 +197,30 @@ class _FunctionPageState extends State<FunctionPage> {
             ],
           ),
         ),
+
+      // 整頁只有列印鈕的時候要**講一句**。
+      //
+      // 列印類的按鈕被 `queryButtons` 濾掉（它們掛在 Crystal Reports 上，
+      // 輸出不一定是 HTML，硬按下去 App 也畫不出來）。但「列印註冊/考試請假單」
+      // 「列印假單證明聯」「列印學期請假紀錄」這幾個功能**只有**列印鈕 ——
+      // 濾完就一顆都不剩，畫面上是一張表單配一句「按上面的按鈕開始查詢」，
+      // 而上面沒有任何按鈕。使用者會一直找那顆不存在的鈕。
+      if (buttons.isEmpty && group.buttons.any((b) => b.isPrint) && !_busy)
+        const _Notice(
+          icon: Icons.print_outlined,
+          text: '這一頁只有列印功能。它輸出的是報表檔，不是網頁 —— '
+              'App 還沒辦法顯示，要到學校的網頁版列印。',
+        ),
     ];
   }
 
   Widget _buildResult(FunctionView view) {
     final r = view.result;
     if (r == null) {
+      // 一顆按得下去的按鈕都沒有（只有列印的那幾頁）——
+      // 上面已經解釋過了，這裡不要再叫他去按一顆不存在的鈕。
+      if (_groupOf(view).queryButtons.isEmpty) return const SizedBox.shrink();
+
       // 會改資料的頁面（維護新生資料那一類）不是查詢頁 —— 它下面根本不會出現
       // 結果表格。跟使用者說「按上面的按鈕開始查詢」只會讓人以為自己少按了什麼。
       return Padding(

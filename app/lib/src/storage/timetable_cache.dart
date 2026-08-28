@@ -53,7 +53,12 @@ class TimetableCache {
     return (year: v[0], semester: v[1]);
   }
 
-  /// 登出時清掉 —— 換帳號登入不該看到上一個人的課表。
+  /// **換帳號**時清掉 —— 不是登出時。
+  ///
+  /// 登出刻意留著（登出對話框也是這樣講的）：學校一次只允許一個 session，
+  /// 帳號在瀏覽器登著的時候，舊課表是唯一還看得到的東西。那個理由只在
+  /// 「同一個人」時成立，所以真正該清的時機是
+  /// [AppController.submitLogin] 發現學號換了的那一刻。
   Future<void> clear() async {
     final prefs = await _p;
     for (final k in prefs.getKeys().where((k) => k.startsWith('timetable.')).toList()) {
