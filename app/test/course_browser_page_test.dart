@@ -167,10 +167,19 @@ void main() {
     };
   }
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(
+    WidgetTester tester, {
+    String year = '114',
+    String semester = '1',
+  }) async {
     await tester.pumpWidget(MaterialApp(
       theme: NtouTheme.of(Brightness.light),
-      home: CourseBrowserPage(controller: controller, planStore: store),
+      home: CourseBrowserPage(
+        controller: controller,
+        planStore: store,
+        year: year,
+        semester: semester,
+      ),
     ));
     await tester.pumpAndSettle();
   }
@@ -415,6 +424,38 @@ void main() {
       expect(sent['hdnSelectedTab'], '0');
 
       expect(find.text('計算機概論'), findsOneWidget);
+      await unmount(tester);
+    });
+  });
+
+  group('加進「哪一份」預排', () {
+    // 這一頁以前是自己去讀 `controller.year` —— 也就是登入時那個當學期。
+    // 但預排最主要的用途就是排**下學期**：使用者在預排頁把學期切到 115-2，
+    // 從這裡加的課卻被寫進 114-1，回到預排頁一門都不會出現，
+    // 而畫面上沒有任何線索說課去了哪裡。
+    testWidgets('寫進呼叫端指定的學期，不是 controller 的當學期', (tester) async {
+      script(onKeyword: _searchPage(result: _resultTable()));
+      await open(tester, year: '115', semester: '2');
+      await searchByKeyword(tester, '計算機');
+
+      await tester.tap(find.byIcon(Icons.add).first);
+      await tester.pumpAndSettle();
+      if (find.byType(AlertDialog).evaluate().isNotEmpty) {
+        await tester.tap(find.widgetWithText(TextButton, '取消'));
+        await tester.pumpAndSettle();
+      }
+
+      expect((await store.read('115', '2'))!.courses, hasLength(1));
+      expect(await store.read('114', '1'), isNull,
+          reason: 'controller 的當學期那一份不該被碰到');
+      await unmount(tester);
+    });
+
+    testWidgets('標題說的學期跟真正寫進去的是同一個', (tester) async {
+      script();
+      await open(tester, year: '115', semester: '2');
+
+      expect(find.text('加入至：115 學年第 2 學期'), findsOneWidget);
       await unmount(tester);
     });
   });

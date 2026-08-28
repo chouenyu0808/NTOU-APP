@@ -28,6 +28,18 @@ class PlannerPage extends StatefulWidget {
   /// 蓋掉 AppBar 的標題 —— 合併分頁之後那裡放的是切換鈕。
   final Widget? titleWidget;
 
+  /// 現在是民國幾學年度。
+  ///
+  /// 學年度**在八月換**，不是一月 —— 2026 年 8 月已經是 115 學年度，
+  /// 2026 年 3 月還是 114。原本寫死 `year - 1911 - 1`，等於每年八月到十二月
+  /// 都會少算一年，使用者一打開預排就在編輯上一學年的那一份。
+  static int rocAcademicYear(DateTime now) =>
+      now.year - 1911 - (now.month >= 8 ? 0 : 1);
+
+  /// 上學期（1）從八月起算，下學期（2）從二月起算。
+  static String academicSemester(DateTime now) =>
+      now.month >= 8 || now.month == 1 ? '1' : '2';
+
   @override
   State<PlannerPage> createState() => _PlannerPageState();
 }
@@ -72,10 +84,10 @@ class _PlannerPageState extends State<PlannerPage> {
     _semester = _c.semester ?? '1';
 
     if (_year.isEmpty) {
-      // 未登入：用預設值（當前年份、第 1 學期）
+      // 未登入：用當下的學年度猜一個
       final now = DateTime.now();
-      _year = '${now.year - 1911 - 1}'; // 民國年
-      _semester = '1';
+      _year = '${PlannerPage.rocAcademicYear(now)}';
+      _semester = PlannerPage.academicSemester(now);
     }
 
     await _loadPlan();
@@ -114,16 +126,21 @@ class _PlannerPageState extends State<PlannerPage> {
   void _removeCourse(String key) => _updatePlan(_plan.remove(key));
 
   Future<void> _changeSemester() async {
-    // 簡單的對話框讓使用者選學期
+    // 選項用學校給的 (value, label) 成對帶著走。
+    //
+    // 原本只留 `value` 然後 `Text(y)`，畫面上出現的是「115」「1」這種原始代碼 ——
+    // 課表頁那組下拉用的是 label（「115 學年度」「上學期」），同一件事在
+    // 兩個地方長得不一樣，使用者得自己猜這裡的 1 是不是那裡的上學期。
     final years = _c.years.isNotEmpty
-        ? _c.years.map((o) => o.value).toList()
-        : [_year];
+        ? [for (final o in _c.years) (value: o.value, label: o.label)]
+        : [(value: _year, label: _year)];
     final semesters = _c.semesters.isNotEmpty
-        ? _c.semesters.map((o) => o.value).toList()
-        : ['1', '2'];
+        ? [for (final o in _c.semesters) (value: o.value, label: o.label)]
+        : const [(value: '1', label: '上學期'), (value: '2', label: '下學期')];
 
-    String tempYear = _year;
-    String tempSem = _semester;
+    String tempYear = years.any((y) => y.value == _year) ? _year : years.first.value;
+    String tempSem =
+        semesters.any((s) => s.value == _semester) ? _semester : semesters.first.value;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -134,16 +151,22 @@ class _PlannerPageState extends State<PlannerPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                initialValue: years.contains(tempYear) ? tempYear : years.first,
+                initialValue: tempYear,
                 decoration: const InputDecoration(labelText: '學年度'),
-                items: [for (final y in years) DropdownMenuItem(value: y, child: Text(y))],
+                items: [
+                  for (final y in years)
+                    DropdownMenuItem(value: y.value, child: Text(y.label)),
+                ],
                 onChanged: (v) => setInner(() => tempYear = v ?? tempYear),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: semesters.contains(tempSem) ? tempSem : semesters.first,
+                initialValue: tempSem,
                 decoration: const InputDecoration(labelText: '學期'),
-                items: [for (final s in semesters) DropdownMenuItem(value: s, child: Text(s))],
+                items: [
+                  for (final s in semesters)
+                    DropdownMenuItem(value: s.value, child: Text(s.label)),
+                ],
                 onChanged: (v) => setInner(() => tempSem = v ?? tempSem),
               ),
             ],
@@ -181,6 +204,11 @@ class _PlannerPageState extends State<PlannerPage> {
         builder: (_) => CourseBrowserPage(
           controller: widget.controller,
           planStore: widget.store,
+          // **這一頁選的學期，不是 controller 的當學期。** 預排的主要用途
+          // 就是排下學期，兩者不同時，瀏覽頁加的課會寫進另一份預排，
+          // 回到這裡一門都不會出現。
+          year: _year,
+          semester: _semester,
         ),
       ),
     );

@@ -16,10 +16,21 @@ class CourseBrowserPage extends StatefulWidget {
     super.key,
     required this.controller,
     required this.planStore,
+    required this.year,
+    required this.semester,
   });
 
   final AppController controller;
   final PlanStore planStore;
+
+  /// 要加進**哪一份**預排。
+  ///
+  /// **一定要由呼叫端指定，不能自己去讀 `controller.year`。** 預排最主要的
+  /// 用途就是排下學期，而 `controller.year` 是登入時那個當學期 —— 兩者一旦
+  /// 不同，使用者在這一頁加的課會被寫進他沒在看的那份預排，回到預排頁
+  /// 一門都不會出現，而畫面上完全沒有線索。
+  final String year;
+  final String semester;
 
   @override
   State<CourseBrowserPage> createState() => _CourseBrowserPageState();
@@ -140,10 +151,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   }
 
   Future<void> _loadPlan() async {
-    final year = widget.controller.year;
-    final semester = widget.controller.semester;
-    if (year == null || semester == null) return;
-    final plan = await widget.planStore.read(year, semester);
+    final plan = await widget.planStore.read(widget.year, widget.semester);
     if (mounted) setState(() => _plan = plan);
   }
 
@@ -171,22 +179,16 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   }
 
   Future<void> _addToPlan(Course course) async {
-    final year = widget.controller.year;
-    final semester = widget.controller.semester;
-    if (year == null || semester == null) return;
+    final plan = await widget.planStore.read(widget.year, widget.semester) ??
+        CoursePlan(year: widget.year, semester: widget.semester);
 
-    final plan = await widget.planStore.read(year, semester) ??
-        CoursePlan(year: year, semester: semester);
-    
     // 「同一門課」是指**同一班**，不是同課號。真實資料裡 B57011RQ 計算機概論
-    // 有 1年A班和 1年B班，兩列課號和課名都一樣 —— 用 `||` 比課名的話，
+    // 有 1年A班和 1年B班，兩列課號和課名都一樣 —— 只比課號的話，
     // 使用者連想比較兩個班都做不到，而且訊息還說「已經在預排清單中了」。
-    bool alreadyPlanned(PlannedCourse c) => course.code.isNotEmpty
-        ? c.course.code == course.code &&
-            c.course.classLabel == course.classLabel
-        : c.course.name == course.name;
-
-    if (plan.courses.any(alreadyPlanned)) {
+    //
+    // 這個判斷跟 [PlannedCourse.key] 是同一套 —— 兩邊分歧過一次，
+    // 症狀是加得進去但編輯時段會蓋到另一班。
+    if (plan.contains(PlannedCourse(course: course).key)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('這門課已經在預排清單中了')),
@@ -243,13 +245,10 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
         builder: (_) => const EditSlotsDialog(initial: []),
       );
       if (picked != null && picked.isNotEmpty) {
-        // 直接重接一次尾巴，不要用 key 去找 —— `key` 是課號，而同一個課號
-        // 可能有 A 班和 B 班兩筆，比 key 會把另一班的時段一起蓋掉。
-        final withSlots = plan.copyWith(
-          courses: [
-            ...plan.courses,
-            planned.copyWith(slots: picked, slotsAreManual: true),
-          ],
+        // `key` 認的是「課號＋班別」，所以 `update` 只會動到剛加的那一筆，
+        // 不會碰到同課號的另一班。
+        final withSlots = newPlan.update(
+          planned.copyWith(slots: picked, slotsAreManual: true),
         );
         await widget.planStore.write(withSlots);
         await _loadPlan();
@@ -268,7 +267,9 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   /// 要等他離開這一頁才會知道，那時候他已經不記得是為了什麼加的了。
   void _announce(Course course, List<TimeSlot> slots, CoursePlan plan) {
     final scheme = Theme.of(context).colorScheme;
-    final key = course.code.isNotEmpty ? course.code : course.name;
+    // 用 PlannedCourse 算，不要在這裡重寫一次 key 的組法 ——
+    // 兩處分歧的話衝堂會比對到錯的那一筆（或整個比不到）。
+    final key = PlannedCourse(course: course).key;
     final clash = plan
         .conflicts()
         .where((c) => c.a.key == key || c.b.key == key)
@@ -302,19 +303,26 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
 
   /// 學校查不到、或使用者想自己打的課（校外學分、還沒開放查詢的通識）。
   Future<void> _manualAdd() async {
-    final year = widget.controller.year;
-    final semester = widget.controller.semester;
-    if (year == null || semester == null) return;
-
     final added = await showDialog<PlannedCourse>(
       context: context,
       builder: (_) => const AddCourseDialog(),
     );
     if (added == null || !mounted) return;
 
-    final plan = await widget.planStore.read(year, semester) ??
-        CoursePlan(year: year, semester: semester);
-    final newPlan = plan.copyWith(courses: [...plan.courses, added]);
+    final plan = await widget.planStore.read(widget.year, widget.semester) ??
+        CoursePlan(year: widget.year, semester: widget.semester);
+
+    // 走 `add()` 而不是自己接在後面 —— 手動輸入沒有課號，同一個課名打兩次
+    // 會變成兩筆共用同一個 key 的課，之後編輯時段或刪除會兩筆一起動。
+    if (plan.contains(added.key)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('預排裡已經有「${added.course.name}」了')),
+      );
+      return;
+    }
+
+    final newPlan = plan.add(added);
     await widget.planStore.write(newPlan);
     await _loadPlan();
     if (!mounted) return;
@@ -324,8 +332,8 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final year = widget.controller.year ?? '?';
-    final semester = widget.controller.semester ?? '?';
+    final year = widget.year;
+    final semester = widget.semester;
 
     return Scaffold(
       appBar: AppBar(

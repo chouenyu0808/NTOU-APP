@@ -12,9 +12,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fake_ais.dart';
 
 void main() {
-  // 未登入時 PlannerPage 用民國年當 store 的 key（西元 - 1912）。
-  // 測試用同一條公式算，不寫死某一年，才不會跨年就爛掉。
-  String defaultYear() => '${DateTime.now().year - 1912}';
+  // 未登入時 PlannerPage 用當下的學年度當 store 的 key。
+  //
+  // **借正式的那個函式，不要在這裡重抄一次公式。** 原本這裡寫死
+  // `西元 - 1912`，跟正式碼裡那條錯的公式一模一樣 —— 兩邊一起錯，
+  // 測試就永遠是綠的。學年度八月才換，八月到十二月那五個月
+  // `- 1912` 會少算一年。
+  String defaultYear() => '${PlannerPage.rocAcademicYear(DateTime.now())}';
+  String defaultSemester() => PlannerPage.academicSemester(DateTime.now());
 
   late AppController controller;
   late PlanStore store;
@@ -32,7 +37,7 @@ void main() {
   Future<void> seed(List<PlannedCourse> courses) =>
       store.write(CoursePlan(
         year: defaultYear(),
-        semester: '1',
+        semester: defaultSemester(),
         courses: courses,
       ));
 
@@ -215,7 +220,7 @@ void main() {
     expect(find.text('演算法'), findsNothing);
     expect(find.text('還沒有預排的課程'), findsOneWidget);
 
-    final saved = await store.read(defaultYear(), '1');
+    final saved = await store.read(defaultYear(), defaultSemester());
     expect(saved!.courses, isEmpty);
   });
 }

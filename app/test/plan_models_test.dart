@@ -16,6 +16,18 @@ void main() {
       expect(c2.key, '微積分');
     });
 
+    test('同課號不同班別是兩筆不同的課', () {
+      // 真實資料：B57011RQ 計算機概論同時有 1年A班和 1年B班，
+      // 課號和課名一模一樣，上課時間不一樣。
+      const a = PlannedCourse(
+        course: Course(name: '計算機概論', code: 'B57011RQ', classLabel: '1年A班'),
+      );
+      const b = PlannedCourse(
+        course: Course(name: '計算機概論', code: 'B57011RQ', classLabel: '1年B班'),
+      );
+      expect(a.key, isNot(b.key));
+    });
+
     test('copyWith 正確複製並更新欄位', () {
       const original = PlannedCourse(
         course: Course(name: '計算機組織', code: 'CS301'),
@@ -296,6 +308,43 @@ void main() {
       expect(restored.courses.first.slots, [const TimeSlot(3, 5), const TimeSlot(3, 6)]);
       expect(restored.courses.first.note, '必修課');
       expect(restored.courses.first.slotsAreManual, isTrue);
+    });
+
+    group('同課號的兩個班互不干擾', () {
+      // 這一組驗的是一個會默默改掉資料的 bug：`key` 曾經只有課號，
+      // 兩個班在同一份預排裡時，動其中一個會連另一個一起動 ——
+      // 而畫面上看起來就只是「我明明只動了一門」。
+      const a = PlannedCourse(
+        course: Course(name: '計算機概論', code: 'B57011RQ', classLabel: '1年A班'),
+        slots: [TimeSlot(0, 2)],
+      );
+      const b = PlannedCourse(
+        course: Course(name: '計算機概論', code: 'B57011RQ', classLabel: '1年B班'),
+        slots: [TimeSlot(2, 5)],
+      );
+      const plan = CoursePlan(year: '115', semester: '1', courses: [a, b]);
+
+      test('兩個班都加得進去', () {
+        expect(const CoursePlan(year: '115', semester: '1').add(a).add(b).courses,
+            hasLength(2));
+      });
+
+      test('改 A 班的時段不會動到 B 班', () {
+        final after =
+            plan.update(a.copyWith(slots: const [TimeSlot(4, 7)], slotsAreManual: true));
+
+        expect(after.courses, hasLength(2));
+        expect(after.courses.first.slots, const [TimeSlot(4, 7)]);
+        expect(after.courses.last.slots, const [TimeSlot(2, 5)],
+            reason: 'B 班的時段不該被 A 班的編輯蓋掉');
+      });
+
+      test('刪掉 A 班之後 B 班還在', () {
+        final after = plan.remove(a.key);
+
+        expect(after.courses, hasLength(1));
+        expect(after.courses.single.course.classLabel, '1年B班');
+      });
     });
   });
 }

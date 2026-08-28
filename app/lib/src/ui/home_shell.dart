@@ -89,16 +89,26 @@ class _HomeShellState extends State<HomeShell> {
         index: _index,
         children: [
           HomePage(controller: widget.controller),
-          _schedule == 0
-              ? TimetablePage(
-                  controller: widget.controller,
-                  titleWidget: _scheduleSwitch(),
-                )
-              : PlannerPage(
-                  controller: widget.controller,
-                  store: widget.planStore,
-                  titleWidget: _scheduleSwitch(),
-                ),
+          // 又一層 IndexedStack，不是三元運算子。
+          //
+          // 用 `_schedule == 0 ? A : B` 的話，切換時同一個位置換成不同型別的
+          // widget，Flutter 會把舊的 Element 整個丟掉重建 —— 預排頁選好的
+          // 學年學期（右上角那顆）就跟著沒了。使用者排下學期排到一半，
+          // 點一下「本學期」再點回來，就被丟回當學期，而且不會有任何提示。
+          IndexedStack(
+            index: _schedule,
+            children: [
+              TimetablePage(
+                controller: widget.controller,
+                titleWidget: _scheduleSwitch(),
+              ),
+              PlannerPage(
+                controller: widget.controller,
+                store: widget.planStore,
+                titleWidget: _scheduleSwitch(),
+              ),
+            ],
+          ),
           ModuleListPage(
             controller: widget.controller,
             catalog: widget.catalog,

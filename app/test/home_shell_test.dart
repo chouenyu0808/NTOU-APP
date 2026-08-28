@@ -56,9 +56,35 @@ void main() {
     // 所以這裡明確 skipOffstage: false。
     expect(find.byType(HomePage, skipOffstage: false), findsOneWidget);
     expect(find.byType(ModuleListPage, skipOffstage: false), findsOneWidget);
-    // 課表分頁一次只建其中一份 —— 預設是「本學期」。
+    // 課表分頁底下**兩份都掛著**，也是 IndexedStack。
+    //
+    // 以前這裡是 `_schedule == 0 ? TimetablePage : PlannerPage`，切換時
+    // 同一個位置換成不同型別，Flutter 把舊的 Element 整個丟掉重建 ——
+    // 預排頁選好的學年學期就跟著沒了。排下學期排到一半點一下「本學期」
+    // 再點回來，就被丟回當學期，畫面上沒有任何提示。
     expect(find.byType(TimetablePage, skipOffstage: false), findsOneWidget);
-    expect(find.byType(PlannerPage, skipOffstage: false), findsNothing);
+    expect(find.byType(PlannerPage, skipOffstage: false), findsOneWidget);
+  });
+
+  testWidgets('切去「本學期」再切回來，預排選的學期還在', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('課表'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('預排'));
+    await tester.pumpAndSettle();
+
+    // PlannerPage 的 State 就是那個記憶體。切走再切回來如果是同一個
+    // State 物件，右上角選好的學期才不會被重置。
+    final before = tester.state(find.byType(PlannerPage));
+
+    await tester.tap(find.text('本學期'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('預排'));
+    await tester.pumpAndSettle();
+
+    expect(tester.state(find.byType(PlannerPage)), same(before));
   });
 
   testWidgets('一開始停在首頁（index 0）', (tester) async {
