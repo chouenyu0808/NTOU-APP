@@ -13,3 +13,28 @@
 -dontwarn com.google.mlkit.vision.text.devanagari.**
 -dontwarn com.google.mlkit.vision.text.japanese.**
 -dontwarn com.google.mlkit.vision.text.korean.**
+
+# 上面那四行只讓 build 過得去，**不會保住任何東西** —— 這是第一版漏掉的。
+#
+# ML Kit 的 component registrar 是 MlKitInitProvider 用反射實例化的：類別名
+# 寫在 AndroidManifest 的 metadata 裡，執行期才 Class.forName + newInstance。
+# R8 看不到任何程式碼呼叫那些建構子，就把它們拿掉了，於是 App 一啟動就是
+#
+#   Could not instantiate com.google.mlkit.common.internal.CommonComponentRegistrar
+#   Caused by: java.lang.NoSuchMethodException: ...<init> []
+#
+# ML Kit 整個初始化不起來，之後 TextRecognizer 那邊會拿到 null，
+# MethodChannel 丟 NullPointerException。而 _autoRecognizeCaptcha 的 catch
+# 只進 debugPrint，release 又看不到 —— 所以症狀是「驗證碼欄就是不會自動填」，
+# 沒有任何錯誤訊息。要接 logcat 才看得到。
+#
+# 這個 App 目前宣告了三個（AndroidManifest 裡查得到）：
+#   com.google.mlkit.common.internal.CommonComponentRegistrar
+#   com.google.mlkit.vision.common.internal.VisionCommonRegistrar
+#   com.google.mlkit.vision.text.internal.TextRegistrar
+# 但用 implements 寫，之後加別的 ML Kit 功能不用回來改這裡。
+#
+# 名字不能被混淆（manifest 是用字串指的），無參數建構子要留（反射要用）。
+-keep class * implements com.google.firebase.components.ComponentRegistrar {
+    <init>();
+}
