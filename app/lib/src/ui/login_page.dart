@@ -126,7 +126,18 @@ class _LoginPageState extends State<LoginPage> {
 
       // 認不出來就當沒發生過。**不要跳訊息說「辨識失敗」** ——
       // 使用者本來就要自己打，那句話只是在報告一件他不需要知道的內部狀況。
-      if (text.isEmpty || !mounted) return;
+      //
+      // **不是剛好 4 碼就整個放棄，不要截斷之後再填。** 驗證碼一定是 4 碼，
+      // 認出 6 碼代表這次本來就認錯了（116×54 的圖，雜訊線被讀成字元是常態），
+      // 砍成 4 碼只是把一個錯的答案變得像對的。
+      //
+      // 這一行也是登入鈕能不能按的關鍵。`maxLength: 4` 只擋鍵盤打進來的字，
+      // **擋不住程式直接設值** —— `_captcha.text = '6碼'` 之後欄位就是 6 碼。
+      // 而 [_canSubmit] 要求長度剛好等於 4，[_CaptchaField] 又設了
+      // `counterText: ''` 把「6/4」藏起來。三個湊在一起的症狀是：
+      // 使用者看到驗證碼欄有字、以為填好了，登入鈕卻一直是暗的，
+      // 而畫面上沒有任何一處說得出為什麼。
+      if (text.length != 4 || !mounted) return;
       if (_c.phase != AppPhase.awaitingCaptcha) return;
 
       // 使用者已經自己動手了就不要蓋掉他打的東西。

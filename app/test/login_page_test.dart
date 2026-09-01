@@ -335,4 +335,30 @@ void main() {
       await unmount(tester);
     });
   });
+
+  group('驗證碼欄的長度', () {
+    // 這一條釘住的是「為什麼 _autoRecognizeCaptcha 要求剛好 4 碼」。
+    // 那個 guard 看起來像多餘的防呆 —— 欄位不是已經 maxLength: 4 了嗎？
+    // 沒有：maxLength 只擋鍵盤，擋不住程式直接設值。
+    testWidgets('maxLength 擋不住程式設值，但擋得住鍵盤', (tester) async {
+      final c = TextEditingController();
+      addTearDown(c.dispose);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: TextField(controller: c, maxLength: 4),
+        ),
+      ));
+
+      // 程式設 6 碼 —— 欄位就真的是 6 碼。這就是 OCR 認錯時發生的事，
+      // 而 _canSubmit 要求長度剛好 4，所以登入鈕會一直是暗的。
+      c.text = 'ab12XY';
+      await tester.pump();
+      expect(c.text.length, 6, reason: 'maxLength 不管程式設進來的值');
+
+      // 相對地，從鍵盤打是擋得住的。
+      await tester.enterText(find.byType(TextField), 'abcdefgh');
+      await tester.pump();
+      expect(c.text, 'abcd', reason: '鍵盤打進來的才會被截斷');
+    });
+  });
 }
