@@ -406,14 +406,14 @@ class _Wordmark extends StatelessWidget {
           height: 76,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            // 實色，不是漸層。兩個理由：稜面用的青跟原本漸層的尾端是同一個色
-            // （`NtouTheme.surf`），鋪上去會有一片直接消失；而且這一格就是要跟
-            // 桌面上的圖示長得一模一樣 —— 桌面舵輪、開 App 帆船，正是換掉它的理由。
-            color: NtouTheme.seed,
+            // 白底深藍字，跟 assets/icon.png 一模一樣 —— 連深色模式也不變。
+            // 這一格的重點就是「桌面上那張臉」跟「開 App 看到的那張臉」是同一個，
+            // 所以它不跟著主題走：跟著走的話深色模式下兩邊就對不起來了。
+            color: Colors.white,
             borderRadius: BorderRadius.circular(NtouTheme.radiusPill),
           ),
           // 字身佔的比例跟 assets/icon.png 一樣，兩邊才對得起來。
-          child: const NtouMark(size: 76.0 * NtouMark.iconSpan),
+          child: const NtouMark(size: 76.0 * NtouMark.iconSpan, color: NtouTheme.seed),
         ),
         const SizedBox(height: 18),
         Text(

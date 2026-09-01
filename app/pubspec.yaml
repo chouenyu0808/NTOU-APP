@@ -115,8 +115,10 @@ flutter_launcher_icons:
   # iOS 自己套 squircle 遮罩，而且不吃 alpha。這張畫滿、不自帶圓角。
   image_path: "assets/icon.png"
   remove_alpha_ios: true
-  # 背景是純色，不用出圖。跟 NtouTheme.seed 同一個值。
-  adaptive_icon_background: "#00506B"
-  # 前景的標只佔中央五成，圓形／方形／圓角方三種遮罩都切不到。
+  # 背景是純色，不用出圖。標是白底深藍字，所以這裡是白的 ——
+  # 留著舊的 #00506B 的話，Android 會拿深藍當底配深藍的字，圖示是一片藍，
+  # 而且編譯不會報錯。
+  adaptive_icon_background: "#FFFFFF"
+  # 前景的字只佔中央六成，圓形／方形／圓角方三種遮罩都切不到。
   adaptive_icon_foreground: "assets/icon_foreground.png"
 
