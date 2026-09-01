@@ -57,7 +57,7 @@ void main() {
       // 登入頁那格用 NtouMark.iconSpan 算大小，tool/render_icon.py 用
       // SPAN_ICON 出圖。兩個對不上的話，桌面圖示和 App 裡的標會不一樣大 ——
       // 而那正是當初換掉舊圖示的原因。
-      expect(NtouMark.iconSpan, 0.76);
+      expect(NtouMark.iconSpan, 0.62);
     });
   });
 

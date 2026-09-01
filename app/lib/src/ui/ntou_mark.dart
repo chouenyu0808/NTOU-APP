@@ -30,7 +30,7 @@ class NtouMark extends StatelessWidget {
   /// `assets/icon.png` 裡字身佔整格的比例。
   ///
   /// 登入頁那格要跟桌面圖示長得一樣，所以用同一個數字。
-  static const double iconSpan = 0.76;
+  static const double iconSpan = 0.62;
 
   @override
   Widget build(BuildContext context) => SizedBox.square(

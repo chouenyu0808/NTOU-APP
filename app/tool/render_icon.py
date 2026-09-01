@@ -34,10 +34,20 @@ SIZE = 1024
 SS = 4  # 先畫 4 倍再縮，邊緣才不會有鋸齒
 
 # 字身佔整格的比例。
-#   icon.png       系統只會啃掉四角，可以放大一點
-#   foreground.png 要留在中央的安全區裡，所以縮小
-SPAN_ICON = 0.76
-SPAN_FOREGROUND = 0.60
+SPAN_ICON = 0.62
+
+# **前景層不能跟 icon.png 用同一個數字。**
+#
+# Android 的 adaptive icon 前景層是 108dp，但系統只顯示中央的 72dp ——
+# 前景層上佔 F 的東西，在桌面上會被放大成 F × 108/72 = F × 1.5。
+#
+# 這裡踩過一次：icon.png 設 0.76、前景設 0.60，結果 iOS 顯示 76%、
+# Android 顯示 90%，同一個 App 兩個平台的字差了一大截，Android 那邊爆滿。
+# 當時驗遮罩是拿整張 1024 去套圓形，不是中央的 72/108，所以沒看出來。
+#
+# 所以這個值用推導的，不要手填。驗證的時候也要記得把前景裁到中央 72/108
+# 再看，那才是桌面上的樣子。
+SPAN_FOREGROUND = SPAN_ICON * 72 / 108
 
 TOOL = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(TOOL, '..', 'assets')
