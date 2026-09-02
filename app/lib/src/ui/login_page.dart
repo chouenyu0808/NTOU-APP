@@ -355,10 +355,6 @@ class _LoginPageState extends State<LoginPage> {
                 controlAffinity: ListTileControlAffinity.leading,
                 dense: true,
                 title: const Text('記住密碼'),
-                subtitle: Text(
-                  '存在這支手機的安全儲存區，不會上傳到任何伺服器',
-                  style: theme.textTheme.bodySmall,
-                ),
               ),
 
               const SizedBox(height: 12),
@@ -585,9 +581,8 @@ class _CaptchaField extends StatelessWidget {
 /// 但看到的人不會知道兇手是自己五分鐘前在電腦上開的選課系統。這裡對已知的
 /// 幾種失敗給標題和下一步。
 ///
-/// **原文一定留著。** 學校哪天改了措辭、或出現我們沒對應到的新錯誤，
-/// 使用者看到的還是真的那句話 —— 翻譯蓋掉原文的話，回報問題的人會說
-/// 「App 說我驗證碼錯了」，而學校其實說的是別的。
+/// 對不上的照原文顯示，不硬套一個可能是錯的解釋 —— 學校哪天改了措辭、
+/// 或出現沒對應到的新錯誤時，使用者看到的還是真的那句話。
 class _Explained {
   const _Explained(this.title, this.body, {this.showCached = false});
 
@@ -607,7 +602,10 @@ class _Explained {
         showCached: true,
       );
     }
-    if (message.contains('驗證碼')) {
+    // 只認「打錯了」那一種（學校的字樣就是「驗證碼錯誤」，見 selectors.json
+    // 的 failureMarkers）。`拿不到驗證碼圖片` 是抓圖失敗 —— 畫面上根本沒有圖，
+    // 叫使用者重打一次是錯的指示。
+    if (message.contains('驗證碼錯誤')) {
       return const _Explained(
         '驗證碼不對',
         '圖已經換成新的一張了，重打一次就好。學號和密碼不用重打。',
@@ -675,13 +673,6 @@ class _ErrorCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(e.body, style: TextStyle(color: on, height: 1.5)),
-                  const SizedBox(height: 10),
-                  // 學校的原文。壓小、但不藏起來 —— 見上面的說明。
-                  Text(
-                    '學校原本的訊息：$message',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: on.withValues(alpha: 0.7)),
-                  ),
                 ],
                 if (e.showCached && onViewCached != null) ...[
                   const SizedBox(height: 4),

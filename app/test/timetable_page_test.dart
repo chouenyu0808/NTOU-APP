@@ -114,7 +114,6 @@ void main() {
     expect(find.text('線性代數'), findsOneWidget);
     // 文案要講清楚「資料本來就沒有這個欄位」，不能讓使用者以為 App 漏抓了。
     expect(find.textContaining('沒有畫成格子'), findsOneWidget);
-    expect(find.textContaining('不是漏抓'), findsOneWidget);
   });
 
   testWidgets('App 根層編得起來也畫得出來', (tester) async {

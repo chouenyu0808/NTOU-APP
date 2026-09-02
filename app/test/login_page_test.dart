@@ -170,10 +170,25 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('翻譯過的錯誤仍然附上學校原文', (tester) async {
-      // 學校改措辭、或出現我們沒對應到的新錯誤時，使用者看到的還是真的那句。
-      // 蓋掉原文的話，回報問題的人會說「App 說我驗證碼錯了」，
-      // 而學校其實說的是別的。
+    testWidgets('抓不到驗證碼圖片不能被說成「打錯了」', (tester) async {
+      // 圖根本沒出現，叫他重打一次是錯的指示。
+      setPhoneSize(tester);
+      final controller = await testLoginController();
+      await tester.pumpWidget(wrap(controller));
+      await tester.pump();
+
+      controller.error = '拿不到驗證碼圖片。學校系統可能正在維護，或是登入頁改版了。';
+      controller.notifyListeners();
+      await tester.pump();
+
+      expect(find.text('驗證碼不對'), findsNothing);
+      expect(find.textContaining('重打一次就好'), findsNothing);
+      expect(find.textContaining('可能正在維護'), findsOneWidget);
+
+      await unmount(tester);
+    });
+
+    testWidgets('翻譯過的錯誤只講人話，不重貼一次原始訊息', (tester) async {
       setPhoneSize(tester);
       final controller = await testLoginController();
       await tester.pumpWidget(wrap(controller));
@@ -184,8 +199,9 @@ void main() {
       await tester.pump();
 
       expect(find.text('驗證碼不對'), findsOneWidget);
-      expect(find.textContaining('學校原本的訊息'), findsOneWidget);
-      expect(find.textContaining('頁面出現「驗證碼錯誤」'), findsOneWidget);
+      // 「頁面出現…」是 App 自己組的字串（見 AisSession），不是學校的原話 ——
+      // 認得出來的失敗已經給了標題和下一步，再貼一次只是噪音。
+      expect(find.textContaining('頁面出現'), findsNothing);
 
       await unmount(tester);
     });
@@ -200,9 +216,8 @@ void main() {
       controller.notifyListeners();
       await tester.pump();
 
+      // 對不上的就照原文顯示，沒有硬掰一個標題出來
       expect(find.text('伺服器回了 503，學校那邊可能在維護。'), findsOneWidget);
-      // 沒有硬掰一個標題出來
-      expect(find.textContaining('學校原本的訊息'), findsNothing);
 
       await unmount(tester);
     });

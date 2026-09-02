@@ -221,16 +221,14 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('只有列印鈕的頁面要講一句，不要留一張沒有按鈕的表單', (tester) async {
+    testWidgets('只有列印鈕的頁面不會叫人去按一顆不存在的鈕', (tester) async {
       // 學生請假底下有三個這種功能。列印鈕被 queryButtons 濾掉之後，
-      // 畫面上是一張表單配一句「按上面的按鈕開始查詢」，而上面沒有任何按鈕
-      // —— 使用者會一直找那顆不存在的鈕。
+      // 上面一顆按鈕都沒有 —— 這時不能再說「按上面的按鈕開始查詢」。
       ais.reply = (r) => _isDispatcher(r) ? _dispatcher : _printOnlyPage;
       await open(tester, fn: _printFn);
 
       expect(find.text('按上面的按鈕開始查詢。'), findsNothing,
           reason: '上面沒有按鈕可以按');
-      expect(find.textContaining('只有列印功能'), findsOneWidget);
       await unmount(tester);
     });
   });
@@ -293,18 +291,20 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('「查無符合資料」是查詢結果，不是錯誤', (tester) async {
+    testWidgets('「查無符合資料」不會被當成錯誤', (tester) async {
       script(onQuery: _queryPage(result: '<span>查無符合資料</span>'));
       await open(tester);
 
       await tester.tap(queryButton());
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('這是查詢結果，不是錯誤'), findsOneWidget);
+      // 空結果就是空結果 —— 不出現錯誤，也不畫出一張空表格
+      expect(find.textContaining('錯誤'), findsNothing);
+      expect(find.byType(DataTable), findsNothing);
       await unmount(tester);
     });
 
-    testWidgets('解不出表格時說的是「看不懂格式」，不能跟沒資料混為一談', (tester) async {
+    testWidgets('解不出表格時不當機、也不假裝有結果', (tester) async {
       // Crystal Reports 之類的輸出：有回應，但不是我們認得的表格
       script(
         onQuery: _queryPage(result: '<iframe src="CrystalReportViewer.aspx">'),
@@ -314,8 +314,8 @@ void main() {
       await tester.tap(queryButton());
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('App 看不懂它的格式'), findsOneWidget);
-      expect(find.textContaining('這是查詢結果，不是錯誤'), findsNothing);
+      expect(find.textContaining('錯誤'), findsNothing);
+      expect(find.byType(DataTable), findsNothing);
       await unmount(tester);
     });
 

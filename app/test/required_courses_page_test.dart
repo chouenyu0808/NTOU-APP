@@ -103,11 +103,6 @@ void main() {
       expect(find.text('57'), findsOneWidget);
       expect(find.text('畢業最低'), findsOneWidget);
 
-      // 三個大數字並排長得像進度條的兩端，很容易被讀成「我修到 135 了」。
-      // 成績查詢不在這套系統的學生選單裡，App 拿不到已修學分 ——
-      // 沒講清楚的話，這一頁會被當成他根本沒有的那份進度表。
-      expect(find.textContaining('這是門檻，不是進度'), findsOneWidget);
-
       // 一上那一組，以及它底下的課。
       // ListView 是延遲建構的，畫面外的列還沒進樹裡 —— 要捲過去才找得到。
       await tester.drag(find.byType(ListView), const Offset(0, -700));

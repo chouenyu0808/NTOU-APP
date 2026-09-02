@@ -33,15 +33,10 @@ class SchemaFieldInput extends StatelessWidget {
       return _frozen(context, '', helper: '要先選上面的條件，這一格才會有選項');
     }
 
-    // App 還不能上傳檔案。**不要畫成文字框** —— 使用者會在裡面打字，
-    // 然後送出一個伺服器看不懂的值，而失敗訊息不會提到檔案。
+    // 不要畫成文字框 —— 使用者會在裡面打字，然後送出一個伺服器看不懂的值，
+    // 而失敗訊息不會提到檔案。
     if (field.kind == FieldKind.file) {
-      return _frozen(
-        context,
-        '',
-        helper: 'App 還不能上傳檔案，這一項要到學校的網頁版做',
-        icon: Icons.attach_file,
-      );
+      return _frozen(context, '', icon: Icons.attach_file);
     }
 
     return switch (field.kind) {

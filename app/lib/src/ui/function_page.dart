@@ -198,19 +198,6 @@ class _FunctionPageState extends State<FunctionPage> {
           ),
         ),
 
-      // 整頁只有列印鈕的時候要**講一句**。
-      //
-      // 列印類的按鈕被 `queryButtons` 濾掉（它們掛在 Crystal Reports 上，
-      // 輸出不一定是 HTML，硬按下去 App 也畫不出來）。但「列印註冊/考試請假單」
-      // 「列印假單證明聯」「列印學期請假紀錄」這幾個功能**只有**列印鈕 ——
-      // 濾完就一顆都不剩，畫面上是一張表單配一句「按上面的按鈕開始查詢」，
-      // 而上面沒有任何按鈕。使用者會一直找那顆不存在的鈕。
-      if (buttons.isEmpty && group.buttons.any((b) => b.isPrint) && !_busy)
-        const _Notice(
-          icon: Icons.print_outlined,
-          text: '這一頁只有列印功能。它輸出的是報表檔，不是網頁 —— '
-              'App 還沒辦法顯示，要到學校的網頁版列印。',
-        ),
     ];
   }
 
@@ -218,7 +205,7 @@ class _FunctionPageState extends State<FunctionPage> {
     final r = view.result;
     if (r == null) {
       // 一顆按得下去的按鈕都沒有（只有列印的那幾頁）——
-      // 上面已經解釋過了，這裡不要再叫他去按一顆不存在的鈕。
+      // 不要叫使用者去按一顆不存在的鈕。
       if (_groupOf(view).queryButtons.isEmpty) return const SizedBox.shrink();
 
       // 會改資料的頁面（維護新生資料那一類）不是查詢頁 —— 它下面根本不會出現
@@ -230,21 +217,7 @@ class _FunctionPageState extends State<FunctionPage> {
             : '按上面的按鈕開始查詢。'),
       );
     }
-    // 「學校說沒資料」和「我們沒解析出表格」必須分開講 ——
-    // 前者要說沒資料，後者要說 App 可能需要更新。
-    if (r.isEmpty) {
-      return const _Notice(
-        icon: Icons.inbox_outlined,
-        text: '學校系統回覆「查無符合資料」。這是查詢結果，不是錯誤。',
-      );
-    }
-    if (r.columns.isEmpty) {
-      return const _Notice(
-        icon: Icons.help_outline,
-        text: '這一頁的結果不是表格，App 看不懂它的格式。\n'
-            '可能是報表或需要另外處理的畫面。',
-      );
-    }
+    if (r.isEmpty || r.columns.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,28 +351,6 @@ class _ErrorBanner extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
-            ),
-          ],
-        ),
-      );
 }
 
 /// 選單上的一個功能項目。

@@ -256,10 +256,6 @@ class _TodayCard extends StatelessWidget {
       return wrap(_Notice(
         icon: Icons.schedule_outlined,
         title: '這學期有 ${t.courses.length} 門課，但沒有上課時間',
-        body: '${t.label}｜學校的選課清單沒有附時間和教室欄位，'
-            '所以排不出「今天上什麼」。\n'
-            '課表分頁看得到完整的修課清單；要看得到格子的話，'
-            '「預排」那一份會替你去每門課的詳細頁把時間抓回來。',
       ));
     }
 
@@ -606,7 +602,6 @@ class _Announcements extends StatelessWidget {
           child: _Notice(
             icon: Icons.campaign_outlined,
             title: '登入後顯示校園公告',
-            body: '公告是登入時順便讀到的，不會另外打一次學校的伺服器。',
           ),
         ),
       );
@@ -641,11 +636,11 @@ class _Announcements extends StatelessWidget {
 }
 
 class _Notice extends StatelessWidget {
-  const _Notice({required this.icon, required this.title, required this.body});
+  const _Notice({required this.icon, required this.title, this.body});
 
   final IconData icon;
   final String title;
-  final String body;
+  final String? body;
 
   @override
   Widget build(BuildContext context) {
@@ -660,12 +655,14 @@ class _Notice extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: theme.textTheme.titleSmall),
-              const SizedBox(height: 4),
-              Text(
-                body,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
+              if (body case final b?) ...[
+                const SizedBox(height: 4),
+                Text(
+                  b,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
             ],
           ),
         ),

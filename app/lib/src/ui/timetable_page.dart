@@ -87,8 +87,7 @@ Future<void> confirmLogout(BuildContext context, AppController c) async {
         // 為什麼特別講：學校系統一次只允許一個 session，App 沒登出的話
         // 使用者在瀏覽器登入會被自己的 App 擋掉，而那個錯誤訊息完全看不出原因。
         content: const Text(
-          '會一併結束學校系統上的登入狀態，這樣你在瀏覽器才登得進去。\n'
-          '課表快取會留著。',
+          '會一併結束學校系統上的登入狀態，這樣你在瀏覽器才登得進去。',
         ),
         actions: [
           TextButton(
@@ -279,8 +278,7 @@ class _NoSlotsNotice extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '學校的選課清單沒有附上課時間，所以沒有畫成格子 —— '
-              '這不是漏抓，那個查詢本來就不含時間和教室欄位。\n'
+              '學校的選課清單沒有附上課時間，所以沒有畫成格子。\n'
               '下面是完整的修課清單，展開可以看到學校給的每一個欄位。',
               style: theme.textTheme.bodySmall,
             ),
