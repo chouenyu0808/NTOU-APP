@@ -24,3 +24,6 @@ spike/fixtures/callbacks/
 # 一旦哪天轉公開，刪檔案也救不回 git 歷史。這種東西留在工作區就好。
 漏洞回報*.md
 zeroday-submission.md
+
+# Claude Code：本機專屬設定（含機器路徑、裝置序號），不進版控
+.claude/settings.local.json
