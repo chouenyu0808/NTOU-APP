@@ -8,6 +8,7 @@ import '../parsing/models.dart';
 import '../parsing/tables.dart';
 import '../parsing/timetable.dart';
 import '../planner/plan_models.dart';
+import '../storage/course_time_cache.dart';
 import '../storage/plan_store.dart';
 import 'app_controller.dart';
 import 'plan_dialogs.dart';
@@ -18,12 +19,16 @@ class CourseBrowserPage extends StatefulWidget {
     super.key,
     required this.controller,
     required this.planStore,
+    CourseTimeCache? timeCache,
     required this.year,
     required this.semester,
-  });
+  }) : timeCache = timeCache ?? const CourseTimeCache.shared();
 
   final AppController controller;
   final PlanStore planStore;
+
+  /// 查過的上課時間存哪。預設用 SharedPreferences，測試可以塞自己的。
+  final CourseTimeCache timeCache;
 
   /// 要加進**哪一份**預排。
   ///
@@ -104,6 +109,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadCachedTimes();
     _open();
   }
 
@@ -290,6 +296,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
           _slots[key] = slots;
         }
       });
+      _persistTimes();
     }
     _probing = false;
     if (mounted && _probeQueue.isEmpty && token == _probeToken) {
@@ -297,13 +304,41 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     }
   }
 
-  /// 換搜尋條件時把探測結果丟掉。
+  /// 換搜尋條件時取消還沒跑完的探測。
+  ///
+  /// **查到的時間留著。** 同一個學期裡課的上課時間不會變，而且 key 是
+  /// 課號＋班別，跟這次搜的是哪一組條件無關 —— 清掉的話，同一個系所搜第二次
+  /// 又要把整批重問一遍，使用者就在那邊等第二次。
   void _resetProbes() {
     _probeToken++;
     _probeQueue.clear();
     _probeTotal = 0;
-    _slots.clear();
-    _slotsUnknown.clear();
+  }
+
+  /// 開頁時把上次查過的時間讀回來。
+  ///
+  /// 這是「離開這一頁再進來就不用重問」的關鍵 —— 每次進來都是一個新的
+  /// State，記憶體裡的 `_slots` 是空的。
+  Future<void> _loadCachedTimes() async {
+    final cached = await widget.timeCache.read(widget.year, widget.semester);
+    if (!mounted || cached.isEmpty) return;
+    setState(() {
+      for (final e in cached.entries) {
+        // 空陣列代表「問過了，學校沒給時間」。
+        if (e.value.isEmpty) {
+          _slotsUnknown.add(e.key);
+        } else {
+          _slots[e.key] = e.value;
+        }
+      }
+    });
+  }
+
+  void _persistTimes() {
+    widget.timeCache.write(widget.year, widget.semester, {
+      ..._slots,
+      for (final k in _slotsUnknown) k: const <TimeSlot>[],
+    });
   }
 
   /// 這門課跟預排裡的哪一門撞在哪幾節。不衝突或還不知道就回 null。

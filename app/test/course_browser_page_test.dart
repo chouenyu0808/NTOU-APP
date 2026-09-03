@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/parsing/timetable.dart';
 import 'package:ntou_app/src/planner/plan_models.dart';
+import 'package:ntou_app/src/storage/course_time_cache.dart';
 import 'package:ntou_app/src/storage/plan_store.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
 import 'package:ntou_app/src/ui/course_browser_page.dart';
@@ -174,12 +175,14 @@ void main() {
     WidgetTester tester, {
     String year = '114',
     String semester = '1',
+    CourseTimeCache? timeCache,
   }) async {
     await tester.pumpWidget(MaterialApp(
       theme: NtouTheme.of(Brightness.light),
       home: CourseBrowserPage(
         controller: controller,
         planStore: store,
+        timeCache: timeCache,
         year: year,
         semester: semester,
       ),
@@ -878,6 +881,60 @@ void main() {
         (r) => r.page.startsWith('TKE2240_03.aspx'),
       );
       expect(detail, hasLength(2), reason: '整批都要查，不是只查看得見的那一列');
+      await unmount(tester);
+    });
+
+    testWidgets('搜第二次不重問已經查過的上課時間', (tester) async {
+      // 這是使用者實際回報的：每次查詢都又從頭查一次上課時間，等很久。
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage('102,103,104'),
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+
+      final afterFirst = ais.seen
+          .where((r) => r.page.startsWith('TKE2240_03.aspx'))
+          .length;
+      expect(afterFirst, 2);
+
+      await searchByKeyword(tester, '計算機');
+
+      expect(
+        ais.seen.where((r) => r.page.startsWith('TKE2240_03.aspx')).length,
+        afterFirst,
+        reason: '同一學期裡課的上課時間不會變，查過的不該再問一次',
+      );
+      await unmount(tester);
+    });
+
+    testWidgets('離開這一頁再進來，也不用重問', (tester) async {
+      // 每次進來都是新的 State，記憶體裡是空的 —— 靠 CourseTimeCache 讀回來。
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final cache = CourseTimeCache(prefs: prefs);
+
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage('102,103,104'),
+      );
+      await open(tester, timeCache: cache);
+      await searchByKeyword(tester, '計算機');
+      final afterFirst = ais.seen
+          .where((r) => r.page.startsWith('TKE2240_03.aspx'))
+          .length;
+      expect(afterFirst, 2);
+      await unmount(tester);
+
+      // 重開一次同一頁
+      await open(tester, timeCache: cache);
+      await searchByKeyword(tester, '計算機');
+
+      expect(
+        ais.seen.where((r) => r.page.startsWith('TKE2240_03.aspx')).length,
+        afterFirst,
+        reason: '上次查過的要從本機讀回來，不是重問學校',
+      );
       await unmount(tester);
     });
 
