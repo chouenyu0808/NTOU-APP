@@ -73,11 +73,15 @@ cd app && flutter test             # 444 個測試
 
 ```bash
 cd app && flutter build apk --release --target-platform android-arm64
-cd app && flutter install --release
+C:\dev\android-sdk\platform-tools\adb.exe install -r app/build/app/outputs/flutter-apk/app-release.apk
 ```
 
-**注意**：`flutter install` 會先移除舊版，所以手機上存的帳密和課表快取每次
-都會被清掉，使用者要重新登入 —— 交付前先講一聲。
+**不要用 `flutter install`。** 它會先 `Uninstalling old version...`，而移除會把
+App 私有儲存整個清掉 —— 預排課表（`PlanStore`，存在 SharedPreferences）、
+記住的帳密、課表快取全部不見，使用者要重新登入而且預排要重排。
+`adb install -r` 是覆蓋安裝，簽章相同就會保留資料。
+
+真的需要全新狀態時才用 `flutter install`（或 `adb uninstall`），而且要先講一聲。
 
 ## 安全紅線
 
