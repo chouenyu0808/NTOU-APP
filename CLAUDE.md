@@ -46,7 +46,7 @@ app/            Flutter 專案（幾乎所有工作都在這）
   lib/src/ui/       畫面
   lib/src/config/   selectors.json —— 所有會因學校改版而爛掉的字串都在這裡
   lib/src/transit/  交通（TDX）—— 跟 AIS 無關，不用登入也能看
-  test/             571 個測試
+  test/             585 個測試
 spike/          Python 探索腳本（有進版控）與真實擷取頁面（fixtures/*.html 不進）
 ```
 
@@ -66,16 +66,22 @@ pytest，那邊紅了就 commit 不進去。
 
 ## 常用指令
 
-Flutter **不在 PATH** 上（在 `C:\Users\choue\flutter\bin`），先加再跑：
+**Flutter SDK 的位置每台機器不一樣**：`choue` 那台在 `C:\Users\choue\flutter`，
+`user` 那台在 `C:\Users\user\flutter`（已經在使用者 PATH 上）。所以腳本裡
+**不要寫死路徑** —— `app/check.ps1` 是先看 PATH、再退回 `%USERPROFILE%\flutter`。
+手動跑而 PATH 上沒有的話：
 
 ```powershell
-$env:PATH = "C:\Users\choue\flutter\bin;$env:PATH"
+$env:PATH = "$env:USERPROFILE\flutter\bin;$env:PATH"
 ```
 
 ```bash
 cd app && flutter analyze          # 應該是 No issues found
-cd app && flutter test             # 475 個測試
+cd app && flutter test             # 585 個測試
 ```
+
+沒有 `spike/fixtures/` 的機器會 skip 掉 54 個（讀真實擷取頁面的那些），
+結果是 `531 passed, 54 skipped` —— 那是正常的，不是壞掉。
 
 裝到手機（Android，release 目前借用 debug key 簽章）：
 
