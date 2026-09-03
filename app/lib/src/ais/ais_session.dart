@@ -62,6 +62,13 @@ class AisSession {
 
   final Dio _dio;
   Map<String, String> _hidden = <String, String>{};
+
+  /// [_hidden] 是**哪一頁**的隱藏欄位（只記路徑，不含 query）。
+  ///
+  /// 這個系統的 `__VIEWSTATE` 是綁頁面的。中途去 GET 過別的頁面之後，
+  /// [_hidden] 裝的是那一頁的，拿去 post 原本那一頁會被 event validation
+  /// 擋掉 —— 而回應看起來只是「沒有結果」，不會說錯在哪。
+  String _hiddenFrom = '';
   String _lastUrl = '';
   DateTime _lastRequestAt = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -95,7 +102,10 @@ class AisSession {
     _lastUrl = page.url;
 
     final found = scrapeHiddenFields(page.doc);
-    if (found.isNotEmpty) _hidden = found;
+    if (found.isNotEmpty) {
+      _hidden = found;
+      _hiddenFrom = _formKeyOf(page.url);
+    }
 
     log?.call('  ${page.summary} viewstate ${(found['__VIEWSTATE'] ?? '').length}B');
     return page;
@@ -183,7 +193,7 @@ class AisSession {
     // 拿掉 —— 少了這條路，取消勾選在送出時完全不會發生，畫面上卻是取消了的。
     Set<String> omit = const {},
   }) async {
-    final fields = formFields(page.doc)..addAll(_hidden);
+    final fields = _baseFields(page);
     final el = page.doc.querySelector('input[name="$button"]');
 
     // 有些按鈕的 onclick 會順手設一個隱藏欄位再送出，例如
@@ -230,7 +240,7 @@ class AisSession {
     Map<String, String>? values,
     Set<String> omit = const {},
   }) async {
-    final fields = formFields(page.doc)..addAll(_hidden);
+    final fields = _baseFields(page);
     if (values != null) {
       checkValues(page.doc, values);
       fields.addAll(values);
@@ -341,7 +351,7 @@ class AisSession {
   }) async {
     final cfg = config.login;
 
-    final fields = formFields(page.doc)..addAll(_hidden);
+    final fields = _baseFields(page);
     fields[cfg.usernameField] = username;
     fields[cfg.passwordField] = password;
     if (captcha != null && captcha.isNotEmpty) {
@@ -537,9 +547,32 @@ class AisSession {
       // 留著一組已經作廢的 session cookie，下次登入會拿它去試，症狀更難懂。
       await cookieJar.deleteAll();
       _hidden = <String, String>{};
+      _hiddenFrom = '';
       _lastUrl = '';
     }
   }
+
+  /// postback 的基底欄位。
+  ///
+  /// 以**這一頁自己的**欄位為準，[_hidden] 只有在它確實是這一頁的時候才蓋上去。
+  ///
+  /// 一律讓 [_hidden] 蓋掉會壞在這個情境：連續問好幾門課的上課時間時，
+  /// 每一門都是「postback 搜尋頁 → GET 課程詳細頁」。第二門 postback 的時候
+  /// [_hidden] 裝的已經是詳細頁的 `__VIEWSTATE` 了，送出去學校不認 ——
+  /// 症狀是**只有第一門查得到時間**，其餘全部「查不到」，而且沒有任何錯誤。
+  Map<String, String> _baseFields(AisPage page) {
+    final fields = formFields(page.doc);
+    if (_hiddenFrom.isNotEmpty && _hiddenFrom == _formKeyOf(page.url)) {
+      fields.addAll(_hidden);
+    }
+    return fields;
+  }
+
+  /// 判斷「是不是同一張表單」用的鍵：路徑，不含 query。
+  ///
+  /// 不比 query：同一頁會帶著不同的 `?PKNO=…` 出現，那還是同一張表單。
+  static String _formKeyOf(String url) =>
+      Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
 
   String pathOf(String url) =>
       url.startsWith(config.baseUrl) ? url.substring(config.baseUrl.length) : url;

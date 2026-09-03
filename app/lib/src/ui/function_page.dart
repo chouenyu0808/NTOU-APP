@@ -201,20 +201,10 @@ class _FunctionPageState extends State<FunctionPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(name.isEmpty ? action.label : '${action.label}「$name」'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('這會送到學校系統，馬上生效。'),
-            // 加選須知要在按之前看到。「須於實習前至系辦完成實習申請流程」
-            // 這種話，事後才看到就太晚了。
-            if (action.notice.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(action.notice,
-                  style: Theme.of(ctx).textTheme.bodySmall),
-            ],
-          ],
-        ),
+        // 加選須知要在按之前看到。「須於實習前至系辦完成實習申請流程」
+        // 這種話，事後才看到就太晚了。沒有須知的話就不放內文 ——
+        // 標題已經說了要做什麼，再補一句只是廢話。
+        content: action.notice.isEmpty ? null : Text(action.notice),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -254,7 +244,6 @@ class _FunctionPageState extends State<FunctionPage> {
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          if (widget.function.mutating) const _MutatingBanner(),
           if (_error != null) _ErrorBanner(_error!, onRetry: _open),
           if (view != null) ...[
             ..._buildForm(view),
@@ -451,34 +440,6 @@ class _Pager extends StatelessWidget {
       );
 }
 
-class _MutatingBanner extends StatelessWidget {
-  const _MutatingBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: scheme.errorContainer,
-        borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.edit_note, color: scheme.onErrorContainer, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '這一頁會真的送出資料，不只是查詢。',
-              style: TextStyle(color: scheme.onErrorContainer),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner(this.message, {required this.onRetry});

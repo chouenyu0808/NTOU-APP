@@ -208,11 +208,9 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('會改資料的功能頁最上面先講清楚', (tester) async {
+    testWidgets('會改資料的功能頁不叫人「開始查詢」', (tester) async {
       script();
       await open(tester, fn: _mutatingFn);
-
-      expect(find.text('這一頁會真的送出資料，不只是查詢。'), findsOneWidget);
 
       // 這種頁面下面不會出現結果表格，別叫人「開始查詢」——
       // 只會讓人以為自己少按了什麼。

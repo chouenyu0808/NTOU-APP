@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -193,6 +194,99 @@ void main() {
         throwsA(isA<NetworkFailure>()),
       );
       expect(adapter.calls, 1);
+    });
+  });
+
+  _viewStateScopeTests();
+}
+
+/// 每次都回一份帶著自己 `__VIEWSTATE` 的頁面，並記下收到的欄位。
+class _ViewStateAdapter implements HttpClientAdapter {
+  final List<({String path, Map<String, String> form})> seen = [];
+
+  static String _form(String viewState) =>
+      '<html><body><form>'
+      '<input type="hidden" name="__VIEWSTATE" value="$viewState" />'
+      '</form></body></html>';
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    // POST 的內容在 requestStream 上，不在 options.data ——
+    // dio 到這一層已經把它編碼成 bytes 了。
+    final form = <String, String>{};
+    if (requestStream != null) {
+      final bytes = <int>[];
+      await for (final chunk in requestStream) {
+        bytes.addAll(chunk);
+      }
+      if (bytes.isNotEmpty) {
+        form.addAll(
+          Uri.splitQueryString(utf8.decode(bytes, allowMalformed: true)),
+        );
+      }
+    }
+    seen.add((path: options.uri.path, form: form));
+    // 每一頁的 viewstate 各不相同 —— 名字就是它的路徑。
+    return ResponseBody.fromString(
+      _form('VS${options.uri.path}'),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.textPlainContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+void _viewStateScopeTests() {
+  group('__VIEWSTATE 跟著頁面走', () {
+    test('中途 GET 過別的頁面，postback 送的還是原本那一頁的 viewstate', () async {
+      // 這正是「查上課時間」的流程：postback 搜尋頁 → GET 課程詳細頁，
+      // 一門接一門地重複。
+      //
+      // 隱藏欄位的快取如果無條件蓋掉頁面自己的值，第二門 postback 就會帶著
+      // **詳細頁**的 viewstate 去送搜尋頁 —— 學校不認，回一頁沒有內容的東西。
+      // 症狀是「只有第一門查得到時間」，其餘全部查不到，而且不會報錯。
+      final adapter = _ViewStateAdapter();
+      final s = sessionWith(adapter);
+      final search = page(
+        _ViewStateAdapter._form('VS_SEARCH'),
+        url: 'https://ais.ntou.edu.tw/Application/TKE/TKE22/TKE2211_01.aspx',
+      );
+
+      await s.postback(search, 'DataGrid\$ctl02\$COSID');
+      await s.get('Application/TKE/TKE22/TKE2240_03.aspx?PKNO=1');
+      await s.postback(search, 'DataGrid\$ctl03\$COSID');
+
+      final posts = adapter.seen.where((r) => r.form.isNotEmpty).toList();
+      expect(posts, hasLength(2));
+      expect(posts[0].form['__VIEWSTATE'], 'VS_SEARCH');
+      expect(posts[1].form['__VIEWSTATE'], 'VS_SEARCH',
+          reason: '第二次送的必須還是搜尋頁的，不是課程詳細頁的');
+    });
+
+    test('post 回同一頁時，用的是最新一次回應的 viewstate', () async {
+      // 反過來這條也要成立：連續操作同一頁時，伺服器每次都會給新的
+      // __VIEWSTATE，要拿最新的送，不能一直用最初載入時那份。
+      final adapter = _ViewStateAdapter();
+      final s = sessionWith(adapter);
+      final p = page(
+        _ViewStateAdapter._form('VS_OLD'),
+        url: 'https://ais.ntou.edu.tw/a.aspx',
+      );
+
+      await s.postback(p, 'X');
+      await s.postback(p, 'Y');
+
+      final posts = adapter.seen.where((r) => r.form.isNotEmpty).toList();
+      expect(posts[1].form['__VIEWSTATE'], 'VS/a.aspx',
+          reason: '同一頁的話要用回應帶回來的新 viewstate');
     });
   });
 }
