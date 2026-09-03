@@ -58,6 +58,13 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   /// 使用者第一個念頭是「搜尋壞了」，不是「喔那門我加過了」。
   bool _showPlanned = false;
 
+  /// 要不要顯示跟預排撞在一起的課。
+  ///
+  /// **預設是顯示。** 上課時間是捲到那一列才去抓的，所以「衝堂」這件事一開始
+  /// 對每一列都還不知道，是一列一列陸續確定的。預設隱藏的話，列會在探測完成
+  /// 的當下從使用者手指底下消失 —— 他正在看的東西自己不見了。
+  bool _showClashing = true;
+
   // ---------- 每一列的上課時間（拿來標衝堂） ----------
   //
   // **查詢結果那 17 欄沒有上課時間**，所以每一門都得走一次「點課號 →
@@ -78,6 +85,16 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
 
   final List<Course> _probeQueue = [];
   bool _probing = false;
+
+  /// 這一批總共要查幾門（給進度用）。
+  int _probeTotal = 0;
+
+  /// 一次搜尋最多主動查幾門的時間。
+  ///
+  /// 剩下的仍然會在使用者捲到時補查。設上限是因為全校範圍的查詢可能回上百筆，
+  /// 每一門兩次請求 —— 那在選課尖峰時是對學校機器的一次小型洪水，
+  /// 而使用者八成只看前面幾十筆。
+  static const int _probeEagerLimit = 60;
 
   /// 換一次搜尋就 +1。舊的探測回來時對不上就丟掉 ——
   /// 不然上一次搜尋的結果會蓋到這一次的列上。
@@ -200,18 +217,31 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   }
 
   void _parseResults(String html) {
+    _resetProbes();
     if (isEmptyResult(html)) {
       _results = const [];
-      _resetProbes();
     } else {
       _results = parseCourseList(html);
-      _resetProbes();
+      // 先把整批的上課時間查起來，不要等使用者捲到才一列一列等。
+      _probeAll(_results!);
     }
   }
 
   // ---------- 衝堂探測 ----------
 
   String _keyOf(Course c) => PlannedCourse(course: c).key;
+
+  /// 搜尋一有結果就把整批排進去查，不要等使用者捲到。
+  ///
+  /// 原本是捲到哪一列才查哪一列，省請求，但畫面上就是一路「查上課時間中…」
+  /// 跟著手指跑 —— 課一多就等到不想等。改成搜尋完就在背景一門一門查完，
+  /// 使用者捲下去的時候多半已經有答案了。
+  void _probeAll(List<Course> results) {
+    for (final c in results.take(_probeEagerLimit)) {
+      _ensureSlots(c);
+    }
+    _probeTotal = _probeQueue.length;
+  }
 
   /// 這一列還不知道時間的話，排進佇列。
   void _ensureSlots(Course course) {
@@ -262,12 +292,16 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       });
     }
     _probing = false;
+    if (mounted && _probeQueue.isEmpty && token == _probeToken) {
+      setState(() => _probeTotal = 0);
+    }
   }
 
   /// 換搜尋條件時把探測結果丟掉。
   void _resetProbes() {
     _probeToken++;
     _probeQueue.clear();
+    _probeTotal = 0;
     _slots.clear();
     _slotsUnknown.clear();
   }
@@ -641,30 +675,60 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     }
 
     final planned = results.where(_isPlanned).length;
-    final shown = _showPlanned
+    var shown = _showPlanned
         ? results
         : results.where((c) => !_isPlanned(c)).toList();
 
-    if (shown.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            '這 ${results.length} 筆都已經在預排裡了。',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+    // 只算**已經查到時間而且真的撞到**的。還沒探測到的列不算衝堂 ——
+    // 那是「還不知道」，把它藏起來等於用一個我們沒查證的理由把課擋掉。
+    final clashing = shown.where((c) => _clashOf(c) != null).length;
+    if (!_showClashing) {
+      shown = shown.where((c) => _clashOf(c) == null).toList();
     }
 
     return Column(
       children: [
-        if (planned > 0) _PlannedFilterBar(
-          hidden: planned,
-          showing: _showPlanned,
-          onToggle: () => setState(() => _showPlanned = !_showPlanned),
+        if (planned > 0)
+          _FilterBar(
+            icon: Icons.filter_alt_outlined,
+            label: _showPlanned
+                ? '含已加入預排的 $planned 門'
+                : '已隱藏 $planned 門已加入預排的課',
+            showing: _showPlanned,
+            onToggle: () => setState(() => _showPlanned = !_showPlanned),
+          ),
+        if (clashing > 0)
+          _FilterBar(
+            icon: Icons.error_outline,
+            label: _showClashing
+                ? '其中 $clashing 門跟預排撞堂'
+                : '已隱藏 $clashing 門撞堂的課',
+            showing: _showClashing,
+            onToggle: () => setState(() => _showClashing = !_showClashing),
+          ),
+        if (_probeTotal > 0 && _probeQueue.isNotEmpty)
+          _ProbeProgress(
+            done: _probeTotal - _probeQueue.length,
+            total: _probeTotal,
+          ),
+        // **開關要一直在**，就算濾到一筆都不剩。
+        // 收起來之後整頁變空白又沒有開關的話，使用者就切不回來了。
+        Expanded(
+          child: shown.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      clashing > 0 && !_showClashing
+                          ? '這 ${results.length} 筆不是已經在預排裡，'
+                              '就是跟預排撞在一起。'
+                          : '這 ${results.length} 筆都已經在預排裡了。',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              : _list(shown),
         ),
-        Expanded(child: _list(shown)),
       ],
     );
   }
@@ -720,18 +784,22 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   }
 }
 
-/// 「藏了幾門已排的課」那一條。
+/// 清單上方那一條「藏了幾門、要不要顯示」。
 ///
 /// 存在的理由是**不要讓人以為搜尋壞了**：搜出 8 筆卻只看到 5 筆，
 /// 第一個念頭永遠是「怎麼少了」，不是「喔那三門我加過了」。
-class _PlannedFilterBar extends StatelessWidget {
-  const _PlannedFilterBar({
-    required this.hidden,
+///
+/// 目前有兩條：已加入預排的、以及跟預排撞堂的。
+class _FilterBar extends StatelessWidget {
+  const _FilterBar({
+    required this.icon,
+    required this.label,
     required this.showing,
     required this.onToggle,
   });
 
-  final int hidden;
+  final IconData icon;
+  final String label;
   final bool showing;
   final VoidCallback onToggle;
 
@@ -744,13 +812,10 @@ class _PlannedFilterBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
       child: Row(
         children: [
-          Icon(Icons.filter_alt_outlined, size: 16, color: scheme.onSurfaceVariant),
+          Icon(icon, size: 16, color: scheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              showing ? '含已加入預排的 $hidden 門' : '已隱藏 $hidden 門已加入預排的課',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           TextButton(
             onPressed: onToggle,
@@ -854,5 +919,41 @@ class _ClashHint extends StatelessWidget {
 
     return Text('查上課時間中…',
         style: small?.copyWith(color: scheme.onSurfaceVariant));
+  }
+}
+
+
+/// 「正在查上課時間」那一條。
+///
+/// 查詢結果本身沒有上課時間，得一門一門去問學校 —— 這會花上幾秒到十幾秒。
+/// 不講的話，畫面上是一整排「查上課時間中…」慢慢變，看起來像卡住了。
+class _ProbeProgress extends StatelessWidget {
+  const _ProbeProgress({required this.done, required this.total});
+
+  final int done;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              value: total == 0 ? null : done / total,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text('正在查上課時間 $done / $total',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        ],
+      ),
+    );
   }
 }

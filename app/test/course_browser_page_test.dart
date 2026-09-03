@@ -154,7 +154,10 @@ void main() {
         return _searchPage(facultyOptions: facultyOptions);
       }
       // 點課號不換頁，只回一行 fn_open；內容在它指的那一頁。
-      if (onDetail != null && r['__EVENTTARGET'] == _target('ctl02')) {
+      // **每一列都要認**：搜尋完會把整批的上課時間都查一遍，只認 ctl02 的話
+      // 第二列以後永遠拿不到 fn_open，測起來就像「只有第一門查得到」。
+      final target = r['__EVENTTARGET'] ?? '';
+      if (onDetail != null && target.endsWith(r'$COSID')) {
         return _fnOpenResponse;
       }
       if (onDetail != null && r.page.startsWith('TKE2240_03.aspx')) {
@@ -572,11 +575,13 @@ void main() {
       final detail = ais.seen.where(
         (r) => r.page.startsWith('TKE2240_03.aspx'),
       );
-      expect(detail, hasLength(1),
+      // 搜尋完會把整批都查一遍，所以不只一次 —— 重點是「有真的去 GET
+      // 那一頁」，停在 postback 的回應上是抓不到上課時間的。
+      expect(detail, isNotEmpty,
           reason: '停在 postback 的回應上是抓不到上課時間的');
-      expect(detail.single.url.queryParameters['PKNO'], '137171415');
-      expect(detail.single.url.queryParameters['LESSON_TYPE'], '1');
-      expect(detail.single.method, 'GET');
+      expect(detail.first.url.queryParameters['PKNO'], '137171415');
+      expect(detail.first.url.queryParameters['LESSON_TYPE'], '1');
+      expect(detail.first.method, 'GET');
 
       expect((await readPlan())!.courses.single.slots, hasLength(3));
       await unmount(tester);
@@ -688,7 +693,14 @@ void main() {
       await searchByKeyword(tester, '計算機');
       await addFirstCourse(tester);
 
-      expect(find.textContaining('和「線性代數」撞在'), findsOneWidget);
+      // 清單上那一列現在也會標同一件事，所以要指定找 SnackBar 裡的那一句。
+      expect(
+        find.descendant(
+          of: find.byType(SnackBar),
+          matching: find.textContaining('和「線性代數」撞在'),
+        ),
+        findsOneWidget,
+      );
       await unmount(tester);
     });
 
@@ -848,6 +860,48 @@ void main() {
       await searchByKeyword(tester, '計算機');
 
       expect(find.textContaining('已隱藏 1 門'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('搜尋完就把整批的上課時間查起來，不用等使用者捲到', (tester) async {
+      // 一列一列等的話，畫面上是一整排「查上課時間中…」跟著手指跑。
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage('102,103,104'),
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+
+      // 兩門課都查完了 —— 沒有任何一列還停在「查上課時間中」
+      expect(find.textContaining('查上課時間中'), findsNothing);
+      final detail = ais.seen.where(
+        (r) => r.page.startsWith('TKE2240_03.aspx'),
+      );
+      expect(detail, hasLength(2), reason: '整批都要查，不是只查看得見的那一列');
+      await unmount(tester);
+    });
+
+    testWidgets('撞堂的課可以收起來，而且要說收了幾門', (tester) async {
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage('102,103,104'),
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+      // 第一門加進預排（102,103,104），第二門的時間一樣 —— 一定撞。
+      await addFirstCourse(tester);
+      await searchByKeyword(tester, '計算機');
+
+      expect(find.textContaining('撞堂'), findsWidgets);
+      expect(find.text('離散數學'), findsOneWidget);
+
+      // 預設是顯示的 —— 上課時間是陸續查到的，預設隱藏會讓列在
+      // 使用者眼前消失。要收起來是他自己按的。
+      await tester.tap(find.widgetWithText(TextButton, '隱藏').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('離散數學'), findsNothing);
+      expect(find.textContaining('已隱藏 1 門撞堂的課'), findsOneWidget);
       await unmount(tester);
     });
 
