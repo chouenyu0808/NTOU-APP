@@ -45,8 +45,8 @@ app/            Flutter 專案（幾乎所有工作都在這）
   lib/src/parsing/  HTML → 資料模型
   lib/src/ui/       畫面
   lib/src/config/   selectors.json —— 所有會因學校改版而爛掉的字串都在這裡
-  test/             444 個測試
-spike/          Python 探索腳本與真實擷取頁面（**不進版控**）
+  test/             475 個測試
+spike/          Python 探索腳本（有進版控）與真實擷取頁面（fixtures/*.html 不進）
 ```
 
 ## 不進版控的東西
@@ -73,7 +73,7 @@ $env:PATH = "C:\Users\choue\flutter\bin;$env:PATH"
 
 ```bash
 cd app && flutter analyze          # 應該是 No issues found
-cd app && flutter test             # 444 個測試
+cd app && flutter test             # 475 個測試
 ```
 
 裝到手機（Android，release 目前借用 debug key 簽章）：
