@@ -15,6 +15,7 @@ class FunctionView {
     required this.schema,
     required this.cascadeFields,
     this.result,
+    this.extraResults = const [],
     this.values = const {},
   });
 
@@ -32,6 +33,12 @@ class FunctionView {
   /// UI 要分開顯示，不然使用者不知道自己按了沒。
   final DataGridResult? result;
 
+  /// 這一頁上**其餘**的結果表格（[result] 是第一張）。
+  ///
+  /// 線上加退選一頁有兩張：可加選的課、以及已選上的課（退選在那一張上）。
+  /// 絕大多數功能頁只有一張，這時候這裡是空的。
+  final List<DataGridResult> extraResults;
+
   /// 使用者目前填的值。
   final Map<String, String> values;
 
@@ -46,6 +53,7 @@ class FunctionView {
     FunctionSchema? schema,
     Set<String>? cascadeFields,
     DataGridResult? result,
+    List<DataGridResult>? extraResults,
     Map<String, String>? values,
     bool clearResult = false,
   }) =>
@@ -55,6 +63,9 @@ class FunctionView {
         schema: schema ?? this.schema,
         cascadeFields: cascadeFields ?? this.cascadeFields,
         result: clearResult ? null : (result ?? this.result),
+        extraResults: clearResult
+            ? const []
+            : (extraResults ?? this.extraResults),
         values: values ?? this.values,
       );
 }

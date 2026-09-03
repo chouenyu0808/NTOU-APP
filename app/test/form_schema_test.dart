@@ -106,8 +106,10 @@ void main() {
     }, skip: skipReason);
 
     test('查無資料：isEmpty 為真，而不是解析失敗', () {
+      // 114-2：使用者那學期還沒在本校選課。
+      // （115-1 從 2026-09-03 起有課了，不能再拿來當空結果的樣本。）
       final r = parseDataGrid(
-        fixture('Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_115_1.html'),
+        fixture('Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_114_2.html'),
       );
 
       expect(r.isEmpty, isTrue);

@@ -5,6 +5,7 @@ import '../ais/form_schema.dart';
 import '../data/function_view.dart';
 import '../menu/menu_catalog.dart';
 import '../parsing/data_grid.dart';
+import '../parsing/timetable.dart';
 import 'app_controller.dart';
 import 'schema_field_input.dart';
 import 'theme.dart';
@@ -105,6 +106,128 @@ class _FunctionPageState extends State<FunctionPage> {
         tabIndex: view.schema.isTabbed ? group.index : null,
       );
     });
+  }
+
+  /// 按下一列上的鈕。
+  ///
+  /// 會改資料的（加選 / 退選）**一定要先問**。學校的網頁版按下去就直接送了，
+  /// 但那是在滑鼠和大螢幕上；手機上一根手指滑過整排「加選」，誤觸的代價是
+  /// 一門他沒想選的課，而選課期間結束之後就退不掉了。
+  Future<void> _runAction(RowAction action) async {
+    final view = _view;
+    if (view == null) return;
+
+    // 「詳」的內容**每一列自己就帶著**（`KEY` 屬性）—— 不用送 postback。
+    //
+    // 送出去反而是壞的：學校那顆回的不是表格，而是同一頁再注入一行
+    // `fn_open(...)`，我們把它當成查詢結果去解析就是一片空白 ——
+    // 使用者按下去什麼都沒發生。
+    if (!action.mutating && action.data.isNotEmpty) {
+      await _showRowDetail(action);
+      return;
+    }
+
+    if (action.mutating && !await _confirmAction(action)) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    await _guard(() async {
+      _view = await widget.controller.repository.runRowAction(view, action.target);
+    });
+  }
+
+  /// 「詳」：把這一列 `KEY` 裡的東西攤開給使用者看。
+  Future<void> _showRowDetail(RowAction action) async {
+    // 學校的欄位代碼 → 人看得懂的名字。認不出來的就不顯示 ——
+    // 把 `IS_MAST_DOCTOR_MERGE` 之類的內部旗標倒給使用者只是雜訊。
+    const labels = <String, String>{
+      'CH_LESSON': '課名',
+      'ENG_LESSON': '英文課名',
+      'COSID': '課號',
+      'OPEN_CLASSID': '開課班別',
+      'CRD': '學分',
+      'LECTR_TCH_CH': '授課老師',
+      'FACULTY_NAME': '開課單位',
+      'MAX_ST': '人數上限',
+      'GRADE': '年級',
+    };
+
+    final rows = <(String, String)>[
+      for (final e in labels.entries)
+        if ((action.data[e.key] ?? '').isNotEmpty) (e.value, action.data[e.key]!),
+    ];
+    final seg = action.data['SEG'] ?? '';
+    final slots = parseTimeCodes(seg);
+
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(action.courseName,
+                  style: Theme.of(ctx).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              if (slots.isNotEmpty)
+                _DetailRow(
+                  label: '上課時間',
+                  value: slots.map((s) => s.toString()).join('、'),
+                ),
+              for (final (label, value) in rows)
+                if (label != '課名') _DetailRow(label: label, value: value),
+              if (action.notice.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(action.notice,
+                    style: Theme.of(ctx).textTheme.bodySmall),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmAction(RowAction action) async {
+    final name = action.courseName;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(name.isEmpty ? action.label : '${action.label}「$name」'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('這會送到學校系統，馬上生效。'),
+            // 加選須知要在按之前看到。「須於實習前至系辦完成實習申請流程」
+            // 這種話，事後才看到就太晚了。
+            if (action.notice.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(action.notice,
+                  style: Theme.of(ctx).textTheme.bodySmall),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(action.label),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
   }
 
   SchemaGroup _groupOf(FunctionView view) {
@@ -219,6 +342,27 @@ class _FunctionPageState extends State<FunctionPage> {
     }
     if (r.isEmpty || r.columns.isEmpty) return const SizedBox.shrink();
 
+    // 一頁可能有不只一張表（線上加退選：上面是可加選的課，下面是已選上的、
+    // 帶著退選鈕的那張）。少畫一張等於整個退選功能不存在。
+    if (view.extraResults.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _grid(r),
+          for (final extra in view.extraResults)
+            if (extra.columns.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              _grid(extra),
+            ],
+        ],
+      );
+    }
+    return _grid(r);
+  }
+
+  Widget _grid(DataGridResult r) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -240,14 +384,25 @@ class _FunctionPageState extends State<FunctionPage> {
             dataRowMaxHeight: 64,
             columns: [for (final c in r.columns) DataColumn(label: Text(c))],
             rows: [
-              for (final row in r.rows)
+              // 用列索引跑，不是 for-in —— 動作是靠 (列, 欄) 對回去的，
+              // 拿列的內容去反查會在兩列一模一樣時對到錯的那一列。
+              for (var i = 0; i < r.rows.length; i++)
                 DataRow(
                   cells: [
-                    for (final cell in row)
+                    for (var col = 0; col < r.rows[i].length; col++)
                       DataCell(
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 200),
-                          child: Text(cell, overflow: TextOverflow.ellipsis),
+                          // 這一格可以按（加選 / 退選 / 詳）就畫成鈕。畫成純文字的話
+                          // 使用者會一直戳它 —— 學校的畫面上那本來就是連結。
+                          child: switch (r.actionAt(i, col)) {
+                            final a? => _ActionButton(
+                                action: a,
+                                onTap: _busy ? null : () => _runAction(a),
+                              ),
+                            _ => Text(r.rows[i][col],
+                                overflow: TextOverflow.ellipsis),
+                          },
                         ),
                       ),
                   ],
@@ -446,6 +601,60 @@ class FunctionTile extends StatelessWidget {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => FunctionPage(controller: controller, function: function),
+      ),
+    );
+  }
+}
+
+
+/// 結果表格裡一列上的鈕。
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({required this.action, this.onTap});
+
+  final RowAction action;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // 學校自己就說這門不能加 —— 畫成暗的，但**留在畫面上**。
+    // 整顆拿掉的話那一列會少一格，使用者會以為是 App 沒畫出來。
+    final blocked = action.mutating && action.blocked;
+    return TextButton(
+      onPressed: blocked ? null : onTap,
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        minimumSize: const Size(0, 36),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: Text(action.label),
+    );
+  }
+}
+
+
+/// 「詳」面板上的一行。
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 76,
+            child: Text(label,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ),
+          Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
+        ],
       ),
     );
   }

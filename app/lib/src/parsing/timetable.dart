@@ -531,3 +531,179 @@ int? _periodOf(String text) {
   final m = _numberRe.firstMatch(text);
   return m == null ? null : int.parse(m.group(0)!);
 }
+
+// ---------- 「選課課表」的格子（QUERY_BTN3） ----------
+
+/// 「選課課表」那張格子的 table id。
+const String kGridTableId = 'table2';
+
+/// 格子裡的一門課。
+///
+/// 跟「選課清單」（`QUERY_BTN1`）互補：清單有學分、選別、授課老師，但
+/// **一欄時間都沒有**（16 欄逐欄看過，2026-09-03 實測）；這張格子有時間和
+/// 教室，卻沒有學分和老師。兩邊靠課號合併。
+class GridCourse {
+  const GridCourse({
+    required this.code,
+    required this.name,
+    this.unit = '',
+    this.classLabel = '',
+    this.room = '',
+    this.slots = const [],
+  });
+
+  final String code;
+  final String name;
+
+  /// 開課單位。
+  final String unit;
+
+  /// 格子裡寫的是短班別（`1A`），選課清單寫的是長的（`1年A班`）——
+  /// 所以**不能拿它跟清單比對**，合併一律用課號。
+  final String classLabel;
+
+  final String room;
+  final List<TimeSlot> slots;
+
+  GridCourse withSlots(List<TimeSlot> s) => GridCourse(
+        code: code,
+        name: name,
+        unit: unit,
+        classLabel: classLabel,
+        room: room,
+        slots: s,
+      );
+}
+
+/// 解析「選課課表」回的那張格子，回傳「課號 → 這門課」。
+///
+/// 跟 [parseTimetableGrid] 的差別：那個是通用的格子解析（教師課表那種），
+/// 靠啟發式猜哪一段是老師、哪一段是教室；這一頁的格子每一段的意義是固定的，
+/// 而且**帶課號** —— 有課號才能跟選課清單合併，所以另外寫一個。
+///
+/// 頁面結構（真實資料，見
+/// `spike/fixtures/…TKE2240_01__QUERY_BTN3_115_1.html`）：
+/// ```html
+/// <table id='table2'>
+///   <tr><td>&nbsp;</td><td>星期一</td>…<td>星期日</td></tr>
+///   <tr><td>第二節<br/>09:20<br/>~<br/>10:10<br/></td>
+///       <td><a href='javascript:fn_open("…");'>計算機概論<br>B57011RQ<br>
+///           資訊工程學系<br>1A<br>INS105</a></td>
+///       …
+/// ```
+///
+/// **星期是從表頭對出來的，不是靠欄位索引硬數。** 這張表的標記是壞的
+/// （每個 `<td>` 後面多一個 `</td>`），解析器補救的方式不保證跨版本一樣 ——
+/// 靠索引的話某次改版就會讓整張課表平移一天，而畫面上完全看不出來
+/// （每一格都有課、看起來很正常，只是全錯）。表頭對不到就不猜，回空的。
+Map<String, GridCourse> parseEnrolledGrid(String html) {
+  final doc = html_parser.parse(html);
+  final table = doc.querySelector('#$kGridTableId');
+  if (table == null) return const {};
+
+  final rows = table.querySelectorAll('tr');
+  if (rows.length < 2) return const {};
+
+  // 表頭：欄位索引 → 星期（0 = 週一）。
+  final weekdayOfColumn = <int, int>{};
+  final headers = rows.first.querySelectorAll('td');
+  for (var i = 0; i < headers.length; i++) {
+    final w = _weekdayOfHeader(clean(headers[i].text));
+    if (w != null) weekdayOfColumn[i] = w;
+  }
+  if (weekdayOfColumn.isEmpty) return const {};
+
+  final byCode = <String, GridCourse>{};
+  final slotsByCode = <String, Set<TimeSlot>>{};
+
+  for (final row in rows.skip(1)) {
+    final cells = row.querySelectorAll('td');
+    final period = _gridPeriodOf(clean(cells.isEmpty ? '' : cells.first.text));
+    if (period == null) continue;
+
+    for (var i = 1; i < cells.length; i++) {
+      final weekday = weekdayOfColumn[i];
+      // 表頭沒有對應的欄就跳過，不要猜。
+      if (weekday == null) continue;
+
+      // 同一格可能不只一門課（同時段擋修、或學校排錯）。
+      for (final link in cells[i].querySelectorAll('a')) {
+        final g = _gridCourseOf(link);
+        if (g == null) continue;
+        byCode.putIfAbsent(g.code, () => g);
+        (slotsByCode[g.code] ??= <TimeSlot>{}).add(TimeSlot(weekday, period));
+      }
+    }
+  }
+
+  return {
+    for (final e in byCode.entries)
+      e.key: e.value.withSlots(
+        (slotsByCode[e.key]?.toList() ?? <TimeSlot>[])..sort(),
+      ),
+  };
+}
+
+/// 一格裡的 `<a>`：`課名<br>課號<br>開課單位<br>班別<br>教室`。
+///
+/// 用 `innerHtml` 拆 `<br>` 而不是讀 `.text` —— `.text` 會把五段黏成一串
+/// （`計算機概論B57011RQ資訊工程學系1AINS105`），拆不開。
+GridCourse? _gridCourseOf(dom.Element link) {
+  final parts = link.innerHtml
+      .split(RegExp(r'<br\s*/?>', caseSensitive: false))
+      .map((s) => clean(s.replaceAll(RegExp(r'<[^>]*>'), '')))
+      .where((s) => s.isNotEmpty)
+      .toList();
+  if (parts.length < 2) return null;
+
+  // 課號沒有就沒辦法跟選課清單合併，這一格等於用不上。
+  final code = parts[1];
+  if (code.isEmpty) return null;
+
+  return GridCourse(
+    code: code,
+    name: parts[0],
+    unit: parts.length > 2 ? parts[2] : '',
+    classLabel: parts.length > 3 ? parts[3] : '',
+    room: parts.length > 4 ? parts[4] : '',
+  );
+}
+
+/// 「星期一」→ 0。認不得就回 null。
+int? _weekdayOfHeader(String text) {
+  for (var i = 0; i < kWeekdays.length; i++) {
+    if (text.contains('星期${kWeekdays[i]}') || text == kWeekdays[i]) return i;
+  }
+  return null;
+}
+
+/// 「第二節」→ 2、「第0節」→ 0、「第十四節」→ 14。
+///
+/// 不能用通用的 [_periodOf]（抓文字裡第一個數字）—— 這一頁的節次欄同時寫著
+/// 時鐘時間（`第二節09:20~10:10`），抓到的會是 `09`，整張課表平移七節。
+///
+/// 學校在同一張表裡混用兩種寫法：第 0 節是阿拉伯數字，其餘是國字。
+int? _gridPeriodOf(String text) {
+  final m = RegExp(r'第\s*([0-9〇零一二三四五六七八九十]+)\s*節').firstMatch(text);
+  return m == null ? null : _cjkNumber(m.group(1)!);
+}
+
+/// 0–19 的國字或阿拉伯數字。這張表只到 14，不必處理「二十一」那種。
+int? _cjkNumber(String s) {
+  final t = s.trim();
+  if (t.isEmpty) return null;
+
+  final arabic = int.tryParse(t);
+  if (arabic != null) return arabic;
+
+  const digits = <String, int>{
+    '〇': 0, '零': 0, '一': 1, '二': 2, '三': 3, '四': 4,
+    '五': 5, '六': 6, '七': 7, '八': 8, '九': 9,
+  };
+  if (t == '十') return 10;
+  if (t.startsWith('十') && t.length == 2) {
+    final d = digits[t.substring(1)];
+    return d == null ? null : 10 + d;
+  }
+  return t.length == 1 ? digits[t] : null;
+}

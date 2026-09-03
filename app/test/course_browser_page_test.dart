@@ -272,7 +272,8 @@ void main() {
       await open(tester);
       await searchByKeyword(tester, '計算機');
 
-      final sent = ais.posts.single;
+      // 第一筆才是查詢；後面那些是清單上每一列的上課時間探測（標衝堂用）。
+      final sent = ais.posts.first;
       expect(sent.pressed('QUERY_BTN7'), isTrue);
 
       // 頁面預設是「類別=課號(0)、查詢模式=精準(0)」——
@@ -359,7 +360,8 @@ void main() {
       await tester.tap(find.text('學士班').last);
       await tester.pumpAndSettle();
 
-      final sent = ais.posts.single;
+      // 第一筆才是查詢，後面是每一列的上課時間探測。
+      final sent = ais.posts.first;
       // __doPostBack 靠 __EVENTTARGET 說是誰觸發的，**不送任何按鈕的 name**。
       expect(sent.cascaded('Q_DEGREE_CODE'), isTrue);
       expect(sent.pressed('QUERY_BTN1'), isFalse);
@@ -410,13 +412,15 @@ void main() {
       await tester.pumpAndSettle();
 
       // 系所不是連動欄位，選了不該多送一次 postback。
+      // 只送一次查詢（探測不會發生 —— 這個情境沒有結果列）。
       expect(ais.posts.length, 1);
       expect(selectedValue(tester, 1), 'CS');
 
       await tester.tap(find.widgetWithText(FilledButton, '查詢此系所課程'));
       await tester.pumpAndSettle();
 
-      final sent = ais.posts.last;
+      // 查詢那一筆（後面還有每一列的上課時間探測）。
+      final sent = ais.posts.firstWhere((r) => r.pressed('QUERY_BTN1'));
       expect(sent.pressed('QUERY_BTN1'), isTrue);
       expect(sent['Q_DEGREE_CODE'], 'B');
       expect(sent['Q_FACULTY_CODE'], 'CS');
@@ -489,8 +493,12 @@ void main() {
       await addFirstCourse(tester);
 
       // 頁面上的引號是 `&#39;`，所以這個目標只有走 DOM 才讀得出來。
-      final sent = ais.posts.last;
-      expect(sent['__EVENTTARGET'], _target('ctl02'));
+      //
+      // 找「有送這個目標的那一筆」，不是最後一筆 —— 清單上每一列都會被
+      // 探測一次上課時間（標衝堂用），最後一筆多半是別列的。
+      final sent = ais.posts.firstWhere(
+        (r) => r['__EVENTTARGET'] == _target('ctl02'),
+      );
       // 是 postback 不是按鈕：按鈕的 name 一個都不能送。
       expect(sent.pressed('QUERY_BTN7'), isFalse);
       await unmount(tester);

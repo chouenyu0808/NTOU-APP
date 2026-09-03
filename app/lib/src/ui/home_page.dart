@@ -233,13 +233,28 @@ class _TodayCard extends StatelessWidget {
     }
 
     // 學校明確回「查無符合資料」—— 這是答案，不是錯誤。
-    // **不要在這裡編一個開學日期出來**：校園行事曆不在學校的學生選單裡，
-    // 我們沒有那份資料，寫死一個日期只會在明年變成錯的。
+    // 開學日期**不要寫死**，一律從行事曆讀（見下面的 nearestClassStart）——
+    // 寫死一個日期只會在明年變成錯的。
     if (t.isEmpty) {
       return wrap(_Notice(
         icon: Icons.beach_access_outlined,
         title: '這學期還沒有選課資料',
         body: '${t.label}｜學校系統目前查不到修課紀錄。\n選課之後回來這裡就會出現。',
+      ));
+    }
+
+    // 還沒開始上課 —— 課表已經有了，但那些課還沒發生。
+    //
+    // 不擋的話，開學前首頁會照著課表說「今天已經上完 1 堂」，
+    // 而使用者根本還沒去上過任何一堂課。日期是從校園行事曆讀的
+    // （學校寫「開始上課」不是「開學」），行事曆抓不到就跳過這一段 ——
+    // **寧可少講一句，也不要編一個開學日期出來。**
+    final classStart = nearestClassStart(controller.calendarEvents, now);
+    if (classStart != null && DateTime(now.year, now.month, now.day).isBefore(classStart)) {
+      return wrap(_Notice(
+        icon: Icons.event_available_outlined,
+        title: '${classStart.month} 月 ${classStart.day} 日開始上課',
+        body: '${t.label}｜這學期共 ${t.courses.length} 門課。',
       ));
     }
 

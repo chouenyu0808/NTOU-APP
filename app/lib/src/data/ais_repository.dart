@@ -181,10 +181,19 @@ class AisRepository {
   Future<TimetableResult?> cached(String year, String semester) =>
       cache.read(year, semester);
 
-  /// 查某個學期的選課清單。
+  /// 查某個學期的課表。
   ///
-  /// 用「選課清單」（`QUERY_BTN1`）而不是「選課課表」（`QUERY_BTN3`）：
-  /// 後者掛在 Crystal Reports 上，輸出格式沒驗證過。
+  /// **要送兩顆按鈕，因為沒有任何一頁給得齊。**
+  ///   - 「選課清單」（`QUERY_BTN1`）：16 欄有學分、選別、授課老師、人數，
+  ///     但**一欄時間都沒有**（2026-09-03 對真實頁面逐欄看過）。
+  ///   - 「選課課表」（`QUERY_BTN3`）：畫成格子，有星期、節次和教室，
+  ///     但沒有學分也沒有老師。
+  ///
+  /// 兩邊靠**課號**合併。不用班別：格子裡寫 `1A`、清單裡寫 `1年A班`。
+  ///
+  /// 早期的註解說 `QUERY_BTN3` 掛在 Crystal Reports 上、輸出格式未驗證，
+  /// 所以只用清單 —— 那是還沒抓過真實頁面時的推測。實際上它回的是一張
+  /// 普通的 HTML 表格（`<table id='table2'>`）。
   Future<TimetableResult> fetchTimetable({
     required String year,
     required String semester,
@@ -208,12 +217,19 @@ class AisRepository {
     _queryPage = result;
 
     final empty = isEmptyResult(result.html);
+    // 「查無符合資料」時不要再去 parse —— 那頁的 DataGrid 是空的，
+    // parse 出 0 筆會跟「parser 壞了」長得一模一樣。
+    var courses = empty ? const <Course>[] : parseCourseList(result.html);
+
+    // 沒有課就不必再問一次課表 —— 省一次請求，選課尖峰時每一次都算。
+    if (courses.isNotEmpty) {
+      courses = await _withSlots(session, courses, year, semester);
+    }
+
     final out = TimetableResult(
       year: year,
       semester: semester,
-      // 「查無符合資料」時不要再去 parse —— 那頁的 DataGrid 是空的，
-      // parse 出 0 筆會跟「parser 壞了」長得一模一樣。
-      courses: empty ? const [] : parseCourseList(result.html),
+      courses: courses,
       columns: empty ? const [] : courseListColumns(result.html),
       isEmpty: empty,
       fetchedAt: DateTime.now(),
@@ -221,6 +237,48 @@ class AisRepository {
 
     await cache.write(out);
     return out;
+  }
+
+  /// 送「選課課表」，把星期節次和教室併回課程清單。
+  ///
+  /// **這一步可以失敗。** 抓不到時間的課表仍然是有用的東西（清單、學分、
+  /// 老師都在），所以任何錯誤都只是「這次沒有時間」，不該讓整張課表變成
+  /// 一個錯誤畫面。學校那邊改版時尤其是這樣 —— 使用者至少還看得到修了什麼。
+  Future<List<Course>> _withSlots(
+    AisSession session,
+    List<Course> courses,
+    String year,
+    String semester,
+  ) async {
+    final t = config.timetable;
+    try {
+      final page = await session.submitForm(
+        _queryPage!,
+        t.timetableButton,
+        values: {t.yearField: year, t.semesterField: semester},
+      );
+      session.checkSession(page);
+      // 這一份帶著更新過的 __VIEWSTATE，下次換學期用它當基底。
+      _queryPage = page;
+
+      final grid = parseEnrolledGrid(page.html);
+      if (grid.isEmpty) return courses;
+
+      return [
+        for (final c in courses)
+          if (grid[c.code] case final g?)
+            c.copyWith(
+              slots: g.slots,
+              // 教室只有格子裡有；清單那 16 欄沒有這一欄。
+              room: g.room.isEmpty ? null : g.room,
+            )
+          else
+            c,
+      ];
+    } on AisException catch (e) {
+      log?.call('  選課課表抓取失敗（${e.runtimeType}），只顯示清單');
+      return courses;
+    }
   }
 
   // ---------- 通用功能頁 ----------
@@ -321,12 +379,15 @@ class AisRepository {
     );
     session.checkSession(page);
 
+    // 一頁可能有不只一張結果表格（線上加退選：可加選的課 + 已選上的課）。
+    final grids = parseDataGrids(page.html);
     return view.copyWith(
       page: page,
       schema: FunctionSchema.fromPage(page),
       cascadeFields: AisSession.autoPostBackFields(page),
       values: merged,
-      result: parseDataGrid(page.html),
+      result: grids.isEmpty ? null : grids.first,
+      extraResults: grids.skip(1).toList(),
     );
   }
 
@@ -429,6 +490,43 @@ class AisRepository {
     session.checkSession(page);
 
     return parseCourseTimeSlots(page.html);
+  }
+
+  /// 按下結果表格某一列上的鈕（加選 / 退選 / 詳）。
+  ///
+  /// [target] 一定要是 [RowAction.target] 讀出來的 —— **不要自己組**。
+  /// 那串 id 是 ASP.NET 依 DataGrid 的列數編的，而我們濾掉了分頁列和合計列，
+  /// 畫面上的第幾列跟它的列號對不起來。
+  ///
+  /// **會改資料的鈕（加選 / 退選）由呼叫端負責先問過使用者。** 這裡只送。
+  ///
+  /// 學校那邊的鈕上還掛著一段 `doAddClick(...)` 前端驗證，我們沒有重現它 ——
+  /// 真正的把關在伺服器，擋下來的話回應會帶著訊息。所以送出後照樣把整頁
+  /// 重新解析回來，讓使用者看到學校說了什麼。
+  Future<FunctionView> runRowAction(FunctionView view, String target) async {
+    final session = _requireSession();
+    final sendable = _sendable(view, view.values);
+    final page = await session.postback(
+      view.page,
+      target,
+      values: sendable.values,
+      omit: sendable.omit,
+    );
+    session.checkSession(page);
+
+    final schema = FunctionSchema.fromPage(page);
+    // 一頁可能有不只一張結果表格（線上加退選：可加選的課 + 已選上的課）。
+    final grids = parseDataGrids(page.html);
+    return view.copyWith(
+      page: page,
+      schema: schema,
+      cascadeFields: AisSession.autoPostBackFields(page),
+      values: {
+        for (final f in schema.visibleFields) f.name: f.value,
+      },
+      result: grids.isEmpty ? null : grids.first,
+      extraResults: grids.skip(1).toList(),
+    );
   }
 
   /// 打開「查詢必修科目表」。

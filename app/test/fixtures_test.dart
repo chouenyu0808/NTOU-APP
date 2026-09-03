@@ -85,17 +85,45 @@ void main() {
       });
     }, skip: skipReason);
 
-    test('個人課表查詢：六個學期都是「查無符合資料」', () {
-      // 2026-08-25 實測，這個帳號還沒在本校選課。
-      // 這個測試是在鎖「空結果認得出來」，不是在鎖「一定沒資料」——
-      // 之後有課了，這裡會變成 red，那正是該回來調 parser 的時候。
-      for (final f in [
-        'Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_115_1.html',
-        'Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_114_2.html',
-      ]) {
-        if (!has(f)) continue;
-        expect(isEmptyResult(fixture(f)), isTrue, reason: f);
+    test('個人課表查詢：115-1 有課，之前的學期是空的', () {
+      // 2026-09-03 使用者選課之後重抓。在那之前六個學期全是「查無符合資料」
+      // （轉學生，尚未在本校選課），parser 只能拿全校課程頁去對。
+      const enrolled =
+          'Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_115_1.html';
+      if (has(enrolled)) {
+        expect(isEmptyResult(fixture(enrolled)), isFalse);
       }
+
+      // 舊學期仍然是空的 —— 空結果要認得出來，不然會跟「parser 壞了」搞混。
+      const before = 'Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_114_2.html';
+      if (has(before)) {
+        expect(isEmptyResult(fixture(before)), isTrue);
+      }
+    }, skip: skipReason);
+
+    test('個人課表查詢：真實的選課清單解得出課，但一欄時間都沒有', () {
+      const f = 'Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_115_1.html';
+      if (!has(f)) return;
+      final html = fixture(f);
+
+      final columns = courseListColumns(html);
+      expect(columns.length, 16);
+      expect(columns, contains('課號'));
+      expect(columns, contains('學分'));
+      expect(columns, contains('選別'));
+
+      // **這就是首頁畫不出格子的原因。** 16 欄裡沒有任何一欄是上課時間，
+      // 時間要另外送「選課課表」（QUERY_BTN3）才拿得到。
+      expect(
+        columns.where((c) => c.contains('時間') || c.contains('節')),
+        isEmpty,
+      );
+
+      final courses = parseCourseList(html);
+      expect(courses, hasLength(3));
+      expect(courses.every((c) => c.slots.isEmpty), isTrue);
+      expect(courses.first.credits, 3);
+      expect(courses.first.selectionType, '必修');
     }, skip: skipReason);
 
     test('全校課程查詢：真實的 DataGrid 解得出課', () {

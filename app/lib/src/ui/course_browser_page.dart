@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../ais/exceptions.dart';
@@ -56,6 +58,31 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   /// 使用者第一個念頭是「搜尋壞了」，不是「喔那門我加過了」。
   bool _showPlanned = false;
 
+  // ---------- 每一列的上課時間（拿來標衝堂） ----------
+  //
+  // **查詢結果那 17 欄沒有上課時間**，所以每一門都得走一次「點課號 →
+  // fn_open → GET 詳細頁」才知道它排在哪幾節。一次把整頁結果都抓完是不行的：
+  // 搜「計算機」會回好幾十筆，那是上百次請求，而選課尖峰時學校的機器正忙。
+  //
+  // 所以只抓**使用者真的捲到的那幾列**（`itemBuilder` 只會為看得見的列跑），
+  // 一次一門排隊送，抓過的存起來不重抓。
+
+  /// 課號＋班別 → 那門課的時段。抓成功才會進來。
+  final Map<String, List<TimeSlot>> _slots = {};
+
+  /// 抓過但失敗（或學校根本沒給時間）的。
+  ///
+  /// 跟「還沒抓」要分得開：都當成「沒有時段」的話，畫面上會用一模一樣的樣子
+  /// 表達「不衝堂」和「不知道衝不衝」—— 而前者是承諾，後者不是。
+  final Set<String> _slotsUnknown = {};
+
+  final List<Course> _probeQueue = [];
+  bool _probing = false;
+
+  /// 換一次搜尋就 +1。舊的探測回來時對不上就丟掉 ——
+  /// 不然上一次搜尋的結果會蓋到這一次的列上。
+  int _probeToken = 0;
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +130,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       _busy = true;
       _error = null;
       _results = null;
+      _resetProbes();
     });
     await _guard(() async {
       _view = await widget.controller.repository.searchCourseByName(view, keyword);
@@ -124,6 +152,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       _busy = true;
       _error = null;
       _results = null;
+      _resetProbes();
     });
     await _guard(() async {
       _view = await widget.controller.repository.searchCourseByFaculty(
@@ -173,9 +202,90 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   void _parseResults(String html) {
     if (isEmptyResult(html)) {
       _results = const [];
+      _resetProbes();
     } else {
       _results = parseCourseList(html);
+      _resetProbes();
     }
+  }
+
+  // ---------- 衝堂探測 ----------
+
+  String _keyOf(Course c) => PlannedCourse(course: c).key;
+
+  /// 這一列還不知道時間的話，排進佇列。
+  void _ensureSlots(Course course) {
+    final key = _keyOf(course);
+    if (_slots.containsKey(key) ||
+        _slotsUnknown.contains(key) ||
+        _probeQueue.any((c) => _keyOf(c) == key)) {
+      return;
+    }
+    _probeQueue.add(course);
+    // itemBuilder 正在 build，不能在這裡 setState —— 下一格再開工。
+    scheduleMicrotask(_drainProbeQueue);
+  }
+
+  Future<void> _drainProbeQueue() async {
+    if (_probing) return;
+    _probing = true;
+    final token = _probeToken;
+
+    while (_probeQueue.isNotEmpty && mounted && token == _probeToken) {
+      final course = _probeQueue.removeAt(0);
+      final key = _keyOf(course);
+      var slots = const <TimeSlot>[];
+      try {
+        // 同一個課號常有 A班／B班，時間不一樣 —— 要帶班別和老師才認得出這一列。
+        final target = courseDetailTarget(
+          _view!.page.html,
+          course.code,
+          classLabel: course.classLabel,
+          teacher: course.teacher,
+        );
+        if (target != null) {
+          slots = await widget.controller.repository
+              .fetchCourseTimeSlots(_view!, target);
+        }
+      } catch (e) {
+        // 探測失敗只影響「標不標得出衝堂」，不該讓整頁跳錯誤 ——
+        // 使用者是來找課的，不是來看錯誤訊息的。
+        debugPrint('探測上課時間失敗（${course.code}）：$e');
+      }
+      if (!mounted || token != _probeToken) break;
+      setState(() {
+        if (slots.isEmpty) {
+          _slotsUnknown.add(key);
+        } else {
+          _slots[key] = slots;
+        }
+      });
+    }
+    _probing = false;
+  }
+
+  /// 換搜尋條件時把探測結果丟掉。
+  void _resetProbes() {
+    _probeToken++;
+    _probeQueue.clear();
+    _slots.clear();
+    _slotsUnknown.clear();
+  }
+
+  /// 這門課跟預排裡的哪一門撞在哪幾節。不衝突或還不知道就回 null。
+  ({PlannedCourse other, List<TimeSlot> slots})? _clashOf(Course course) {
+    final plan = _plan;
+    final mine = _slots[_keyOf(course)];
+    if (plan == null || mine == null) return null;
+
+    final key = _keyOf(course);
+    for (final planned in plan.courses) {
+      // 自己跟自己不算 —— 已加入的課還會出現在清單上（切「顯示已排」時）。
+      if (planned.key == key) continue;
+      final hit = planned.slots.where(mine.contains).toList()..sort();
+      if (hit.isNotEmpty) return (other: planned, slots: hit);
+    }
+    return null;
   }
 
   Future<void> _addToPlan(Course course) async {
@@ -199,20 +309,24 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     setState(() => _busy = true);
 
     // 查詢結果那張表（17 欄）**沒有上課時間**，要點進課號的詳細頁才看得到。
-    // 這裡替使用者跑一次那個 postback。
-    var slots = const <TimeSlot>[];
+    //
+    // 標衝堂的探測多半已經抓過這一門了 —— 有就直接用，不要再打一次學校的
+    // 伺服器問同一個問題。
+    var slots = _slots[_keyOf(course)] ?? const <TimeSlot>[];
     try {
-      // 同一個課號常常有好幾列（A班／B班），上課時間不一樣 ——
-      // 要帶著班別和老師才認得出使用者按的是哪一列。
-      final target = courseDetailTarget(
-        _view!.page.html,
-        course.code,
-        classLabel: course.classLabel,
-        teacher: course.teacher,
-      );
-      if (target != null) {
-        slots = await widget.controller.repository
-            .fetchCourseTimeSlots(_view!, target);
+      if (slots.isEmpty) {
+        // 同一個課號常常有好幾列（A班／B班），上課時間不一樣 ——
+        // 要帶著班別和老師才認得出使用者按的是哪一列。
+        final target = courseDetailTarget(
+          _view!.page.html,
+          course.code,
+          classLabel: course.classLabel,
+          teacher: course.teacher,
+        );
+        if (target != null) {
+          slots = await widget.controller.repository
+              .fetchCourseTimeSlots(_view!, target);
+        }
       }
     } catch (e) {
       // 抓時間失敗不該擋住「加入預排」—— 使用者回預排頁手動填就好，
@@ -563,7 +677,12 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
         final course = results[index];
         final selection = widget.controller.repository.config.courseSearch
             .selectionLabel(course.selectionType);
+        // 捲到才抓時間 —— build 的時候順手排隊。
+        _ensureSlots(course);
+        final clash = _clashOf(course);
+
         return ListTile(
+          isThreeLine: true,
           title: Row(
             children: [
               Flexible(child: Text(course.name)),
@@ -573,7 +692,18 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
               ],
             ],
           ),
-          subtitle: Text('${course.teacher} • ${course.credits}學分 • ${course.classLabel}'),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${course.teacher} • ${course.credits}學分 • ${course.classLabel}'),
+              const SizedBox(height: 2),
+              _ClashHint(
+                clash: clash,
+                slots: _slots[_keyOf(course)],
+                unknown: _slotsUnknown.contains(_keyOf(course)),
+              ),
+            ],
+          ),
           trailing: _isPlanned(course)
               ? const Padding(
                   padding: EdgeInsets.only(right: 8),
@@ -670,5 +800,59 @@ class _ErrorView extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// 一列上的衝堂標示。
+///
+/// **三種狀態要分得開**：還在查、查不到、以及查到了。把「查不到」畫成
+/// 跟「沒衝堂」一樣的空白，等於用沉默承諾了一件我們其實不知道的事 ——
+/// 使用者會照著加課，然後在預排頁才發現撞在一起。
+class _ClashHint extends StatelessWidget {
+  const _ClashHint({
+    required this.clash,
+    required this.slots,
+    required this.unknown,
+  });
+
+  final ({PlannedCourse other, List<TimeSlot> slots})? clash;
+  final List<TimeSlot>? slots;
+  final bool unknown;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final small = theme.textTheme.bodySmall;
+
+    if (clash case final c?) {
+      final where = c.slots.map((s) => s.toString()).join('、');
+      return Row(
+        children: [
+          Icon(Icons.error_outline, size: 14, color: scheme.error),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              '和「${c.other.course.name}」撞在 $where',
+              style: small?.copyWith(color: scheme.error),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (slots != null) {
+      final when = slots!.map((s) => s.toString()).join('、');
+      return Text(when, style: small?.copyWith(color: scheme.onSurfaceVariant));
+    }
+
+    if (unknown) {
+      return Text('查不到上課時間',
+          style: small?.copyWith(color: scheme.onSurfaceVariant));
+    }
+
+    return Text('查上課時間中…',
+        style: small?.copyWith(color: scheme.onSurfaceVariant));
   }
 }

@@ -125,4 +125,44 @@ void main() {
       expect(back.end, e.end);
     });
   });
+
+  _classStartTests();
+}
+
+void _classStartTests() {
+  group('nearestClassStart', () {
+    CalendarEvent ev(String title, int y, int m, int d) =>
+        CalendarEvent(title: title, start: DateTime(y, m, d), end: DateTime(y, m, d));
+
+    // 真實資料（2026-09-03 抓的行事曆）：整學年就這兩筆帶「開始上課」。
+    final events = [
+      ev('115學年度第1學期新生電腦選課', 2026, 9, 3),
+      ev('開始上課、舊生註冊、舊生就學貸款申辦截止、學雜費減免申辦截止日', 2026, 9, 7),
+      ev('本校73週年校慶（全校正常上班上課）', 2026, 10, 17),
+      ev('115學年度第2學期開始上課、舊生註冊、學貸款申辦截止，學雜費減免申辦截止', 2027, 2, 22),
+    ];
+
+    test('開學前抓到的是這學期的 9/7，不是下學期的 2/22', () {
+      expect(nearestClassStart(events, DateTime(2026, 9, 3)), DateTime(2026, 9, 7));
+    });
+
+    test('開學後仍然是 9/7 —— 不能跳到下學期', () {
+      // 用「下一筆」的話這裡會回 2027/02/22，首頁就會說「還有 168 天開始上課」。
+      expect(nearestClassStart(events, DateTime(2026, 9, 8)), DateTime(2026, 9, 7));
+      expect(nearestClassStart(events, DateTime(2026, 11, 1)), DateTime(2026, 9, 7));
+    });
+
+    test('寒假期間抓到的是下學期', () {
+      expect(nearestClassStart(events, DateTime(2027, 1, 20)), DateTime(2027, 2, 22));
+    });
+
+    test('「正常上班上課」不算 —— 那是校慶，不是開學', () {
+      expect(nearestClassStart([ev('本校73週年校慶（全校正常上班上課）', 2026, 10, 17)],
+          DateTime(2026, 10, 1)), isNull);
+    });
+
+    test('沒有行事曆就回 null，不要編一個日期', () {
+      expect(nearestClassStart(const [], DateTime(2026, 9, 3)), isNull);
+    });
+  });
 }

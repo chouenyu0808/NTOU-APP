@@ -143,3 +143,40 @@ List<CalendarEvent> upcoming(
       if (!e.end.isBefore(today)) e,
   ].take(limit).toList();
 }
+
+/// 行事曆裡代表「這學期開始上課」的字樣。
+///
+/// 學校寫的是「開始上課」，不是「開學」——
+/// 真實資料：`2026/09/07 開始上課、舊生註冊、舊生就學貸款申辦截止…`
+/// 以及 `2027/02/22 115學年度第2學期開始上課、舊生註冊…`。
+///
+/// 放在這裡而不是 `selectors.json`：那一份收的是 **AIS** 會因改版而爛掉的字串，
+/// 而行事曆是學校官網的公開頁面，這個檔案裡本來就寫著它的版面假設。
+const List<String> kClassStartMarkers = ['開始上課'];
+
+/// 離 [now] 最近的一次「開始上課」。認不出來就回 null。
+///
+/// **一份行事曆涵蓋整學年，所以會有兩筆**（上下學期各一）。取離 [now] 最近的
+/// 那一筆，而不是「下一筆」——用「下一筆」的話，開學隔天就會抓到下學期的
+/// 日期，然後首頁會說「還有 168 天開始上課」。
+///
+/// 回傳的日期**晚於今天**就代表這學期還沒開始上課。
+DateTime? nearestClassStart(
+  List<CalendarEvent> events,
+  DateTime now, {
+  List<String> markers = kClassStartMarkers,
+}) {
+  final today = DateTime(now.year, now.month, now.day);
+
+  DateTime? best;
+  var bestGap = -1;
+  for (final e in events) {
+    if (!markers.any(e.title.contains)) continue;
+    final gap = e.start.difference(today).inDays.abs();
+    if (best == null || gap < bestGap) {
+      best = e.start;
+      bestGap = gap;
+    }
+  }
+  return best;
+}

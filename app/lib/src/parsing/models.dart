@@ -67,11 +67,11 @@ class Course {
 
   final Map<String, String> raw;
 
-  Course copyWith({List<TimeSlot>? slots}) => Course(
+  Course copyWith({List<TimeSlot>? slots, String? room}) => Course(
         name: name,
         code: code,
         teacher: teacher,
-        room: room,
+        room: room ?? this.room,
         credits: credits,
         classLabel: classLabel,
         selectionType: selectionType,
