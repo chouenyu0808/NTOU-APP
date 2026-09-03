@@ -89,6 +89,8 @@ class BusArrival {
     this.estimateSeconds,
     this.stopStatus = 0,
     this.plateNumber = '',
+    this.stopsAway,
+    this.isLastBus = false,
   });
 
   /// 路線名（`103`、`1579`）。
@@ -109,6 +111,32 @@ class BusArrival {
   final int stopStatus;
 
   final String plateNumber;
+
+  /// 這班車離這一站還有幾站（TDX 的 `StopCountDown`）。
+  ///
+  /// **這是站數不是秒數。** 同一筆資料裡 `EstimateTime: 725` 配
+  /// `StopCountDown: 19` —— 十二分鐘、十九站。當成時間用會變成「19 秒」。
+  ///
+  /// 沒有車的那幾筆這個值是 0，跟「已經到站了」分不出來，所以畫面上
+  /// 只在真的有預估時間的時候才顯示它。
+  final int? stopsAway;
+
+  /// 這一班是不是這條路線今天的最後一班（TDX 的 `IsLastBus`）。
+  ///
+  /// **注意它的意思不是「還會來的末班車」。** 它標的是「這個班次是今天
+  /// 最後一班」，跟那班車還在不在路上無關 —— 深夜抓下來的 15 筆裡有 11 筆
+  /// 帶著 true，因為那個時間剩下的班次本來就都是末班，而且大多已經開走了。
+  ///
+  /// 所以畫面上只在 [isRunning] 的時候才顯示它。不擋的話深夜整張卡片會有
+  /// 十幾行同時喊「末班車」，那是雜訊；擋掉之後它才會變成它該有的意思：
+  /// **這是最後一班，而且還沒走。** 對學生來說那是整排資訊裡最要緊的一件事。
+  final bool isLastBus;
+
+  /// 這一筆到底有沒有車。
+  ///
+  /// 沒有預估時間就是沒有車在路上（末班已過、還沒發車、今天不營運）。
+  /// 「還有幾站」和「末班車」都只在有車的時候才有意義。
+  bool get isRunning => estimateSeconds != null;
 
   /// 排序用的鍵：有預估值的照時間排在前面，沒有的沉到後面。
   int get sortKey => estimateSeconds ?? 1 << 30;
@@ -217,3 +245,97 @@ class ArrivalLabel {
 
 /// 到站時間的輕重。畫面用它決定顏色，不在 widget 裡重算一次分界。
 enum ArrivalTone { now, soon, normal, idle }
+
+// ------------------------------------------------- 點進一條路線之後看到的東西
+
+/// 路線上的一個站牌。
+class RouteStop {
+  const RouteStop({
+    required this.stopUid,
+    required this.name,
+    required this.sequence,
+  });
+
+  final String stopUid;
+  final String name;
+
+  /// 這是這條子路線的第幾站（TDX 的 `StopSequence`，從 1 開始）。
+  ///
+  /// 公車的即時位置也是用同一個編號回報的，兩邊靠它對上。
+  final int sequence;
+}
+
+/// 一台正在跑的車現在在哪。
+class BusPosition {
+  const BusPosition({
+    required this.plate,
+    required this.subRouteUid,
+    required this.stopSequence,
+    this.stopName = '',
+    this.leaving = false,
+  });
+
+  final String plate;
+
+  /// 這台車跑的是哪一條子路線。
+  ///
+  /// **配對一定要用這個，不能只用方向。** 103 是環狀線，它的兩條站序
+  /// 都是 Direction 0 —— 只看方向的話，車會被畫到錯的那一條上面。
+  final String subRouteUid;
+
+  /// 現在在第幾站。跟 [RouteStop.sequence] 對上就知道畫在哪一列。
+  final int stopSequence;
+  final String stopName;
+
+  /// 已經離站了（TDX 的 `A2EventType`：0 是進站、1 是離站）。
+  ///
+  /// 離站代表它正往下一站移動，畫面上講「已離開」比「在這一站」準確。
+  final bool leaving;
+}
+
+/// 一條子路線：一串站序，加上現在跑在上面的車。
+class RouteVariant {
+  const RouteVariant({
+    required this.subRouteUid,
+    required this.subRouteName,
+    required this.direction,
+    this.stops = const [],
+    this.buses = const [],
+  });
+
+  final String subRouteUid;
+  final String subRouteName;
+  final int direction;
+  final List<RouteStop> stops;
+  final List<BusPosition> buses;
+
+  /// 這條子路線開到哪為止 —— 拿來當分頁標題。
+  String get destination => stops.isEmpty ? '' : stops.last.name;
+
+  RouteVariant withBuses(List<BusPosition> buses) => RouteVariant(
+        subRouteUid: subRouteUid,
+        subRouteName: subRouteName,
+        direction: direction,
+        stops: stops,
+        buses: buses,
+      );
+}
+
+/// 點進一條路線看到的全部。
+class RouteDetail {
+  const RouteDetail({
+    required this.routeName,
+    this.variants = const [],
+    this.error,
+  });
+
+  final String routeName;
+
+  /// 這條路線有幾種走法。環狀線會有兩條站序、去回程的路線也是兩條。
+  final List<RouteVariant> variants;
+
+  /// 抓不到時給使用者看的那句話。
+  final String? error;
+
+  bool get isEmpty => variants.isEmpty;
+}

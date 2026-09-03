@@ -472,6 +472,26 @@ $env:TDX_CLIENT_SECRET = "..."
 南投、台中），所以要連 `v2/Bus/Stop/InterCity` 一起查，否則那些 StopID 全部
 解不出名字，印出一整排「都不是」，看起來像慣例不成立，其實只是查錯地方。
 
+### 路線詳情：`--probe-route-detail 103`
+
+查一條路線的站序和公車即時位置（App 那一頁「這台車開到哪一站」用的）。
+`--save` 會把兩份回應存進 `fixtures/tdx/route-<路線>-*.json`。
+
+103 是**最值得拿來當測試案例的一條**，因為它把所有容易做錯的地方都佔全了：
+
+```
+KEE035501（SubRouteName「103」）Direction 0  68 站  終點 八斗子車站
+KEE035601（SubRouteName「103」）Direction 0  64 站  終點 八斗子車站
+```
+
+環狀線，兩條子路線**同名、同方向、同終點**。所以：
+
+- 即時位置要用 `SubRouteUID` 配對，用 `Direction` 會全部配到第一條
+- 分頁標題不能用 `SubRouteName`，也不能用終點站，得補站數才分得開
+
+`describe()` 這裡也踩過一個坑：`Stops` 是 68 個站牌的陣列，原本會整包印出來
+把輸出淹掉。現在陣列只印長度。
+
 ### 刷新頻率：TDX 自己講了
 
 台鐵回應外層帶著 `UpdateInterval: 30`、`SrcUpdateInterval: 60` ——

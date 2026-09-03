@@ -228,9 +228,139 @@ class TransitRepository {
         stopStatus: _int(r['StopStatus']) ?? 0,
         // `-1` 是 TDX 的哨兵值，代表「沒有車」，不是車牌。
         plateNumber: _plate(_text(r['PlateNumb'])),
+        stopsAway: _int(r['StopCountDown']),
+        isLastBus: r['IsLastBus'] == true,
       );
 
   static String _plate(String raw) => raw == '-1' ? '' : raw;
+
+  // ------------------------------------------------ 點進一條路線（站序 + 車在哪）
+
+  /// 這條路線的站序快取。站序一天之內不會變，查一次就好。
+  final Map<String, List<RouteVariant>> _routeStops = {};
+
+  /// 點進一條路線要看的東西：它經過哪些站、現在有幾台車、各在第幾站。
+  ///
+  /// **不丟例外** —— 失敗包成 [RouteDetail.error] 回來，跟 [board] 同一個慣例。
+  ///
+  /// 兩個請求：站序（有快取，通常只有第一次會打）和即時位置（每次都要，
+  /// 那就是「現在開到哪」本身）。
+  Future<RouteDetail> routeDetail(
+    String routeName, {
+    required String city,
+    required bool intercity,
+  }) async {
+    try {
+      final variants = await _stopsOfRoute(routeName,
+          city: city, intercity: intercity);
+      if (variants.isEmpty) {
+        return RouteDetail(routeName: routeName, error: '查不到這條路線的站序');
+      }
+      final buses = await _busPositions(routeName,
+          city: city, intercity: intercity);
+
+      // 車按子路線分堆。**配對用 SubRouteUID，不是方向** —— 環狀線的
+      // 兩條站序方向相同，只看方向會把車畫到錯的那一條上。
+      return RouteDetail(
+        routeName: routeName,
+        variants: [
+          for (final v in variants)
+            v.withBuses([
+              for (final b in buses)
+                if (b.subRouteUid == v.subRouteUid) b,
+            ]),
+        ],
+      );
+    } on TransitUnavailable catch (e) {
+      return RouteDetail(routeName: routeName, error: e.message);
+    }
+  }
+
+  Future<List<RouteVariant>> _stopsOfRoute(
+    String routeName, {
+    required String city,
+    required bool intercity,
+  }) async {
+    final cached = _routeStops[routeName];
+    if (cached != null) return cached;
+
+    final path = intercity
+        ? config.endpoint('intercity_stops_of_route')
+        : config.endpoint('city_bus_stops_of_route', city: city);
+    final template = config.endpoints['route_name_filter'] ?? '';
+    if (path.isEmpty || template.isEmpty) {
+      throw const TransitUnavailable('這項資料尚未設定');
+    }
+
+    final rows = await client.get(
+      path,
+      query: {'\$filter': _nameFilter(template, [routeName])},
+    );
+
+    final variants = [
+      for (final r in rows)
+        RouteVariant(
+          subRouteUid: _text(r['SubRouteUID']),
+          subRouteName: _text(r['SubRouteName']),
+          direction: _int(r['Direction']) ?? 0,
+          stops: _stopsFrom(r['Stops']),
+        ),
+    ]..removeWhere((v) => v.stops.isEmpty);
+
+    if (variants.isNotEmpty) _routeStops[routeName] = variants;
+    return variants;
+  }
+
+  static List<RouteStop> _stopsFrom(Object? raw) {
+    if (raw is! List) return const [];
+    final stops = [
+      for (final e in raw)
+        if (e is Map<String, dynamic>)
+          RouteStop(
+            stopUid: _text(e['StopUID']),
+            name: _text(e['StopName']),
+            sequence: _int(e['StopSequence']) ?? 0,
+          ),
+    ];
+    // TDX 回來的順序通常已經是對的，但站序是這一頁的骨架 ——
+    // 順序錯掉的話畫面會變成一條走不通的路線，而且看起來很像真的。
+    stops.sort((a, b) => a.sequence.compareTo(b.sequence));
+    return stops;
+  }
+
+  Future<List<BusPosition>> _busPositions(
+    String routeName, {
+    required String city,
+    required bool intercity,
+  }) async {
+    final path = intercity
+        ? config.endpoint('intercity_realtime')
+        : config.endpoint('city_bus_realtime', city: city);
+    final template = config.endpoints['route_name_filter'] ?? '';
+    if (path.isEmpty || template.isEmpty) return const [];
+
+    try {
+      final rows = await client.get(
+        path,
+        query: {'\$filter': _nameFilter(template, [routeName])},
+      );
+      return [
+        for (final r in rows)
+          BusPosition(
+            plate: _plate(_text(r['PlateNumb'])),
+            subRouteUid: _text(r['SubRouteUID']),
+            stopSequence: _int(r['StopSequence']) ?? 0,
+            stopName: _text(r['StopName']),
+            // A2EventType：0 進站、1 離站。
+            leaving: _int(r['A2EventType']) == 1,
+          ),
+      ];
+    } on TransitUnavailable {
+      // 查不到車就是「現在沒有車在跑」的樣子 —— 站序還是要看得到。
+      // 深夜本來就沒車，那不該讓整頁變成錯誤訊息。
+      return const [];
+    }
+  }
 
   // ---------------------------------------------------------------- 台鐵
 

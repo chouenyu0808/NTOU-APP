@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import '../transit/tdx_client.dart';
 import '../transit/transit_config.dart';
 import '../transit/transit_models.dart';
+import '../storage/favorite_route_store.dart';
 import '../transit/transit_repository.dart';
+import 'route_page.dart';
 import 'theme.dart';
 
 /// 交通分頁：學生每天在用的那幾個站，現在有什麼車。
@@ -20,12 +22,16 @@ class TransitPage extends StatefulWidget {
   const TransitPage({
     super.key,
     this.repository,
+    this.favorites,
     this.isActive = true,
     this.autoRefresh = const Duration(seconds: 30),
   });
 
   /// 測試會注入一個假的。正式執行時是 null，開頁的時候自己建。
   final TransitRepository? repository;
+
+  /// 最愛路線存哪裡。測試注入一個吃假 SharedPreferences 的。
+  final FavoriteRouteStore? favorites;
 
   /// 使用者現在是不是正在看這一頁。
   ///
@@ -43,6 +49,9 @@ class TransitPage extends StatefulWidget {
 
 class _TransitPageState extends State<TransitPage> {
   TransitRepository? _repo;
+  late final FavoriteRouteStore _favStore =
+      widget.favorites ?? FavoriteRouteStore();
+  Set<String> _favorites = const {};
   List<StopBoard> _boards = const [];
   bool _loading = true;
   bool _configured = true;
@@ -100,6 +109,13 @@ class _TransitPageState extends State<TransitPage> {
 
   Future<void> _boot() async {
     _started = true;
+    // 最愛**不擋著看板**。
+    //
+    // 它是本機的東西，跟公車時間毫無關係 —— 讀它讀得慢或讀不到的時候，
+    // 使用者要看的到站時間不該跟著一起等。所以這裡不 await，
+    // 讀到了再把愛心補上去就好。
+    unawaited(_loadFavorites());
+
     try {
       var repo = widget.repository;
       if (repo == null) {
@@ -128,6 +144,44 @@ class _TransitPageState extends State<TransitPage> {
         _loading = false;
         _fatal = '交通設定讀不到';
       });
+    }
+  }
+
+  Future<void> _loadFavorites() async {
+    try {
+      final favs = await _favStore.read();
+      if (!mounted || favs.isEmpty) return;
+      setState(() => _favorites = favs);
+    } catch (_) {
+      // 讀不到就當作沒有釘過任何路線。這一頁照常能用。
+    }
+  }
+
+  void _openRoute(StopBoard board, String routeName) {
+    final repo = _repo;
+    if (repo == null || routeName.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RoutePage(
+          routeName: routeName,
+          repository: repo,
+          city: board.stop.city,
+          intercity: board.stop.kind == TransitStopKind.interCityBus,
+          // 從哪一站點進來的就標哪一站 —— 68 站的路線攤開來很長。
+          highlightStop: board.stop.name,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggleFavorite(String route) async {
+    if (route.isEmpty) return;
+    try {
+      final next = await _favStore.toggle(route);
+      if (!mounted) return;
+      setState(() => _favorites = next);
+    } catch (_) {
+      // 存不進去就算了，不要為了一個愛心跳錯誤訊息給使用者。
     }
   }
 
@@ -178,12 +232,18 @@ class _TransitPageState extends State<TransitPage> {
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: _boards.length,
+        // 多一列給最上面那行「資料更新於」。
+        itemCount: _boards.length + 1,
         separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (_, i) => _StopCard(
-          board: _boards[i],
-          config: _repo!.config,
-        ),
+        itemBuilder: (_, i) => i == 0
+            ? _UpdatedAt(boards: _boards)
+            : _StopCard(
+                board: _boards[i - 1],
+                config: _repo!.config,
+                favorites: _favorites,
+                onToggleFavorite: _toggleFavorite,
+                onOpenRoute: (route) => _openRoute(_boards[i - 1], route),
+              ),
       ),
     );
   }
@@ -191,10 +251,19 @@ class _TransitPageState extends State<TransitPage> {
 
 /// 一個站一張卡。
 class _StopCard extends StatelessWidget {
-  const _StopCard({required this.board, required this.config});
+  const _StopCard({
+    required this.board,
+    required this.config,
+    this.favorites = const {},
+    this.onToggleFavorite,
+    this.onOpenRoute,
+  });
 
   final StopBoard board;
   final TransitConfig config;
+  final Set<String> favorites;
+  final void Function(String route)? onToggleFavorite;
+  final void Function(String route)? onOpenRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -221,10 +290,8 @@ class _StopCard extends StatelessWidget {
                       if (note != null)
                         Text(
                           note,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
                         ),
                     ],
                   ),
@@ -239,11 +306,25 @@ class _StopCard extends StatelessWidget {
     );
   }
 
+  /// 釘起來的路線排最前面，其餘照到站時間。
+  ///
+  /// **兩組各自照時間排，不是把最愛全部打散重排。** 釘 103 的人要的是
+  /// 「一眼找到 103」，不是「103 一定在最上面但下面亂掉」。
+  List<BusArrival> get _sortedBuses {
+    if (favorites.isEmpty) return board.buses;
+    final pinned = <BusArrival>[];
+    final rest = <BusArrival>[];
+    for (final b in board.buses) {
+      (favorites.contains(b.routeName) ? pinned : rest).add(b);
+    }
+    return [...pinned, ...rest];
+  }
+
   IconData get _icon => switch (board.stop.kind) {
-        TransitStopKind.train => Icons.train,
-        TransitStopKind.interCityBus => Icons.directions_bus_filled,
-        TransitStopKind.cityBus => Icons.directions_bus,
-      };
+    TransitStopKind.train => Icons.train,
+    TransitStopKind.interCityBus => Icons.directions_bus_filled,
+    TransitStopKind.cityBus => Icons.directions_bus,
+  };
 
   Widget _content(BuildContext context, ColorScheme scheme) {
     final error = board.error;
@@ -257,16 +338,21 @@ class _StopCard extends StatelessWidget {
       // 講成錯誤會讓使用者一直重按重新整理。
       return _Inset(
         child: Text(
-          board.stop.kind == TransitStopKind.train
-              ? '目前沒有即將進站的列車'
-              : '目前沒有班次資訊',
+          board.stop.kind == TransitStopKind.train ? '目前沒有即將進站的列車' : '目前沒有班次資訊',
           style: TextStyle(color: scheme.onSurfaceVariant),
         ),
       );
     }
     return Column(
       children: [
-        for (final b in board.buses) _BusRow(arrival: b, config: config),
+        for (final b in _sortedBuses)
+          _BusRow(
+            arrival: b,
+            config: config,
+            isFavorite: favorites.contains(b.routeName),
+            onToggleFavorite: onToggleFavorite,
+            onOpenRoute: onOpenRoute,
+          ),
         for (final t in board.trains) _TrainRow(train: t),
       ],
     );
@@ -278,18 +364,25 @@ class _Inset extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-        child: child,
-      );
+  Widget build(BuildContext context) =>
+      Padding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 16), child: child);
 }
 
 /// 一列公車：路線號 · 往哪 · 還有多久。
 class _BusRow extends StatelessWidget {
-  const _BusRow({required this.arrival, required this.config});
+  const _BusRow({
+    required this.arrival,
+    required this.config,
+    this.isFavorite = false,
+    this.onToggleFavorite,
+    this.onOpenRoute,
+  });
 
   final BusArrival arrival;
   final TransitConfig config;
+  final bool isFavorite;
+  final void Function(String route)? onToggleFavorite;
+  final void Function(String route)? onOpenRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -300,41 +393,72 @@ class _BusRow extends StatelessWidget {
       config.stopStatus,
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          // 路線號固定寬度。**不要讓它跟著字數縮放** ——
-          // 「103」和「1579」寬度不同的話，整欄的「往哪裡」會左右參差。
-          SizedBox(
-            width: 64,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(NtouTheme.radiusXs),
-              ),
-              child: Text(
-                arrival.routeName.isEmpty ? '—' : arrival.routeName,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onPrimaryContainer,
+    // 整列可以點進去看這條路線開到哪。愛心是列裡面的另一個按鈕，
+    // Flutter 會讓它先吃掉自己的點擊，不會連帶開頁。
+    return InkWell(
+      onTap: onOpenRoute == null ? null : () => onOpenRoute!(arrival.routeName),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            // 路線號固定寬度。**不要讓它跟著字數縮放** ——
+            // 「103」和「1579」寬度不同的話，整欄的「往哪裡」會左右參差。
+            SizedBox(
+              width: 64,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(NtouTheme.radiusXs),
+                ),
+                child: Text(
+                  arrival.routeName.isEmpty ? '—' : arrival.routeName,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onPrimaryContainer,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              arrival.destination.isEmpty ? '' : '往 ${arrival.destination}',
-              style: Theme.of(context).textTheme.bodyMedium,
-              overflow: TextOverflow.ellipsis,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (arrival.destination.isNotEmpty)
+                    Text(
+                      '往 ${arrival.destination}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  // 只有真的有車在路上時才講站數和末班車。
+                  //
+                  // 沒車的那幾筆 StopCountDown 一律是 0，跟「已經到站了」
+                  // 分不出來 —— 印出來會變成一排「還有 0 站」，那是雜訊。
+                  if (arrival.isRunning) _Detail(arrival: arrival),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          _Eta(label: label),
-        ],
+            const SizedBox(width: 8),
+            _Eta(label: label),
+            if (onToggleFavorite != null)
+              IconButton(
+                // 觸控範圍要夠大，但視覺上不能跟到站時間搶。
+                visualDensity: VisualDensity.compact,
+                iconSize: 20,
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? scheme.primary : scheme.outline,
+                ),
+                tooltip: isFavorite
+                    ? '取消釘選 ${arrival.routeName}'
+                    : '釘選 ${arrival.routeName}',
+                onPressed: () => onToggleFavorite!(arrival.routeName),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -349,8 +473,10 @@ class _TrainRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final head =
-        [train.trainType, train.trainNo].where((s) => s.isNotEmpty).join(' ');
+    final head = [
+      train.trainType,
+      train.trainNo,
+    ].where((s) => s.isNotEmpty).join(' ');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -390,6 +516,96 @@ class _TrainRow extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 路線底下那一行小字：還有幾站、是不是末班車。
+///
+/// **刻意壓得很小很淡。** 這一列的主角是右邊的到站時間，這裡只是補充；
+/// 做得太顯眼會跟主角搶注意力，整頁就變得難掃。
+///
+/// 例外是「末班車」—— 那個用強調色，因為對學生來說錯過末班車跟晚五分鐘
+/// 是完全不同量級的事，它值得從一片灰字裡跳出來。
+class _Detail extends StatelessWidget {
+  const _Detail({required this.arrival});
+
+  final BusArrival arrival;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final muted = TextStyle(fontSize: 12, color: scheme.onSurfaceVariant);
+    final stops = arrival.stopsAway;
+
+    // **分隔點要用 join，不能讓每一段各自決定要不要在前面加一個。**
+    // 那樣寫的話「只有車牌、沒有站數」的那一列會渲染成「· FAC-211」——
+    // 一個前面什麼都沒有的分隔點。
+    final parts = <Widget>[
+      if (stops != null && stops > 0) Text('還有 $stops 站', style: muted),
+      if (arrival.isLastBus)
+        Text(
+          '末班車',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: scheme.error,
+          ),
+        ),
+      // 車牌排最後，而且最淡。同一條路線同時有兩台車的時候它才有用
+      // （分得出哪一台是哪一台），其餘時候它只是一串沒人要記的字。
+      if (arrival.plateNumber.isNotEmpty)
+        Text(
+          arrival.plateNumber,
+          style: TextStyle(fontSize: 12, color: scheme.outline),
+        ),
+    ];
+    if (parts.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          for (var i = 0; i < parts.length; i++) ...[
+            if (i > 0) Text(' · ', style: muted),
+            parts[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 最上面那行「資料更新於 HH:mm」。
+///
+/// TDX 的資料每 30 秒才換一次，而畫面也是每 30 秒重整一次 —— 沒有這一行的話
+/// 使用者會以為數字卡住了。標出時間，「它就是還沒變」跟「它壞了」才分得開。
+///
+/// 取的是**最舊的**那一張看板的時間。五個站是排隊送出的，彼此差幾秒，
+/// 報最新的那個等於宣稱資料比實際更新 —— 寧可講保守的那一邊。
+class _UpdatedAt extends StatelessWidget {
+  const _UpdatedAt({required this.boards});
+
+  final List<StopBoard> boards;
+
+  @override
+  Widget build(BuildContext context) {
+    final times = [for (final b in boards) ?b.updatedAt];
+    if (times.isEmpty) return const SizedBox.shrink();
+    final oldest = times.reduce((a, b) => a.isBefore(b) ? a : b);
+    final hh = oldest.hour.toString().padLeft(2, '0');
+    final mm = oldest.minute.toString().padLeft(2, '0');
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 4, bottom: 2),
+      child: Text(
+        '資料更新於 $hh:$mm',
+        textAlign: TextAlign.right,
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -448,10 +664,7 @@ class _SetupGuide extends StatelessWidget {
           children: [
             Icon(Icons.directions_bus, size: 48, color: scheme.outline),
             const SizedBox(height: 16),
-            Text(
-              '交通資訊還沒開通',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('交通資訊還沒開通', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
               '公車與火車的到站時間來自交通部的開放資料，'
@@ -472,9 +685,9 @@ class _Notice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Text(text, textAlign: TextAlign.center),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Text(text, textAlign: TextAlign.center),
+    ),
+  );
 }

@@ -171,7 +171,14 @@ def describe(rows: list[dict], shape: str, candidates: dict[str, list[str]]) -> 
         # 拿一筆真的帶著這個欄位的來看型別，不是拿第一筆。
         value = next(r[hit] for r in rows if hit in r)
         kind = "巢狀多語系物件" if isinstance(value, dict) else type(value).__name__
-        extra = f" -> {value}" if isinstance(value, dict) else f" = {value!r}"
+        if isinstance(value, dict):
+            extra = f" -> {value}"
+        elif isinstance(value, list):
+            # **不要把整包印出來。** 站序是 68 個站牌的陣列，照印會把整份
+            # 輸出淹掉，真正要看的欄位名反而找不到。
+            extra = f"（{len(value)} 筆，內容另外印）"
+        else:
+            extra = f" = {value!r}"
         note = "" if seen[hit] == n else f"，只有 {seen[hit]}/{n} 筆有"
         print(f"      {label}：命中 {hit!r}（{kind}）{extra}{note}")
 
@@ -452,6 +459,91 @@ def _zh(v: object) -> str:
     return ""
 
 
+STOP_OF_ROUTE_CANDIDATES = {
+    "路線名": ["RouteName"],
+    "方向": ["Direction"],
+    "站序陣列": ["Stops"],
+}
+
+REALTIME_CANDIDATES = {
+    "車牌": ["PlateNumb"],
+    "路線名": ["RouteName"],
+    "方向": ["Direction"],
+    "在第幾站": ["StopSequence"],
+    "站牌": ["StopName", "StopUID"],
+    "進站還離站": ["A2EventType"],
+    "營運狀態": ["DutyStatus"],
+}
+
+
+def probe_route_detail(token: str, config: dict, route: str, *, save: bool) -> None:
+    """點進一條路線要的兩份資料：站序、每台車現在在第幾站。
+
+    這是「像 Bus+ 那樣顯示公車開到哪一站」需要的東西。跟到站時間不同，
+    這兩個端點都還沒對過真實回應 —— 先問清楚欄位名再寫進 Dart。
+
+    海大那三個站是基隆市公車，所以預設查基隆；`--route` 給的是路線名
+    （`103`），不是 RouteUID。
+    """
+    api = config["api"]
+    city = "Keelung"
+    name_filter = api["route_name_filter"].replace("{name}", route.replace("'", "''"))
+
+    print()
+    print(f"=== 路線 {route} 的站序 ===")
+    data = call(
+        token,
+        config,
+        api["city_bus_stops_of_route"].replace("{city}", city),
+        **{"$filter": name_filter},
+    )
+    if data is not None:
+        rows, shape = unwrap(data)
+        describe(rows, shape, STOP_OF_ROUTE_CANDIDATES)
+        for r in rows:
+            stops = r.get("Stops") or []
+            # **子路線是關鍵。** 103 是環狀線，兩條站序都是 Direction 0 ——
+            # 只靠方向配對即時位置會配到錯的那一條。分得出來的是 SubRouteUID。
+            print(
+                f"  子路線 {r.get('SubRouteUID')!r}"
+                f"（{_zh(r.get('SubRouteName'))}）"
+                f" 方向 {r.get('Direction')}：{len(stops)} 站"
+            )
+            if stops:
+                print(f"    第一站的欄位：{', '.join(sorted(stops[0].keys()))}")
+                head = " → ".join(_zh(x.get("StopName")) for x in stops[:4])
+                tail = " → ".join(_zh(x.get("StopName")) for x in stops[-2:])
+                print(f"    {head} … {tail}")
+        if save:
+            dump(f"route-{route}-stops.json", data)
+
+    print()
+    print(f"=== 路線 {route} 現在有幾台車、在哪 ===")
+    data = call(
+        token,
+        config,
+        api["city_bus_realtime"].replace("{city}", city),
+        **{"$filter": name_filter},
+    )
+    if data is None:
+        return
+    rows, shape = unwrap(data)
+    describe(rows, shape, REALTIME_CANDIDATES)
+    if not rows:
+        print("  （現在路上沒有這條路線的車 —— 深夜很正常，白天再跑一次）")
+        return
+    for r in rows:
+        print(
+            f"    {r.get('PlateNumb')}  子路線 {r.get('SubRouteUID')}  "
+            f"方向 {r.get('Direction')}  第 {r.get('StopSequence')} 站"
+            f"（{_zh(r.get('StopName'))}）  "
+            f"A2EventType={r.get('A2EventType')}  DutyStatus={r.get('DutyStatus')}  "
+            f"BusStatus={r.get('BusStatus')}"
+        )
+    if save:
+        dump(f"route-{route}-realtime.json", data)
+
+
 def dump_stops(token: str, config: dict) -> None:
     """把基隆市所有站名裡含「海大」或「海洋」的都印出來。
 
@@ -495,6 +587,11 @@ def main() -> None:
         action="store_true",
         help="驗證 Direction 0/1 對應去程還是返程（用已存的 fixture 比對）",
     )
+    ap.add_argument(
+        "--probe-route-detail",
+        metavar="路線名",
+        help="查一條路線的站序與公車即時位置（例如 --probe-route-detail 103）",
+    )
     args = ap.parse_args()
 
     config = json.loads(CONFIG.read_text(encoding="utf-8"))
@@ -512,6 +609,10 @@ def main() -> None:
 
     if args.probe_direction:
         probe_direction(token, config)
+        return
+
+    if args.probe_route_detail:
+        probe_route_detail(token, config, args.probe_route_detail, save=args.save)
         return
 
     for stop in config["stops"]:

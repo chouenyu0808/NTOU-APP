@@ -9,6 +9,7 @@ import 'package:ntou_app/src/transit/tdx_client.dart';
 import 'package:ntou_app/src/transit/transit_config.dart';
 import 'package:ntou_app/src/transit/transit_models.dart';
 import 'package:ntou_app/src/transit/transit_repository.dart';
+import 'package:ntou_app/src/ui/route_page.dart';
 
 /// 交通分頁的資料層。
 ///
@@ -368,6 +369,51 @@ void main() {
       }
     }, skip: skip);
 
+    /// 「還有幾站」和「末班車」都是從同一批到站資料裡拿的，不用多打請求。
+    test('海大體育館：解得出「還有 19 站」和「末班車」', () async {
+      final repo = _repoReturning(rowsOf('ntou-gym.json'));
+      final board = await repo.board(_cityBusStop);
+
+      final running = board.buses.where((b) => b.isRunning).single;
+      expect(running.routeName, '104');
+      expect(running.stopsAway, 19);
+      expect(running.isLastBus, isTrue);
+    }, skip: skip);
+
+    /// 沒車的那幾筆 StopCountDown 一律是 0 —— 那不是「已經到站」，
+    /// 是「這個欄位沒有意義」。畫面靠 isRunning 把它們濾掉。
+    test('沒車的那幾筆不會被當成「還有 0 站就到了」', () async {
+      final repo = _repoReturning(rowsOf('ntou-gym.json'));
+      final board = await repo.board(_cityBusStop);
+
+      final idle = board.buses.where((b) => !b.isRunning);
+      expect(idle, hasLength(14));
+      for (final b in idle) {
+        expect(b.stopsAway, 0);
+      }
+    }, skip: skip);
+
+    /// **`IsLastBus` 不是「還會來的末班車」。**
+    ///
+    /// 它標的是「這個班次是今天最後一班」，跟車還在不在路上無關 ——
+    /// 這份深夜的 fixture 裡 15 筆有 11 筆帶著 true，其中 10 筆是已經
+    /// 開走的（末班已過）。畫面上沒有用 isRunning 擋的話，那張卡片會有
+    /// 十一行同時喊「末班車」。
+    ///
+    /// 這個測試存在的理由是：那個數字看起來太像 bug，很容易有人「順手
+    /// 修好它」，把顯示條件放寬。
+    test('IsLastBus 在沒車的那幾筆上也會是 true，所以顯示要靠 isRunning 擋', () async {
+      final repo = _repoReturning(rowsOf('ntou-gym.json'));
+      final board = await repo.board(_cityBusStop);
+
+      expect(board.buses.where((b) => b.isLastBus), hasLength(11));
+      // 真正該讓使用者看到的只有這一筆：最後一班，而且還沒走。
+      final worthShowing =
+          board.buses.where((b) => b.isLastBus && b.isRunning);
+      expect(worthShowing, hasLength(1));
+      expect(worthShowing.single.routeName, '104');
+    }, skip: skip);
+
     test('車牌的 -1 是哨兵值，不是車牌，不能顯示出去', () async {
       final repo = _repoReturning(rowsOf('ntou-gym.json'));
       final board = await repo.board(_cityBusStop);
@@ -615,6 +661,335 @@ void main() {
     });
   });
 
+  group('點進一條路線：站序與車在哪', () {
+    /// 站序照抄 103 的真實形狀（`spike/tdx.py --probe-route-detail 103`）：
+    /// 巢狀的 StopName、StopSequence 從 1 開始、Stops 包在每一筆裡面。
+    Map<String, dynamic> variant(
+      String uid,
+      List<String> names, {
+      int direction = 0,
+      String name = '103',
+    }) =>
+        {
+          'RouteName': {'Zh_tw': '103'},
+          'SubRouteUID': uid,
+          'SubRouteName': {'Zh_tw': name},
+          'Direction': direction,
+          'Stops': [
+            for (var i = 0; i < names.length; i++)
+              {
+                'StopUID': '$uid-$i',
+                'StopName': {'Zh_tw': names[i]},
+                'StopSequence': i + 1,
+              },
+          ],
+        };
+
+    TransitRepository repoWith({
+      required List<Map<String, dynamic>> variants,
+      List<Map<String, dynamic>> buses = const [],
+    }) {
+      final dio = Dio()
+        ..httpClientAdapter = _CannedAdapter(
+          rows: const [],
+          stopsOfRoute: variants,
+          realtime: buses,
+        );
+      return TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: dio,
+        ),
+      );
+    }
+
+    test('站序解得出來，而且照 StopSequence 排好', () async {
+      final repo = repoWith(variants: [
+        variant('KEE035501', ['八斗子分站', '基隆漁會', '海大體育館']),
+      ]);
+      final detail =
+          await repo.routeDetail('103', city: 'Keelung', intercity: false);
+
+      expect(detail.error, isNull);
+      expect(detail.variants, hasLength(1));
+      expect(
+        detail.variants.single.stops.map((s) => s.name),
+        ['八斗子分站', '基隆漁會', '海大體育館'],
+      );
+      expect(detail.variants.single.destination, '海大體育館');
+    });
+
+    /// TDX 回來的順序通常是對的，但站序是這一頁的骨架 ——
+    /// 順序錯掉的話畫面會變成一條走不通的路線，而且看起來很像真的。
+    test('回來的順序亂掉也要排回正確站序', () async {
+      final repo = repoWith(variants: [
+        {
+          'SubRouteUID': 'A',
+          'SubRouteName': {'Zh_tw': '103'},
+          'Direction': 0,
+          'Stops': [
+            {
+              'StopUID': 'c',
+              'StopName': {'Zh_tw': '第三站'},
+              'StopSequence': 3,
+            },
+            {
+              'StopUID': 'a',
+              'StopName': {'Zh_tw': '第一站'},
+              'StopSequence': 1,
+            },
+            {
+              'StopUID': 'b',
+              'StopName': {'Zh_tw': '第二站'},
+              'StopSequence': 2,
+            },
+          ],
+        },
+      ]);
+      final detail =
+          await repo.routeDetail('103', city: 'Keelung', intercity: false);
+
+      expect(
+        detail.variants.single.stops.map((s) => s.name),
+        ['第一站', '第二站', '第三站'],
+      );
+    });
+
+    /// **這是整組裡最重要的一個測試。**
+    ///
+    /// 103 是環狀線：`--probe-route-detail 103` 查出來兩條站序（68 站和
+    /// 64 站），而**兩條的 Direction 都是 0**。只用方向配對即時位置的話，
+    /// 車會被畫到錯的那一條上 —— 畫面上是一台在合理位置的公車，只是它
+    /// 其實跑在另一條路線上。沒有錯誤訊息，看不出來。
+    ///
+    /// 分得出來的是 SubRouteUID。
+    test('環狀線兩條子路線同方向，車要靠 SubRouteUID 配到對的那條', () async {
+      final repo = repoWith(
+        variants: [
+          variant('KEE035501', ['甲一', '甲二', '甲三']),
+          variant('KEE035502', ['乙一', '乙二', '乙三']),
+        ],
+        buses: [
+          {
+            'PlateNumb': '往甲的車',
+            'SubRouteUID': 'KEE035501',
+            'Direction': 0,
+            'StopSequence': 2,
+            'StopName': {'Zh_tw': '甲二'},
+            'A2EventType': 1,
+          },
+          {
+            'PlateNumb': '往乙的車',
+            'SubRouteUID': 'KEE035502',
+            'Direction': 0,
+            'StopSequence': 3,
+            'StopName': {'Zh_tw': '乙三'},
+            'A2EventType': 0,
+          },
+        ],
+      );
+      final detail =
+          await repo.routeDetail('103', city: 'Keelung', intercity: false);
+
+      expect(detail.variants[0].buses.single.plate, '往甲的車');
+      expect(detail.variants[0].buses.single.stopSequence, 2);
+      expect(detail.variants[1].buses.single.plate, '往乙的車');
+      expect(detail.variants[1].buses.single.stopSequence, 3);
+    });
+
+    /// A2EventType：0 進站、1 離站。離站的車正往下一站移動，
+    /// 講「在這一站」會讓使用者以為還追得上。
+    test('離站和進站要分得出來', () async {
+      final repo = repoWith(
+        variants: [
+          variant('A', ['一', '二'])
+        ],
+        buses: [
+          {
+            'PlateNumb': '離站的',
+            'SubRouteUID': 'A',
+            'StopSequence': 1,
+            'A2EventType': 1,
+          },
+          {
+            'PlateNumb': '在站上的',
+            'SubRouteUID': 'A',
+            'StopSequence': 2,
+            'A2EventType': 0,
+          },
+        ],
+      );
+      final detail =
+          await repo.routeDetail('103', city: 'Keelung', intercity: false);
+
+      final buses = {
+        for (final b in detail.variants.single.buses) b.plate: b.leaving,
+      };
+      expect(buses, {'離站的': true, '在站上的': false});
+    });
+
+    /// 深夜本來就沒車。站序還是要看得到 —— 那是這一頁的骨架。
+    test('現在沒有車在跑，站序照樣顯示', () async {
+      final repo = repoWith(variants: [
+        variant('A', ['一', '二'])
+      ]);
+      final detail =
+          await repo.routeDetail('103', city: 'Keelung', intercity: false);
+
+      expect(detail.error, isNull);
+      expect(detail.variants.single.stops, hasLength(2));
+      expect(detail.variants.single.buses, isEmpty);
+    });
+
+    test('查不到站序時給一句話，不是丟例外', () async {
+      final repo = repoWith(variants: const []);
+      final detail =
+          await repo.routeDetail('不存在', city: 'Keelung', intercity: false);
+
+      expect(detail.error, isNotNull);
+      expect(detail.isEmpty, isTrue);
+    });
+
+    /// 站序一天之內不會變，重整只該重抓車的位置。
+    test('站序查一次就快取，重整不會再問一遍', () async {
+      final spy = _CannedAdapter(
+        rows: const [],
+        stopsOfRoute: [
+          variant('A', ['一', '二'])
+        ],
+      );
+      final repo = TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: Dio()..httpClientAdapter = spy,
+        ),
+      );
+
+      await repo.routeDetail('103', city: 'Keelung', intercity: false);
+      await repo.routeDetail('103', city: 'Keelung', intercity: false);
+      await repo.routeDetail('103', city: 'Keelung', intercity: false);
+
+      expect(spy.stopsOfRouteCalls, 1);
+      // 車的位置每次都要重抓 —— 那就是「現在開到哪」本身。
+      expect(spy.realtimeCalls, 3);
+    });
+  });
+
+  group('對著真實的 103 解析路線詳情', () {
+    /// 這一組吃的是真的從 TDX 抓下來的 103（`spike/tdx.py
+    /// --probe-route-detail 103 --save`，2026-09-04 深夜）。
+    ///
+    /// **103 是這個功能最難的案例**，所以它值得單獨一組：兩條子路線同名、
+    /// 同方向、連終點站都一樣。任何一個環節偷懶（用方向配對、用子路線名
+    /// 當分頁標題）在這條路線上都會安靜地做錯。
+    final dir = Directory('../spike/fixtures/tdx');
+    final skip = File('${dir.path}/route-103-stops.json').existsSync()
+        ? null
+        : '沒有 103 的 fixture（跑 spike/tdx.py --probe-route-detail 103 --save）';
+
+    List<Map<String, dynamic>> rowsOf(String name) => [
+          for (final e
+              in jsonDecode(File('${dir.path}/$name').readAsStringSync())
+                  as List)
+            e as Map<String, dynamic>,
+        ];
+
+    Future<RouteDetail> detail() {
+      final dio = Dio()
+        ..httpClientAdapter = _CannedAdapter(
+          rows: const [],
+          stopsOfRoute: rowsOf('route-103-stops.json'),
+          realtime: rowsOf('route-103-realtime.json'),
+        );
+      final repo = TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: dio,
+        ),
+      );
+      return repo.routeDetail('103', city: 'Keelung', intercity: false);
+    }
+
+    test('兩條子路線：68 站和 64 站，而且方向都是 0', () async {
+      final d = await detail();
+
+      expect(d.variants, hasLength(2));
+      expect(d.variants.map((v) => v.stops.length), [68, 64]);
+      // **兩條都是 Direction 0。** 這就是不能用方向配對的原因。
+      expect(d.variants.map((v) => v.direction), [0, 0]);
+      expect(d.variants.map((v) => v.subRouteUid), ['KEE035501', 'KEE035601']);
+    }, skip: skip);
+
+    test('站序是真的一路排到底，中間沒有斷號', () async {
+      final d = await detail();
+
+      for (final v in d.variants) {
+        final seqs = v.stops.map((s) => s.sequence).toList();
+        expect(seqs.first, 1);
+        expect(seqs.last, v.stops.length);
+        expect(seqs, List.generate(v.stops.length, (i) => i + 1));
+      }
+      // 海大那三個站牌真的在 103 的路線上（去程 16、17、18 站）。
+      final outbound = d.variants.first.stops.map((s) => s.name).toList();
+      expect(outbound[15], '海大體育館');
+      expect(outbound[16], '海大濱海校門');
+      expect(outbound[17], '海大祥豐校門');
+    }, skip: skip);
+
+    /// 四台車照 SubRouteUID 分成 2 + 2。
+    ///
+    /// **只用方向配對的話這四台會全部塞進第一條**，而畫面上完全看不出異狀 ——
+    /// 第 64 站在 68 站那條路線上也是個合理的位置。
+    test('四台車照子路線分開，不是全部塞進第一條', () async {
+      final d = await detail();
+
+      expect(d.variants[0].buses.map((b) => b.plate), ['620-FZ', 'FAC-157']);
+      expect(d.variants[1].buses.map((b) => b.plate), ['KKA-1761', 'KKA-1767']);
+    }, skip: skip);
+
+    /// 每台車都停在自己那條子路線的**最後一站**（八斗子車站），而且都是離站。
+    ///
+    /// 這是深夜跑完收班停在場站的樣子。我們不去猜「這台車還在不在營運」——
+    /// 沒有可靠的欄位可以分辨，猜錯會把停著的車講成正在來的車。
+    /// 就照實顯示它在哪，跟 Bus+ 一樣。
+    test('深夜的車都停在各自路線的最後一站', () async {
+      final d = await detail();
+
+      for (final v in d.variants) {
+        for (final b in v.buses) {
+          expect(b.stopSequence, v.stops.length);
+          expect(b.stopName, '八斗子車站');
+          expect(b.leaving, isTrue);
+        }
+      }
+    }, skip: skip);
+
+    /// **這個測試是分頁標題那三層 fallback 的存在理由。**
+    ///
+    /// 103 的兩條子路線 SubRouteName 都是「103」，終點站都是「八斗子車站」——
+    /// 前兩層都分不開，只有補上站數才行。分不開的分頁比沒有分頁更糟：
+    /// 使用者切過去看到兩個一樣的標題，會以為自己點錯了。
+    test('兩個分頁的標題一定要分得開', () async {
+      final d = await detail();
+
+      expect(d.variants.map((v) => v.subRouteName).toSet(), hasLength(1));
+      expect(d.variants.map((v) => v.destination).toSet(), hasLength(1));
+
+      final labels = RoutePage.labelsFor(d.variants);
+      expect(labels.toSet(), hasLength(2), reason: '兩個分頁標題一樣，使用者分不出來');
+      expect(labels, ['往 八斗子車站（68 站）', '往 八斗子車站（64 站）']);
+    }, skip: skip);
+  });
+
   group('節流：併發也要排隊', () {
     /// **這一組守的是一個已經在真機上爆過的 bug。**
     ///
@@ -733,6 +1108,8 @@ final TransitConfig _config = TransitConfig.fromJson({
     'intercity_arrivals': 'v2/Bus/EstimatedTimeOfArrival/InterCity',
     'city_bus_routes': 'v2/Bus/Route/City/{city}',
     'intercity_routes': 'v2/Bus/Route/InterCity',
+    'city_bus_stops_of_route': 'v2/Bus/StopOfRoute/City/{city}',
+    'city_bus_realtime': 'v2/Bus/RealTimeNearStop/City/{city}',
     'train_liveboard': 'v3/Rail/TRA/StationLiveBoard',
     'train_stations': 'v3/Rail/TRA/Station',
     'city_bus_filter': "StopName/Zh_tw eq '{name}'",
@@ -740,6 +1117,7 @@ final TransitConfig _config = TransitConfig.fromJson({
     'train_liveboard_filter': "StationID eq '{station}'",
     'train_station_filter': "StationName/Zh_tw eq '{name}'",
     'route_filter': "RouteUID eq '{name}'",
+    'route_name_filter': "RouteName/Zh_tw eq '{name}'",
   },
   'stop_status': {'0': '正常', '1': '尚未發車'},
   'stops': const [],
@@ -796,10 +1174,24 @@ TransitRepository _repoFailing() {
 
 /// 立刻回應的假 HTTP 層：token 一律發得出來，資料端點回預先準備好的東西。
 class _CannedAdapter implements HttpClientAdapter {
-  _CannedAdapter({required this.rows, this.stationId, this.routes = const []});
+  _CannedAdapter({
+    required this.rows,
+    this.stationId,
+    this.routes = const [],
+    this.stopsOfRoute = const [],
+    this.realtime = const [],
+  });
 
   final List<Map<String, dynamic>> rows;
   final String? stationId;
+
+  /// 路線站序（`StopOfRoute`）與公車即時位置（`RealTimeNearStop`）。
+  final List<Map<String, dynamic>> stopsOfRoute;
+  final List<Map<String, dynamic>> realtime;
+
+  /// 這兩個端點各被打了幾次。站序有快取、車的位置沒有，看這個分辨。
+  int stopsOfRouteCalls = 0;
+  int realtimeCalls = 0;
 
   /// 路線資料（起訖站）。「往哪裡」是從這裡補上的。
   final List<Map<String, dynamic>> routes;
@@ -820,6 +1212,12 @@ class _CannedAdapter implements HttpClientAdapter {
         'expires_in': 86400,
         'token_type': 'Bearer',
       });
+    } else if (options.path.contains('StopOfRoute')) {
+      stopsOfRouteCalls++;
+      body = jsonEncode(stopsOfRoute);
+    } else if (options.path.contains('RealTimeNearStop')) {
+      realtimeCalls++;
+      body = jsonEncode(realtime);
     } else if (options.path.contains('Bus/Route')) {
       routeCalls++;
       body = jsonEncode(routes);

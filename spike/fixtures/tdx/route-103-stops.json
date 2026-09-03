@@ -1,0 +1,2440 @@
+[
+  {
+    "RouteUID": "KEE0355",
+    "RouteID": "0355",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Operators": [
+      {
+        "OperatorID": "109",
+        "OperatorName": {
+          "Zh_tw": "基隆市公車處"
+        },
+        "OperatorCode": "",
+        "OperatorNo": "1107"
+      }
+    ],
+    "SubRouteUID": "KEE035501",
+    "SubRouteID": "035501",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "City": "Keelung",
+    "CityCode": "KEE",
+    "Stops": [
+      {
+        "StopUID": "KEE306361",
+        "StopID": "306361",
+        "StopName": {
+          "Zh_tw": "八斗子分站",
+          "En": "Badouzi Substation"
+        },
+        "StopBoarding": 1,
+        "StopSequence": 1,
+        "StopPosition": {
+          "PositionLon": 121.7905646,
+          "PositionLat": 25.14345531,
+          "GeoHash": "wsqx53jpj"
+        },
+        "StationID": "140750",
+        "StationGroupID": "202－068",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306362",
+        "StopID": "306362",
+        "StopName": {
+          "Zh_tw": "基隆漁會",
+          "En": "Keelung District Fishmens` Association"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 2,
+        "StopPosition": {
+          "PositionLon": 121.79272,
+          "PositionLat": 25.14115,
+          "GeoHash": "wsqx52ycb"
+        },
+        "StationID": "140751",
+        "StationGroupID": "202－069",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306357",
+        "StopID": "306357",
+        "StopName": {
+          "Zh_tw": "八斗子",
+          "En": "Badouzi"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 3,
+        "StopPosition": {
+          "PositionLon": 121.795761,
+          "PositionLat": 25.139535,
+          "GeoHash": "wsqx588bq"
+        },
+        "StationID": "140746",
+        "StationGroupID": "202－067",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306722",
+        "StopID": "306722",
+        "StopName": {
+          "Zh_tw": "海科館",
+          "En": "National Museum of Marine Science &amp;Technology"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 4,
+        "StopPosition": {
+          "PositionLon": 121.80005,
+          "PositionLat": 25.140145,
+          "GeoHash": "wsqx58s5f"
+        },
+        "StationID": "141112",
+        "StationGroupID": "202－114",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306359",
+        "StopID": "306359",
+        "StopName": {
+          "Zh_tw": "望海巷",
+          "En": "Wanghaixiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 5,
+        "StopPosition": {
+          "PositionLon": 121.801906,
+          "PositionLat": 25.137508,
+          "GeoHash": "wsqx58jkw"
+        },
+        "StationID": "140748",
+        "StationGroupID": "202－040",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306244",
+        "StopID": "306244",
+        "StopName": {
+          "Zh_tw": "八斗子車站",
+          "En": "Badouzi Railway Station"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 6,
+        "StopPosition": {
+          "PositionLon": 121.801954,
+          "PositionLat": 25.136582,
+          "GeoHash": "wsqwgxvrp"
+        },
+        "StationID": "140632",
+        "StationGroupID": "202－039",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306245",
+        "StopID": "306245",
+        "StopName": {
+          "Zh_tw": "望海巷",
+          "En": "Wanghaixiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 7,
+        "StopPosition": {
+          "PositionLon": 121.80208,
+          "PositionLat": 25.13717,
+          "GeoHash": "wsqx58jdd"
+        },
+        "StationID": "140633",
+        "StationGroupID": "202－040",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306246",
+        "StopID": "306246",
+        "StopName": {
+          "Zh_tw": "海科館(碧水巷)",
+          "En": "National Museum Of Marine Science &amp; Technology (Bishuixiang)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 8,
+        "StopPosition": {
+          "PositionLon": 121.79951,
+          "PositionLat": 25.140192,
+          "GeoHash": "wsqx58esn"
+        },
+        "StationID": "140634",
+        "StationGroupID": "202－041",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306420",
+        "StopID": "306420",
+        "StopName": {
+          "Zh_tw": "海科館正門",
+          "En": "National Museum Of Marine Science &amp; Technology(Main Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 9,
+        "StopPosition": {
+          "PositionLon": 121.797499,
+          "PositionLat": 25.140077,
+          "GeoHash": "wsqx58d5x"
+        },
+        "StationID": "140806",
+        "StationGroupID": "202－081",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306369",
+        "StopID": "306369",
+        "StopName": {
+          "Zh_tw": "八斗子",
+          "En": "Badouzi"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 10,
+        "StopPosition": {
+          "PositionLon": 121.795275,
+          "PositionLat": 25.139742,
+          "GeoHash": "wsqx5889e"
+        },
+        "StationID": "140758",
+        "StationGroupID": "202－067",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306370",
+        "StopID": "306370",
+        "StopName": {
+          "Zh_tw": "嶺林巷",
+          "En": "Linglinxiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 11,
+        "StopPosition": {
+          "PositionLon": 121.79239,
+          "PositionLat": 25.14095,
+          "GeoHash": "wsqx52y88"
+        },
+        "StationID": "140759",
+        "StationGroupID": "205－051",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306371",
+        "StopID": "306371",
+        "StopName": {
+          "Zh_tw": "義胞新村",
+          "En": "Yibaoxincun"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 12,
+        "StopPosition": {
+          "PositionLon": 121.79068,
+          "PositionLat": 25.14194,
+          "GeoHash": "wsqx52vq2"
+        },
+        "StationID": "140760",
+        "StationGroupID": "205－052",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306423",
+        "StopID": "306423",
+        "StopName": {
+          "Zh_tw": "漁貨直銷中心(碧砂漁港)",
+          "En": "Taiwan Tourist Seafood Markets (Bisha Fish Harbor)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 13,
+        "StopPosition": {
+          "PositionLon": 121.785765,
+          "PositionLat": 25.144581,
+          "GeoHash": "wsqx533ty"
+        },
+        "StationID": "140809",
+        "StationGroupID": "202－082",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306425",
+        "StopID": "306425",
+        "StopName": {
+          "Zh_tw": "藍投溝",
+          "En": "Lantougou"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 14,
+        "StopPosition": {
+          "PositionLon": 121.783666,
+          "PositionLat": 25.14629,
+          "GeoHash": "wsqx538pv"
+        },
+        "StationID": "140811",
+        "StationGroupID": "202－083",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306427",
+        "StopID": "306427",
+        "StopName": {
+          "Zh_tw": "北寧路(九八八餐廳)",
+          "En": "Beining Rd. (988 Restaurant)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 15,
+        "StopPosition": {
+          "PositionLon": 121.783012,
+          "PositionLat": 25.148309,
+          "GeoHash": "wsqx54pet"
+        },
+        "StationID": "140813",
+        "StationGroupID": "202－084",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306429",
+        "StopID": "306429",
+        "StopName": {
+          "Zh_tw": "海大體育館",
+          "En": "National Taiwan Ocean University (The Gymnasium)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 16,
+        "StopPosition": {
+          "PositionLon": 121.77996,
+          "PositionLat": 25.1506,
+          "GeoHash": "wsqx54t2y"
+        },
+        "StationID": "140815",
+        "StationGroupID": "202－085",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306431",
+        "StopID": "306431",
+        "StopName": {
+          "Zh_tw": "海大濱海校門",
+          "En": "National Taiwan Ocean University (Binhai School Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 17,
+        "StopPosition": {
+          "PositionLon": 121.77555,
+          "PositionLat": 25.15097,
+          "GeoHash": "wsqx54d5p"
+        },
+        "StationID": "140817",
+        "StationGroupID": "202－086",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306433",
+        "StopID": "306433",
+        "StopName": {
+          "Zh_tw": "海大祥豐校門",
+          "En": "National Taiwan Ocean University (Xiangfeng School Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 18,
+        "StopPosition": {
+          "PositionLon": 121.773208,
+          "PositionLat": 25.151159,
+          "GeoHash": "wsqx548s1"
+        },
+        "StationID": "140819",
+        "StationGroupID": "202－087",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306505",
+        "StopID": "306505",
+        "StopName": {
+          "Zh_tw": "海大中正路口",
+          "En": "National Taiwan Ocean University (Zhongzheng Rd. Intersection)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 19,
+        "StopPosition": {
+          "PositionLon": 121.77176,
+          "PositionLat": 25.15108,
+          "GeoHash": "wsqx4fx7x"
+        },
+        "StationID": "140891",
+        "StationGroupID": "202－088",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306504",
+        "StopID": "306504",
+        "StopName": {
+          "Zh_tw": "中正路正濱路口",
+          "En": "Zhongzheng &amp; Zhengbin Rd.Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 20,
+        "StopPosition": {
+          "PositionLon": 121.7708,
+          "PositionLat": 25.151616,
+          "GeoHash": "wsqx4fwyc"
+        },
+        "StationID": "140890",
+        "StationGroupID": "202－098",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306314",
+        "StopID": "306314",
+        "StopName": {
+          "Zh_tw": "舊正濱派出所",
+          "En": "Old Zhengbin Police Office"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 21,
+        "StopPosition": {
+          "PositionLon": 121.767916,
+          "PositionLat": 25.1521,
+          "GeoHash": "wsqx4fu9w"
+        },
+        "StationID": "140703",
+        "StationGroupID": "202－057",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306316",
+        "StopID": "306316",
+        "StopName": {
+          "Zh_tw": "二信分社",
+          "En": "The Second Credit Cooperative of Keelung Branch"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 22,
+        "StopPosition": {
+          "PositionLon": 121.76709,
+          "PositionLat": 25.151173,
+          "GeoHash": "wsqx4fsh4"
+        },
+        "StationID": "140705",
+        "StationGroupID": "202－058",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306318",
+        "StopID": "306318",
+        "StopName": {
+          "Zh_tw": "正濱漁會大樓",
+          "En": "Chen-Pin Fishermen&#39;s Association Building"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 23,
+        "StopPosition": {
+          "PositionLon": 121.76576,
+          "PositionLat": 25.150685,
+          "GeoHash": "wsqx4fe17"
+        },
+        "StationID": "140707",
+        "StationGroupID": "202－059",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306321",
+        "StopID": "306321",
+        "StopName": {
+          "Zh_tw": "中濱里",
+          "En": "Zhongbin Village"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 24,
+        "StopPosition": {
+          "PositionLon": 121.763711,
+          "PositionLat": 25.149376,
+          "GeoHash": "wsqx4f39s"
+        },
+        "StationID": "140710",
+        "StationGroupID": "202－060",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306335",
+        "StopID": "306335",
+        "StopName": {
+          "Zh_tw": "海調處",
+          "En": "Marine Affairs Field Office"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 25,
+        "StopPosition": {
+          "PositionLon": 121.761597,
+          "PositionLat": 25.147451,
+          "GeoHash": "wsqx4cbnd"
+        },
+        "StationID": "140724",
+        "StationGroupID": "202－061",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306337",
+        "StopID": "306337",
+        "StopName": {
+          "Zh_tw": "公教住宅",
+          "En": "Government Employees Housing"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 26,
+        "StopPosition": {
+          "PositionLon": 121.761499,
+          "PositionLat": 25.145497,
+          "GeoHash": "wsqx4c850"
+        },
+        "StationID": "140726",
+        "StationGroupID": "202－062",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306339",
+        "StopID": "306339",
+        "StopName": {
+          "Zh_tw": "安瀾橋",
+          "En": "Anlan Bridge"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 27,
+        "StopPosition": {
+          "PositionLon": 121.760703,
+          "PositionLat": 25.142485,
+          "GeoHash": "wsqx49p3w"
+        },
+        "StationID": "140729",
+        "StationGroupID": "202－063",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306344",
+        "StopID": "306344",
+        "StopName": {
+          "Zh_tw": "中正區行政大樓",
+          "En": "Administration Building of Zhongzheng District"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 28,
+        "StopPosition": {
+          "PositionLon": 121.758988,
+          "PositionLat": 25.141083,
+          "GeoHash": "wsqx48y1q"
+        },
+        "StationID": "140733",
+        "StationGroupID": "202－066",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306435",
+        "StopID": "306435",
+        "StopName": {
+          "Zh_tw": "海門天險",
+          "En": "Haimentiansian"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 29,
+        "StopPosition": {
+          "PositionLon": 121.7563,
+          "PositionLat": 25.140876,
+          "GeoHash": "wsqx48u0p"
+        },
+        "StationID": "140821",
+        "StationGroupID": "202－089",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306441",
+        "StopID": "306441",
+        "StopName": {
+          "Zh_tw": "中船路",
+          "En": "Zhongchuan Rd."
+        },
+        "StopBoarding": 0,
+        "StopSequence": 30,
+        "StopPosition": {
+          "PositionLon": 121.75072,
+          "PositionLat": 25.137598,
+          "GeoHash": "wsqx480jj"
+        },
+        "StationID": "140827",
+        "StationGroupID": "202－093",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306456",
+        "StopID": "306456",
+        "StopName": {
+          "Zh_tw": "信七路口",
+          "En": "Xin 7th Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 31,
+        "StopPosition": {
+          "PositionLon": 121.74798,
+          "PositionLat": 25.1365,
+          "GeoHash": "wsqwfrynt"
+        },
+        "StationID": "140842",
+        "StationGroupID": "202－095",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306459",
+        "StopID": "306459",
+        "StopName": {
+          "Zh_tw": "信五路口",
+          "En": "Xin 5th Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 32,
+        "StopPosition": {
+          "PositionLon": 121.74691,
+          "PositionLat": 25.13494,
+          "GeoHash": "wsqwfrtms"
+        },
+        "StationID": "140845",
+        "StationGroupID": "202－096",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306463",
+        "StopID": "306463",
+        "StopName": {
+          "Zh_tw": "市政府(柯達飯店)",
+          "En": "Keelung City Government (K Hotel)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 33,
+        "StopPosition": {
+          "PositionLon": 121.745278,
+          "PositionLat": 25.132476,
+          "GeoHash": "wsqwfrhpq"
+        },
+        "StationID": "140849",
+        "StationGroupID": "202－097",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306232",
+        "StopID": "306232",
+        "StopName": {
+          "Zh_tw": "仁二路(二信循環站)",
+          "En": "Ren 2nd Rd. (Erxin Loop Station )"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 34,
+        "StopPosition": {
+          "PositionLon": 121.743128,
+          "PositionLat": 25.129771,
+          "GeoHash": "wsqwfqdxs"
+        },
+        "StationID": "140620",
+        "StationGroupID": "200－030",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE309534",
+        "StopID": "309534",
+        "StopName": {
+          "Zh_tw": "基隆轉運站",
+          "En": "Keelung Transit Station"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 35,
+        "StopPosition": {
+          "PositionLon": 121.739089,
+          "PositionLat": 25.133076,
+          "GeoHash": "wsqwfprdy"
+        },
+        "StationID": "143441",
+        "StationGroupID": "203－105",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE309535",
+        "StopID": "309535",
+        "StopName": {
+          "Zh_tw": "民治里活動中心",
+          "En": "Minzhi Village Activity Center"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 36,
+        "StopPosition": {
+          "PositionLon": 121.740028,
+          "PositionLat": 25.134482,
+          "GeoHash": "wsqwfr86u"
+        },
+        "StationID": "141126",
+        "StationGroupID": "203－027",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306233",
+        "StopID": "306233",
+        "StopName": {
+          "Zh_tw": "忠一路孝一路口",
+          "En": "Zhong 1st Rd. &amp; Xiao 1st Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 37,
+        "StopPosition": {
+          "PositionLon": 121.741375,
+          "PositionLat": 25.130586,
+          "GeoHash": "wsqwfqck7"
+        },
+        "StationID": "140621",
+        "StationGroupID": "200－031",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306464",
+        "StopID": "306464",
+        "StopName": {
+          "Zh_tw": "市政府(柯達飯店)",
+          "En": "Keelung City Government (K Hotel)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 38,
+        "StopPosition": {
+          "PositionLon": 121.74541,
+          "PositionLat": 25.13233,
+          "GeoHash": "wsqwfrhq3"
+        },
+        "StationID": "140850",
+        "StationGroupID": "202－097",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306460",
+        "StopID": "306460",
+        "StopName": {
+          "Zh_tw": "信五路口",
+          "En": "Xin 5th Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 39,
+        "StopPosition": {
+          "PositionLon": 121.746636,
+          "PositionLat": 25.134185,
+          "GeoHash": "wsqwfrt1n"
+        },
+        "StationID": "140846",
+        "StationGroupID": "202－096",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306457",
+        "StopID": "306457",
+        "StopName": {
+          "Zh_tw": "信七路口",
+          "En": "Xin 7th Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 40,
+        "StopPosition": {
+          "PositionLon": 121.747736,
+          "PositionLat": 25.135875,
+          "GeoHash": "wsqwfrvgp"
+        },
+        "StationID": "140843",
+        "StationGroupID": "202－095",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306454",
+        "StopID": "306454",
+        "StopName": {
+          "Zh_tw": "就業中心",
+          "En": "Keelung Employment Service Station"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 41,
+        "StopPosition": {
+          "PositionLon": 121.74894,
+          "PositionLat": 25.137223,
+          "GeoHash": "wsqx42nfg"
+        },
+        "StationID": "140840",
+        "StationGroupID": "202－094",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306443",
+        "StopID": "306443",
+        "StopName": {
+          "Zh_tw": "中船路",
+          "En": "Zhongchuan Rd."
+        },
+        "StopBoarding": 0,
+        "StopSequence": 42,
+        "StopPosition": {
+          "PositionLon": 121.75095,
+          "PositionLat": 25.137353,
+          "GeoHash": "wsqx4807d"
+        },
+        "StationID": "140829",
+        "StationGroupID": "202－093",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306439",
+        "StopID": "306439",
+        "StopName": {
+          "Zh_tw": "北屋新城",
+          "En": "Beiwuxincheng"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 43,
+        "StopPosition": {
+          "PositionLon": 121.752025,
+          "PositionLat": 25.139078,
+          "GeoHash": "wsqx483je"
+        },
+        "StationID": "140825",
+        "StationGroupID": "202－092",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306437",
+        "StopID": "306437",
+        "StopName": {
+          "Zh_tw": "復興館",
+          "En": "Fuxingguan"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 44,
+        "StopPosition": {
+          "PositionLon": 121.754073,
+          "PositionLat": 25.13937,
+          "GeoHash": "wsqx486x7"
+        },
+        "StationID": "140823",
+        "StationGroupID": "202－090",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306436",
+        "StopID": "306436",
+        "StopName": {
+          "Zh_tw": "海門天險",
+          "En": "Haimentiansian"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 45,
+        "StopPosition": {
+          "PositionLon": 121.756108,
+          "PositionLat": 25.140736,
+          "GeoHash": "wsqx48sp6"
+        },
+        "StationID": "140822",
+        "StationGroupID": "202－089",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306345",
+        "StopID": "306345",
+        "StopName": {
+          "Zh_tw": "中正區行政大樓",
+          "En": "Administration Building of Zhongzheng District"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 46,
+        "StopPosition": {
+          "PositionLon": 121.758783,
+          "PositionLat": 25.140603,
+          "GeoHash": "wsqx48wn9"
+        },
+        "StationID": "140734",
+        "StationGroupID": "202－066",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306343",
+        "StopID": "306343",
+        "StopName": {
+          "Zh_tw": "正豐街",
+          "En": "Zhengfeng St."
+        },
+        "StopBoarding": 0,
+        "StopSequence": 47,
+        "StopPosition": {
+          "PositionLon": 121.760126,
+          "PositionLat": 25.140762,
+          "GeoHash": "wsqx48xp8"
+        },
+        "StationID": "140732",
+        "StationGroupID": "202－065",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306342",
+        "StopID": "306342",
+        "StopName": {
+          "Zh_tw": "正榮街口",
+          "En": "Zhengrong St. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 48,
+        "StopPosition": {
+          "PositionLon": 121.761113,
+          "PositionLat": 25.143035,
+          "GeoHash": "wsqx49psz"
+        },
+        "StationID": "140731",
+        "StationGroupID": "202－064",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306338",
+        "StopID": "306338",
+        "StopName": {
+          "Zh_tw": "公教住宅",
+          "En": "Government Employees Housing"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 49,
+        "StopPosition": {
+          "PositionLon": 121.761641,
+          "PositionLat": 25.144501,
+          "GeoHash": "wsqx4c2j7"
+        },
+        "StationID": "140727",
+        "StationGroupID": "202－062",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306336",
+        "StopID": "306336",
+        "StopName": {
+          "Zh_tw": "海調處",
+          "En": "Marine Affairs Field Office"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 50,
+        "StopPosition": {
+          "PositionLon": 121.761692,
+          "PositionLat": 25.14589,
+          "GeoHash": "wsqx4c8jm"
+        },
+        "StationID": "140725",
+        "StationGroupID": "202－061",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306322",
+        "StopID": "306322",
+        "StopName": {
+          "Zh_tw": "中濱里",
+          "En": "Zhongbin Village"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 51,
+        "StopPosition": {
+          "PositionLon": 121.763788,
+          "PositionLat": 25.149321,
+          "GeoHash": "wsqx4f39m"
+        },
+        "StationID": "140711",
+        "StationGroupID": "202－060",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306319",
+        "StopID": "306319",
+        "StopName": {
+          "Zh_tw": "正濱漁會大樓",
+          "En": "Chen-Pin Fishermen&#39;s Association Building"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 52,
+        "StopPosition": {
+          "PositionLon": 121.765798,
+          "PositionLat": 25.15062,
+          "GeoHash": "wsqx4fe0u"
+        },
+        "StationID": "140708",
+        "StationGroupID": "202－059",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306317",
+        "StopID": "306317",
+        "StopName": {
+          "Zh_tw": "二信分社",
+          "En": "The Second Credit Cooperative of Keelung Branch"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 53,
+        "StopPosition": {
+          "PositionLon": 121.766816,
+          "PositionLat": 25.151033,
+          "GeoHash": "wsqx4fegk"
+        },
+        "StationID": "140706",
+        "StationGroupID": "202－058",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306315",
+        "StopID": "306315",
+        "StopName": {
+          "Zh_tw": "舊正濱派出所",
+          "En": "Old Zhengbin Police Office"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 54,
+        "StopPosition": {
+          "PositionLon": 121.768616,
+          "PositionLat": 25.152483,
+          "GeoHash": "wsqx4fv5y"
+        },
+        "StationID": "140704",
+        "StationGroupID": "202－057",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306683",
+        "StopID": "306683",
+        "StopName": {
+          "Zh_tw": "中正路正濱路口",
+          "En": "Zhongzheng &amp; Zhengbin Rd.Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 55,
+        "StopPosition": {
+          "PositionLon": 121.770686,
+          "PositionLat": 25.151611,
+          "GeoHash": "wsqx4fwwy"
+        },
+        "StationID": "141069",
+        "StationGroupID": "202－098",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306506",
+        "StopID": "306506",
+        "StopName": {
+          "Zh_tw": "海大中正路口",
+          "En": "National Taiwan Ocean University (Zhongzheng Rd. Intersection)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 56,
+        "StopPosition": {
+          "PositionLon": 121.77189,
+          "PositionLat": 25.15122,
+          "GeoHash": "wsqx4fxs6"
+        },
+        "StationID": "140892",
+        "StationGroupID": "202－088",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306434",
+        "StopID": "306434",
+        "StopName": {
+          "Zh_tw": "海大祥豐校門",
+          "En": "National Taiwan Ocean University (Xiangfeng School Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 57,
+        "StopPosition": {
+          "PositionLon": 121.772842,
+          "PositionLat": 25.151029,
+          "GeoHash": "wsqx54872"
+        },
+        "StationID": "140820",
+        "StationGroupID": "202－087",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306432",
+        "StopID": "306432",
+        "StopName": {
+          "Zh_tw": "海大濱海校門",
+          "En": "National Taiwan Ocean University (Binhai School Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 58,
+        "StopPosition": {
+          "PositionLon": 121.77565,
+          "PositionLat": 25.150829,
+          "GeoHash": "wsqx54d64"
+        },
+        "StationID": "140818",
+        "StationGroupID": "202－086",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306430",
+        "StopID": "306430",
+        "StopName": {
+          "Zh_tw": "海大體育館",
+          "En": "National Taiwan Ocean University (The Gymnasium)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 59,
+        "StopPosition": {
+          "PositionLon": 121.779602,
+          "PositionLat": 25.150539,
+          "GeoHash": "wsqx54t0w"
+        },
+        "StationID": "140816",
+        "StationGroupID": "202－085",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306428",
+        "StopID": "306428",
+        "StopName": {
+          "Zh_tw": "北寧路(九八八餐廳)",
+          "En": "Beining Rd. (988 Restaurant)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 60,
+        "StopPosition": {
+          "PositionLon": 121.78289,
+          "PositionLat": 25.1483,
+          "GeoHash": "wsqx54pe7"
+        },
+        "StationID": "140814",
+        "StationGroupID": "202－084",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306426",
+        "StopID": "306426",
+        "StopName": {
+          "Zh_tw": "藍投溝",
+          "En": "Lantougou"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 61,
+        "StopPosition": {
+          "PositionLon": 121.783448,
+          "PositionLat": 25.146516,
+          "GeoHash": "wsqx53b10"
+        },
+        "StationID": "140812",
+        "StationGroupID": "202－083",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306424",
+        "StopID": "306424",
+        "StopName": {
+          "Zh_tw": "漁貨直銷中心(碧砂漁港)",
+          "En": "Taiwan Tourist Seafood Markets (Bisha Fish Harbor)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 62,
+        "StopPosition": {
+          "PositionLon": 121.785803,
+          "PositionLat": 25.144315,
+          "GeoHash": "wsqx533sq"
+        },
+        "StationID": "140810",
+        "StationGroupID": "202－082",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306421",
+        "StopID": "306421",
+        "StopName": {
+          "Zh_tw": "義胞新村",
+          "En": "Yibaoxincun"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 63,
+        "StopPosition": {
+          "PositionLon": 121.78972,
+          "PositionLat": 25.14219,
+          "GeoHash": "wsqx52uxf"
+        },
+        "StationID": "140807",
+        "StationGroupID": "205－052",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306422",
+        "StopID": "306422",
+        "StopName": {
+          "Zh_tw": "嶺林巷",
+          "En": "Linglinxiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 64,
+        "StopPosition": {
+          "PositionLon": 121.79244,
+          "PositionLat": 25.14033,
+          "GeoHash": "wsqx52wt1"
+        },
+        "StationID": "140808",
+        "StationGroupID": "205－051",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306357",
+        "StopID": "306357",
+        "StopName": {
+          "Zh_tw": "八斗子",
+          "En": "Badouzi"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 65,
+        "StopPosition": {
+          "PositionLon": 121.795761,
+          "PositionLat": 25.139535,
+          "GeoHash": "wsqx588bq"
+        },
+        "StationID": "140746",
+        "StationGroupID": "202－067",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306246",
+        "StopID": "306246",
+        "StopName": {
+          "Zh_tw": "海科館(碧水巷)",
+          "En": "National Museum Of Marine Science &amp; Technology (Bishuixiang)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 66,
+        "StopPosition": {
+          "PositionLon": 121.79951,
+          "PositionLat": 25.140192,
+          "GeoHash": "wsqx58esn"
+        },
+        "StationID": "140634",
+        "StationGroupID": "202－041",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306359",
+        "StopID": "306359",
+        "StopName": {
+          "Zh_tw": "望海巷",
+          "En": "Wanghaixiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 67,
+        "StopPosition": {
+          "PositionLon": 121.801906,
+          "PositionLat": 25.137508,
+          "GeoHash": "wsqx58jkw"
+        },
+        "StationID": "140748",
+        "StationGroupID": "202－040",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306244",
+        "StopID": "306244",
+        "StopName": {
+          "Zh_tw": "八斗子車站",
+          "En": "Badouzi Railway Station"
+        },
+        "StopBoarding": -1,
+        "StopSequence": 68,
+        "StopPosition": {
+          "PositionLon": 121.801954,
+          "PositionLat": 25.136582,
+          "GeoHash": "wsqwgxvrp"
+        },
+        "StationID": "140632",
+        "StationGroupID": "202－039",
+        "LocationCityCode": "KEE"
+      }
+    ],
+    "UpdateTime": "2026-09-03T23:20:04+08:00",
+    "VersionID": 7589
+  },
+  {
+    "RouteUID": "KEE0356",
+    "RouteID": "0356",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Operators": [
+      {
+        "OperatorID": "109",
+        "OperatorName": {
+          "Zh_tw": "基隆市公車處"
+        },
+        "OperatorCode": "",
+        "OperatorNo": "1107"
+      }
+    ],
+    "SubRouteUID": "KEE035601",
+    "SubRouteID": "035601",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "City": "Keelung",
+    "CityCode": "KEE",
+    "Stops": [
+      {
+        "StopUID": "KEE306361",
+        "StopID": "306361",
+        "StopName": {
+          "Zh_tw": "八斗子分站",
+          "En": "Badouzi Substation"
+        },
+        "StopBoarding": 1,
+        "StopSequence": 1,
+        "StopPosition": {
+          "PositionLon": 121.7905646,
+          "PositionLat": 25.14345531,
+          "GeoHash": "wsqx53jpj"
+        },
+        "StationID": "140750",
+        "StationGroupID": "202－068",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306362",
+        "StopID": "306362",
+        "StopName": {
+          "Zh_tw": "基隆漁會",
+          "En": "Keelung District Fishmens` Association"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 2,
+        "StopPosition": {
+          "PositionLon": 121.79272,
+          "PositionLat": 25.14115,
+          "GeoHash": "wsqx52ycb"
+        },
+        "StationID": "140751",
+        "StationGroupID": "202－069",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306357",
+        "StopID": "306357",
+        "StopName": {
+          "Zh_tw": "八斗子",
+          "En": "Badouzi"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 3,
+        "StopPosition": {
+          "PositionLon": 121.795761,
+          "PositionLat": 25.139535,
+          "GeoHash": "wsqx588bq"
+        },
+        "StationID": "140746",
+        "StationGroupID": "202－067",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306722",
+        "StopID": "306722",
+        "StopName": {
+          "Zh_tw": "海科館",
+          "En": "National Museum of Marine Science &amp;Technology"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 4,
+        "StopPosition": {
+          "PositionLon": 121.80005,
+          "PositionLat": 25.140145,
+          "GeoHash": "wsqx58s5f"
+        },
+        "StationID": "141112",
+        "StationGroupID": "202－114",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306359",
+        "StopID": "306359",
+        "StopName": {
+          "Zh_tw": "望海巷",
+          "En": "Wanghaixiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 5,
+        "StopPosition": {
+          "PositionLon": 121.801906,
+          "PositionLat": 25.137508,
+          "GeoHash": "wsqx58jkw"
+        },
+        "StationID": "140748",
+        "StationGroupID": "202－040",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306244",
+        "StopID": "306244",
+        "StopName": {
+          "Zh_tw": "八斗子車站",
+          "En": "Badouzi Railway Station"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 6,
+        "StopPosition": {
+          "PositionLon": 121.801954,
+          "PositionLat": 25.136582,
+          "GeoHash": "wsqwgxvrp"
+        },
+        "StationID": "140632",
+        "StationGroupID": "202－039",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306245",
+        "StopID": "306245",
+        "StopName": {
+          "Zh_tw": "望海巷",
+          "En": "Wanghaixiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 7,
+        "StopPosition": {
+          "PositionLon": 121.80208,
+          "PositionLat": 25.13717,
+          "GeoHash": "wsqx58jdd"
+        },
+        "StationID": "140633",
+        "StationGroupID": "202－040",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306246",
+        "StopID": "306246",
+        "StopName": {
+          "Zh_tw": "海科館(碧水巷)",
+          "En": "National Museum Of Marine Science &amp; Technology (Bishuixiang)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 8,
+        "StopPosition": {
+          "PositionLon": 121.79951,
+          "PositionLat": 25.140192,
+          "GeoHash": "wsqx58esn"
+        },
+        "StationID": "140634",
+        "StationGroupID": "202－041",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306420",
+        "StopID": "306420",
+        "StopName": {
+          "Zh_tw": "海科館正門",
+          "En": "National Museum Of Marine Science &amp; Technology(Main Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 9,
+        "StopPosition": {
+          "PositionLon": 121.797499,
+          "PositionLat": 25.140077,
+          "GeoHash": "wsqx58d5x"
+        },
+        "StationID": "140806",
+        "StationGroupID": "202－081",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306369",
+        "StopID": "306369",
+        "StopName": {
+          "Zh_tw": "八斗子",
+          "En": "Badouzi"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 10,
+        "StopPosition": {
+          "PositionLon": 121.795275,
+          "PositionLat": 25.139742,
+          "GeoHash": "wsqx5889e"
+        },
+        "StationID": "140758",
+        "StationGroupID": "202－067",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306370",
+        "StopID": "306370",
+        "StopName": {
+          "Zh_tw": "嶺林巷",
+          "En": "Linglinxiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 11,
+        "StopPosition": {
+          "PositionLon": 121.79239,
+          "PositionLat": 25.14095,
+          "GeoHash": "wsqx52y88"
+        },
+        "StationID": "140759",
+        "StationGroupID": "205－051",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306371",
+        "StopID": "306371",
+        "StopName": {
+          "Zh_tw": "義胞新村",
+          "En": "Yibaoxincun"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 12,
+        "StopPosition": {
+          "PositionLon": 121.79068,
+          "PositionLat": 25.14194,
+          "GeoHash": "wsqx52vq2"
+        },
+        "StationID": "140760",
+        "StationGroupID": "205－052",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306423",
+        "StopID": "306423",
+        "StopName": {
+          "Zh_tw": "漁貨直銷中心(碧砂漁港)",
+          "En": "Taiwan Tourist Seafood Markets (Bisha Fish Harbor)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 13,
+        "StopPosition": {
+          "PositionLon": 121.785765,
+          "PositionLat": 25.144581,
+          "GeoHash": "wsqx533ty"
+        },
+        "StationID": "140809",
+        "StationGroupID": "202－082",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306425",
+        "StopID": "306425",
+        "StopName": {
+          "Zh_tw": "藍投溝",
+          "En": "Lantougou"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 14,
+        "StopPosition": {
+          "PositionLon": 121.783666,
+          "PositionLat": 25.14629,
+          "GeoHash": "wsqx538pv"
+        },
+        "StationID": "140811",
+        "StationGroupID": "202－083",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306427",
+        "StopID": "306427",
+        "StopName": {
+          "Zh_tw": "北寧路(九八八餐廳)",
+          "En": "Beining Rd. (988 Restaurant)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 15,
+        "StopPosition": {
+          "PositionLon": 121.783012,
+          "PositionLat": 25.148309,
+          "GeoHash": "wsqx54pet"
+        },
+        "StationID": "140813",
+        "StationGroupID": "202－084",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306429",
+        "StopID": "306429",
+        "StopName": {
+          "Zh_tw": "海大體育館",
+          "En": "National Taiwan Ocean University (The Gymnasium)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 16,
+        "StopPosition": {
+          "PositionLon": 121.77996,
+          "PositionLat": 25.1506,
+          "GeoHash": "wsqx54t2y"
+        },
+        "StationID": "140815",
+        "StationGroupID": "202－085",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306431",
+        "StopID": "306431",
+        "StopName": {
+          "Zh_tw": "海大濱海校門",
+          "En": "National Taiwan Ocean University (Binhai School Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 17,
+        "StopPosition": {
+          "PositionLon": 121.77555,
+          "PositionLat": 25.15097,
+          "GeoHash": "wsqx54d5p"
+        },
+        "StationID": "140817",
+        "StationGroupID": "202－086",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306433",
+        "StopID": "306433",
+        "StopName": {
+          "Zh_tw": "海大祥豐校門",
+          "En": "National Taiwan Ocean University (Xiangfeng School Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 18,
+        "StopPosition": {
+          "PositionLon": 121.773208,
+          "PositionLat": 25.151159,
+          "GeoHash": "wsqx548s1"
+        },
+        "StationID": "140819",
+        "StationGroupID": "202－087",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306507",
+        "StopID": "306507",
+        "StopName": {
+          "Zh_tw": "海大附中",
+          "En": "National Keelung Maritime Vocational School"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 19,
+        "StopPosition": {
+          "PositionLon": 121.771966,
+          "PositionLat": 25.149715,
+          "GeoHash": "wsqx4fres"
+        },
+        "StationID": "140893",
+        "StationGroupID": "202－099",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306520",
+        "StopID": "306520",
+        "StopName": {
+          "Zh_tw": "市府宿舍",
+          "En": "Keelung City Dormitory"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 20,
+        "StopPosition": {
+          "PositionLon": 121.7709,
+          "PositionLat": 25.14788,
+          "GeoHash": "wsqx4fnc5"
+        },
+        "StationID": "140895",
+        "StationGroupID": "202－100",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306510",
+        "StopID": "306510",
+        "StopName": {
+          "Zh_tw": "正濱國小",
+          "En": "Zhengbin Elementary School"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 21,
+        "StopPosition": {
+          "PositionLon": 121.769893,
+          "PositionLat": 25.146288,
+          "GeoHash": "wsqx4cwps"
+        },
+        "StationID": "140897",
+        "StationGroupID": "202－101",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306512",
+        "StopID": "306512",
+        "StopName": {
+          "Zh_tw": "二信中學",
+          "En": "Erxin High School"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 22,
+        "StopPosition": {
+          "PositionLon": 121.76791,
+          "PositionLat": 25.14481,
+          "GeoHash": "wsqx4ckxj"
+        },
+        "StationID": "140899",
+        "StationGroupID": "202－102",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306514",
+        "StopID": "306514",
+        "StopName": {
+          "Zh_tw": "祥豐加油站",
+          "En": "Xiangfeng Gas Station"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 23,
+        "StopPosition": {
+          "PositionLon": 121.76535,
+          "PositionLat": 25.143129,
+          "GeoHash": "wsqx4c4v6"
+        },
+        "StationID": "140901",
+        "StationGroupID": "202－103",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306516",
+        "StopID": "306516",
+        "StopName": {
+          "Zh_tw": "祥豐市場",
+          "En": "Xiangfeng Market"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 24,
+        "StopPosition": {
+          "PositionLon": 121.76453,
+          "PositionLat": 25.142445,
+          "GeoHash": "wsqx4c41r"
+        },
+        "StationID": "140903",
+        "StationGroupID": "202－104",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306518",
+        "StopID": "306518",
+        "StopName": {
+          "Zh_tw": "天主堂",
+          "En": "Church"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 25,
+        "StopPosition": {
+          "PositionLon": 121.761604,
+          "PositionLat": 25.141437,
+          "GeoHash": "wsqx4bb57"
+        },
+        "StationID": "140905",
+        "StationGroupID": "202－105",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306344",
+        "StopID": "306344",
+        "StopName": {
+          "Zh_tw": "中正區行政大樓",
+          "En": "Administration Building of Zhongzheng District"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 26,
+        "StopPosition": {
+          "PositionLon": 121.758988,
+          "PositionLat": 25.141083,
+          "GeoHash": "wsqx48y1q"
+        },
+        "StationID": "140733",
+        "StationGroupID": "202－066",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306435",
+        "StopID": "306435",
+        "StopName": {
+          "Zh_tw": "海門天險",
+          "En": "Haimentiansian"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 27,
+        "StopPosition": {
+          "PositionLon": 121.7563,
+          "PositionLat": 25.140876,
+          "GeoHash": "wsqx48u0p"
+        },
+        "StationID": "140821",
+        "StationGroupID": "202－089",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306441",
+        "StopID": "306441",
+        "StopName": {
+          "Zh_tw": "中船路",
+          "En": "Zhongchuan Rd."
+        },
+        "StopBoarding": 0,
+        "StopSequence": 28,
+        "StopPosition": {
+          "PositionLon": 121.75072,
+          "PositionLat": 25.137598,
+          "GeoHash": "wsqx480jj"
+        },
+        "StationID": "140827",
+        "StationGroupID": "202－093",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306456",
+        "StopID": "306456",
+        "StopName": {
+          "Zh_tw": "信七路口",
+          "En": "Xin 7th Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 29,
+        "StopPosition": {
+          "PositionLon": 121.74798,
+          "PositionLat": 25.1365,
+          "GeoHash": "wsqwfrynt"
+        },
+        "StationID": "140842",
+        "StationGroupID": "202－095",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306459",
+        "StopID": "306459",
+        "StopName": {
+          "Zh_tw": "信五路口",
+          "En": "Xin 5th Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 30,
+        "StopPosition": {
+          "PositionLon": 121.74691,
+          "PositionLat": 25.13494,
+          "GeoHash": "wsqwfrtms"
+        },
+        "StationID": "140845",
+        "StationGroupID": "202－096",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306463",
+        "StopID": "306463",
+        "StopName": {
+          "Zh_tw": "市政府(柯達飯店)",
+          "En": "Keelung City Government (K Hotel)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 31,
+        "StopPosition": {
+          "PositionLon": 121.745278,
+          "PositionLat": 25.132476,
+          "GeoHash": "wsqwfrhpq"
+        },
+        "StationID": "140849",
+        "StationGroupID": "202－097",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306232",
+        "StopID": "306232",
+        "StopName": {
+          "Zh_tw": "仁二路(二信循環站)",
+          "En": "Ren 2nd Rd. (Erxin Loop Station )"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 32,
+        "StopPosition": {
+          "PositionLon": 121.743128,
+          "PositionLat": 25.129771,
+          "GeoHash": "wsqwfqdxs"
+        },
+        "StationID": "140620",
+        "StationGroupID": "200－030",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE309534",
+        "StopID": "309534",
+        "StopName": {
+          "Zh_tw": "基隆轉運站",
+          "En": "Keelung Transit Station"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 33,
+        "StopPosition": {
+          "PositionLon": 121.739089,
+          "PositionLat": 25.133076,
+          "GeoHash": "wsqwfprdy"
+        },
+        "StationID": "143441",
+        "StationGroupID": "203－105",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE309535",
+        "StopID": "309535",
+        "StopName": {
+          "Zh_tw": "民治里活動中心",
+          "En": "Minzhi Village Activity Center"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 34,
+        "StopPosition": {
+          "PositionLon": 121.740028,
+          "PositionLat": 25.134482,
+          "GeoHash": "wsqwfr86u"
+        },
+        "StationID": "141126",
+        "StationGroupID": "203－027",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306233",
+        "StopID": "306233",
+        "StopName": {
+          "Zh_tw": "忠一路孝一路口",
+          "En": "Zhong 1st Rd. &amp; Xiao 1st Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 35,
+        "StopPosition": {
+          "PositionLon": 121.741375,
+          "PositionLat": 25.130586,
+          "GeoHash": "wsqwfqck7"
+        },
+        "StationID": "140621",
+        "StationGroupID": "200－031",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306464",
+        "StopID": "306464",
+        "StopName": {
+          "Zh_tw": "市政府(柯達飯店)",
+          "En": "Keelung City Government (K Hotel)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 36,
+        "StopPosition": {
+          "PositionLon": 121.74541,
+          "PositionLat": 25.13233,
+          "GeoHash": "wsqwfrhq3"
+        },
+        "StationID": "140850",
+        "StationGroupID": "202－097",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306460",
+        "StopID": "306460",
+        "StopName": {
+          "Zh_tw": "信五路口",
+          "En": "Xin 5th Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 37,
+        "StopPosition": {
+          "PositionLon": 121.746636,
+          "PositionLat": 25.134185,
+          "GeoHash": "wsqwfrt1n"
+        },
+        "StationID": "140846",
+        "StationGroupID": "202－096",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306457",
+        "StopID": "306457",
+        "StopName": {
+          "Zh_tw": "信七路口",
+          "En": "Xin 7th Rd. Intersection"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 38,
+        "StopPosition": {
+          "PositionLon": 121.747736,
+          "PositionLat": 25.135875,
+          "GeoHash": "wsqwfrvgp"
+        },
+        "StationID": "140843",
+        "StationGroupID": "202－095",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306454",
+        "StopID": "306454",
+        "StopName": {
+          "Zh_tw": "就業中心",
+          "En": "Keelung Employment Service Station"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 39,
+        "StopPosition": {
+          "PositionLon": 121.74894,
+          "PositionLat": 25.137223,
+          "GeoHash": "wsqx42nfg"
+        },
+        "StationID": "140840",
+        "StationGroupID": "202－094",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306443",
+        "StopID": "306443",
+        "StopName": {
+          "Zh_tw": "中船路",
+          "En": "Zhongchuan Rd."
+        },
+        "StopBoarding": 0,
+        "StopSequence": 40,
+        "StopPosition": {
+          "PositionLon": 121.75095,
+          "PositionLat": 25.137353,
+          "GeoHash": "wsqx4807d"
+        },
+        "StationID": "140829",
+        "StationGroupID": "202－093",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306439",
+        "StopID": "306439",
+        "StopName": {
+          "Zh_tw": "北屋新城",
+          "En": "Beiwuxincheng"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 41,
+        "StopPosition": {
+          "PositionLon": 121.752025,
+          "PositionLat": 25.139078,
+          "GeoHash": "wsqx483je"
+        },
+        "StationID": "140825",
+        "StationGroupID": "202－092",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306437",
+        "StopID": "306437",
+        "StopName": {
+          "Zh_tw": "復興館",
+          "En": "Fuxingguan"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 42,
+        "StopPosition": {
+          "PositionLon": 121.754073,
+          "PositionLat": 25.13937,
+          "GeoHash": "wsqx486x7"
+        },
+        "StationID": "140823",
+        "StationGroupID": "202－090",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306436",
+        "StopID": "306436",
+        "StopName": {
+          "Zh_tw": "海門天險",
+          "En": "Haimentiansian"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 43,
+        "StopPosition": {
+          "PositionLon": 121.756108,
+          "PositionLat": 25.140736,
+          "GeoHash": "wsqx48sp6"
+        },
+        "StationID": "140822",
+        "StationGroupID": "202－089",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306345",
+        "StopID": "306345",
+        "StopName": {
+          "Zh_tw": "中正區行政大樓",
+          "En": "Administration Building of Zhongzheng District"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 44,
+        "StopPosition": {
+          "PositionLon": 121.758783,
+          "PositionLat": 25.140603,
+          "GeoHash": "wsqx48wn9"
+        },
+        "StationID": "140734",
+        "StationGroupID": "202－066",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306343",
+        "StopID": "306343",
+        "StopName": {
+          "Zh_tw": "正豐街",
+          "En": "Zhengfeng St."
+        },
+        "StopBoarding": 0,
+        "StopSequence": 45,
+        "StopPosition": {
+          "PositionLon": 121.760126,
+          "PositionLat": 25.140762,
+          "GeoHash": "wsqx48xp8"
+        },
+        "StationID": "140732",
+        "StationGroupID": "202－065",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306519",
+        "StopID": "306519",
+        "StopName": {
+          "Zh_tw": "天主堂",
+          "En": "Church"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 46,
+        "StopPosition": {
+          "PositionLon": 121.761548,
+          "PositionLat": 25.141141,
+          "GeoHash": "wsqx4bb1c"
+        },
+        "StationID": "140906",
+        "StationGroupID": "202－105",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306517",
+        "StopID": "306517",
+        "StopName": {
+          "Zh_tw": "祥豐市場",
+          "En": "Xiangfeng Market"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 47,
+        "StopPosition": {
+          "PositionLon": 121.76423,
+          "PositionLat": 25.14214,
+          "GeoHash": "wsqx4bfp8"
+        },
+        "StationID": "140904",
+        "StationGroupID": "202－104",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306515",
+        "StopID": "306515",
+        "StopName": {
+          "Zh_tw": "祥豐加油站",
+          "En": "Xiangfeng Gas Station"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 48,
+        "StopPosition": {
+          "PositionLon": 121.766052,
+          "PositionLat": 25.143569,
+          "GeoHash": "wsqx4c5rf"
+        },
+        "StationID": "140902",
+        "StationGroupID": "202－103",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306513",
+        "StopID": "306513",
+        "StopName": {
+          "Zh_tw": "二信中學",
+          "En": "Erxin High School"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 49,
+        "StopPosition": {
+          "PositionLon": 121.768379,
+          "PositionLat": 25.145023,
+          "GeoHash": "wsqx4ct02"
+        },
+        "StationID": "140900",
+        "StationGroupID": "202－102",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306511",
+        "StopID": "306511",
+        "StopName": {
+          "Zh_tw": "正濱國小",
+          "En": "Zhengbin Elementary School"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 50,
+        "StopPosition": {
+          "PositionLon": 121.770213,
+          "PositionLat": 25.146438,
+          "GeoHash": "wsqx4cy2e"
+        },
+        "StationID": "140898",
+        "StationGroupID": "202－101",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306509",
+        "StopID": "306509",
+        "StopName": {
+          "Zh_tw": "市府宿舍",
+          "En": "Keelung City Dormitory"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 51,
+        "StopPosition": {
+          "PositionLon": 121.77113,
+          "PositionLat": 25.14788,
+          "GeoHash": "wsqx4fp10"
+        },
+        "StationID": "140896",
+        "StationGroupID": "202－100",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306508",
+        "StopID": "306508",
+        "StopName": {
+          "Zh_tw": "海大附中",
+          "En": "National Keelung Maritime Vocational School"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 52,
+        "StopPosition": {
+          "PositionLon": 121.77172,
+          "PositionLat": 25.149276,
+          "GeoHash": "wsqx4fr3n"
+        },
+        "StationID": "140894",
+        "StationGroupID": "202－099",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306434",
+        "StopID": "306434",
+        "StopName": {
+          "Zh_tw": "海大祥豐校門",
+          "En": "National Taiwan Ocean University (Xiangfeng School Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 53,
+        "StopPosition": {
+          "PositionLon": 121.772842,
+          "PositionLat": 25.151029,
+          "GeoHash": "wsqx54872"
+        },
+        "StationID": "140820",
+        "StationGroupID": "202－087",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306432",
+        "StopID": "306432",
+        "StopName": {
+          "Zh_tw": "海大濱海校門",
+          "En": "National Taiwan Ocean University (Binhai School Entrance)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 54,
+        "StopPosition": {
+          "PositionLon": 121.77565,
+          "PositionLat": 25.150829,
+          "GeoHash": "wsqx54d64"
+        },
+        "StationID": "140818",
+        "StationGroupID": "202－086",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306430",
+        "StopID": "306430",
+        "StopName": {
+          "Zh_tw": "海大體育館",
+          "En": "National Taiwan Ocean University (The Gymnasium)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 55,
+        "StopPosition": {
+          "PositionLon": 121.779602,
+          "PositionLat": 25.150539,
+          "GeoHash": "wsqx54t0w"
+        },
+        "StationID": "140816",
+        "StationGroupID": "202－085",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306428",
+        "StopID": "306428",
+        "StopName": {
+          "Zh_tw": "北寧路(九八八餐廳)",
+          "En": "Beining Rd. (988 Restaurant)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 56,
+        "StopPosition": {
+          "PositionLon": 121.78289,
+          "PositionLat": 25.1483,
+          "GeoHash": "wsqx54pe7"
+        },
+        "StationID": "140814",
+        "StationGroupID": "202－084",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306426",
+        "StopID": "306426",
+        "StopName": {
+          "Zh_tw": "藍投溝",
+          "En": "Lantougou"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 57,
+        "StopPosition": {
+          "PositionLon": 121.783448,
+          "PositionLat": 25.146516,
+          "GeoHash": "wsqx53b10"
+        },
+        "StationID": "140812",
+        "StationGroupID": "202－083",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306424",
+        "StopID": "306424",
+        "StopName": {
+          "Zh_tw": "漁貨直銷中心(碧砂漁港)",
+          "En": "Taiwan Tourist Seafood Markets (Bisha Fish Harbor)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 58,
+        "StopPosition": {
+          "PositionLon": 121.785803,
+          "PositionLat": 25.144315,
+          "GeoHash": "wsqx533sq"
+        },
+        "StationID": "140810",
+        "StationGroupID": "202－082",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306421",
+        "StopID": "306421",
+        "StopName": {
+          "Zh_tw": "義胞新村",
+          "En": "Yibaoxincun"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 59,
+        "StopPosition": {
+          "PositionLon": 121.78972,
+          "PositionLat": 25.14219,
+          "GeoHash": "wsqx52uxf"
+        },
+        "StationID": "140807",
+        "StationGroupID": "205－052",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306422",
+        "StopID": "306422",
+        "StopName": {
+          "Zh_tw": "嶺林巷",
+          "En": "Linglinxiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 60,
+        "StopPosition": {
+          "PositionLon": 121.79244,
+          "PositionLat": 25.14033,
+          "GeoHash": "wsqx52wt1"
+        },
+        "StationID": "140808",
+        "StationGroupID": "205－051",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306357",
+        "StopID": "306357",
+        "StopName": {
+          "Zh_tw": "八斗子",
+          "En": "Badouzi"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 61,
+        "StopPosition": {
+          "PositionLon": 121.795761,
+          "PositionLat": 25.139535,
+          "GeoHash": "wsqx588bq"
+        },
+        "StationID": "140746",
+        "StationGroupID": "202－067",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306246",
+        "StopID": "306246",
+        "StopName": {
+          "Zh_tw": "海科館(碧水巷)",
+          "En": "National Museum Of Marine Science &amp; Technology (Bishuixiang)"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 62,
+        "StopPosition": {
+          "PositionLon": 121.79951,
+          "PositionLat": 25.140192,
+          "GeoHash": "wsqx58esn"
+        },
+        "StationID": "140634",
+        "StationGroupID": "202－041",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306359",
+        "StopID": "306359",
+        "StopName": {
+          "Zh_tw": "望海巷",
+          "En": "Wanghaixiang"
+        },
+        "StopBoarding": 0,
+        "StopSequence": 63,
+        "StopPosition": {
+          "PositionLon": 121.801906,
+          "PositionLat": 25.137508,
+          "GeoHash": "wsqx58jkw"
+        },
+        "StationID": "140748",
+        "StationGroupID": "202－040",
+        "LocationCityCode": "KEE"
+      },
+      {
+        "StopUID": "KEE306244",
+        "StopID": "306244",
+        "StopName": {
+          "Zh_tw": "八斗子車站",
+          "En": "Badouzi Railway Station"
+        },
+        "StopBoarding": -1,
+        "StopSequence": 64,
+        "StopPosition": {
+          "PositionLon": 121.801954,
+          "PositionLat": 25.136582,
+          "GeoHash": "wsqwgxvrp"
+        },
+        "StationID": "140632",
+        "StationGroupID": "202－039",
+        "LocationCityCode": "KEE"
+      }
+    ],
+    "UpdateTime": "2026-09-03T23:20:04+08:00",
+    "VersionID": 7589
+  }
+]

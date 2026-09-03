@@ -1,0 +1,142 @@
+[
+  {
+    "PlateNumb": "KKA-1761",
+    "OperatorID": "109",
+    "OperatorNo": "1107",
+    "RouteUID": "KEE0356",
+    "RouteID": "0356",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "SubRouteUID": "KEE035601",
+    "SubRouteID": "035601",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "StopUID": "KEE306244",
+    "StopID": "306244",
+    "StopName": {
+      "Zh_tw": "八斗子車站",
+      "En": "Badouzi Railway Station"
+    },
+    "StopSequence": 64,
+    "MessageType": 2,
+    "DutyStatus": 0,
+    "BusStatus": 0,
+    "A2EventType": 1,
+    "GPSTime": "2026-09-03T23:33:48+08:00",
+    "TripStartTimeType": 0,
+    "TripStartTime": "2026-09-03T22:46:39+08:00",
+    "SrcRecTime": "2026-09-03T23:33:48+08:00",
+    "SrcTransTime": "2026-09-03T23:33:48+08:00",
+    "UpdateTime": "2026-09-03T23:33:50+08:00"
+  },
+  {
+    "PlateNumb": "620-FZ",
+    "OperatorID": "109",
+    "OperatorNo": "1107",
+    "RouteUID": "KEE0355",
+    "RouteID": "0355",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "SubRouteUID": "KEE035501",
+    "SubRouteID": "035501",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "StopUID": "KEE306244",
+    "StopID": "306244",
+    "StopName": {
+      "Zh_tw": "八斗子車站",
+      "En": "Badouzi Railway Station"
+    },
+    "StopSequence": 68,
+    "MessageType": 2,
+    "DutyStatus": 0,
+    "BusStatus": 0,
+    "A2EventType": 1,
+    "GPSTime": "2026-09-03T23:13:34+08:00",
+    "TripStartTimeType": 0,
+    "TripStartTime": "2026-09-03T22:28:17+08:00",
+    "SrcRecTime": "2026-09-03T23:13:34+08:00",
+    "SrcTransTime": "2026-09-03T23:13:35+08:00",
+    "UpdateTime": "2026-09-03T23:13:40+08:00"
+  },
+  {
+    "PlateNumb": "KKA-1767",
+    "OperatorID": "109",
+    "OperatorNo": "1107",
+    "RouteUID": "KEE0356",
+    "RouteID": "0356",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "SubRouteUID": "KEE035601",
+    "SubRouteID": "035601",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "StopUID": "KEE306244",
+    "StopID": "306244",
+    "StopName": {
+      "Zh_tw": "八斗子車站",
+      "En": "Badouzi Railway Station"
+    },
+    "StopSequence": 64,
+    "MessageType": 2,
+    "DutyStatus": 0,
+    "BusStatus": 0,
+    "A2EventType": 1,
+    "GPSTime": "2026-09-03T22:56:41+08:00",
+    "TripStartTimeType": 0,
+    "TripStartTime": "2026-09-03T22:11:14+08:00",
+    "SrcRecTime": "2026-09-03T22:56:42+08:00",
+    "SrcTransTime": "2026-09-03T22:56:42+08:00",
+    "UpdateTime": "2026-09-03T22:56:45+08:00"
+  },
+  {
+    "PlateNumb": "FAC-157",
+    "OperatorID": "109",
+    "OperatorNo": "1107",
+    "RouteUID": "KEE0355",
+    "RouteID": "0355",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "SubRouteUID": "KEE035501",
+    "SubRouteID": "035501",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "StopUID": "KEE306244",
+    "StopID": "306244",
+    "StopName": {
+      "Zh_tw": "八斗子車站",
+      "En": "Badouzi Railway Station"
+    },
+    "StopSequence": 68,
+    "MessageType": 2,
+    "DutyStatus": 0,
+    "BusStatus": 0,
+    "A2EventType": 1,
+    "GPSTime": "2026-09-03T22:32:33+08:00",
+    "TripStartTimeType": 0,
+    "TripStartTime": "2026-09-03T21:43:43+08:00",
+    "SrcRecTime": "2026-09-03T22:32:34+08:00",
+    "SrcTransTime": "2026-09-03T22:32:34+08:00",
+    "UpdateTime": "2026-09-03T22:32:35+08:00"
+  }
+]
