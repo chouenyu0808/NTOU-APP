@@ -51,10 +51,17 @@ spike/          Python 探索腳本與真實擷取頁面（**不進版控**）
 
 ## 不進版控的東西
 
-`spike/`、`zeroday-submission.md`、`漏洞回報信稿.md` 都不在 git 裡，因為含
-真實擷取的頁面和未公開的漏洞細節。但 `app/test/` 會直接讀 `../spike/fixtures/`
-—— 沒有那個資料夾時測試會自己 skip，不會失敗。所以程式碼裡指向 `spike/` 的
-註解不是壞掉的參照，別「順手清掉」。
+**只有這些不在 git 裡**：`spike/fixtures/*.html`（真實擷取的頁面，含個資）、
+`spike/fixtures/callbacks/`、`zeroday-submission.md`、`漏洞回報信稿.md`
+（未公開的漏洞細節）、`.claude/settings.local.json`。
+
+`spike/` 本身**有進版控** —— 那些 Python 腳本（`login.py`、`scrub.py`、
+`check.py`、`parsers.py` 和它們的 pytest）、`README.md`、`selectors.json`、
+`menu_tree.json` 都在。改了要一起 commit，而且 pre-commit hook 會跑 spike 的
+pytest，那邊紅了就 commit 不進去。
+
+`app/test/` 會直接讀 `../spike/fixtures/` —— 沒有那個資料夾時測試會自己 skip，
+不會失敗。所以程式碼裡指向 `spike/` 的註解不是壞掉的參照，別「順手清掉」。
 
 ## 常用指令
 

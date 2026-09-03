@@ -391,7 +391,16 @@ def test_populated_result_is_not_empty():
 
 
 def test_real_empty_result_fixture():
+    # 114-2：使用者那學期還沒在本校選課。
+    # 115-1 從 2026-09-03 起有課了，不能再拿來當空結果的樣本。
+    p = FIXTURES / "Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_114_2.html"
+    if not p.exists():
+        pytest.skip("沒有 114-2 的查詢結果")
+    assert is_empty_result(p.read_text(encoding="utf-8"))
+
+
+def test_real_populated_result_fixture():
     p = FIXTURES / "Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_115_1.html"
     if not p.exists():
         pytest.skip("還沒有 115-1 的查詢結果")
-    assert is_empty_result(p.read_text(encoding="utf-8"))
+    assert not is_empty_result(p.read_text(encoding="utf-8"))
