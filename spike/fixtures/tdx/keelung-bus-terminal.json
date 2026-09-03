@@ -1,0 +1,1699 @@
+[
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309648",
+    "StopID": "309648",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1032",
+    "RouteID": "1032",
+    "RouteName": {
+      "Zh_tw": "1032",
+      "En": "1032"
+    },
+    "SubRouteUID": "THB103201",
+    "SubRouteID": "103201",
+    "SubRouteName": {
+      "Zh_tw": "1032",
+      "En": "1032"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "300865",
+    "StopSequence": 10,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309648",
+    "StopID": "309648",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1032",
+    "RouteID": "1032",
+    "RouteName": {
+      "Zh_tw": "1032",
+      "En": "1032"
+    },
+    "SubRouteUID": "THB103202",
+    "SubRouteID": "103202",
+    "SubRouteName": {
+      "Zh_tw": "1032",
+      "En": "1032"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "255601",
+    "StopSequence": 50,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1550",
+    "RouteID": "1550",
+    "RouteName": {
+      "Zh_tw": "1550",
+      "En": "1550"
+    },
+    "SubRouteUID": "THB155001",
+    "SubRouteID": "155001",
+    "SubRouteName": {
+      "Zh_tw": "1550",
+      "En": "1550"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309640",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1550",
+    "RouteID": "1550",
+    "RouteName": {
+      "Zh_tw": "1550",
+      "En": "1550"
+    },
+    "SubRouteUID": "THB155001",
+    "SubRouteID": "155001",
+    "SubRouteName": {
+      "Zh_tw": "1550",
+      "En": "1550"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309640",
+    "StopSequence": 18,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1550",
+    "RouteID": "1550",
+    "RouteName": {
+      "Zh_tw": "1550",
+      "En": "1550"
+    },
+    "SubRouteUID": "THB1550A1",
+    "SubRouteID": "1550A1",
+    "SubRouteName": {
+      "Zh_tw": "1550A",
+      "En": "1550A"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309640",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1550",
+    "RouteID": "1550",
+    "RouteName": {
+      "Zh_tw": "1550",
+      "En": "1550"
+    },
+    "SubRouteUID": "THB1550A1",
+    "SubRouteID": "1550A1",
+    "SubRouteName": {
+      "Zh_tw": "1550A",
+      "En": "1550A"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309640",
+    "StopSequence": 16,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1550",
+    "RouteID": "1550",
+    "RouteName": {
+      "Zh_tw": "1550",
+      "En": "1550"
+    },
+    "SubRouteUID": "THB1550B1",
+    "SubRouteID": "1550B1",
+    "SubRouteName": {
+      "Zh_tw": "1550B",
+      "En": "1550B"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "304815",
+    "StopSequence": 12,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1550",
+    "RouteID": "1550",
+    "RouteName": {
+      "Zh_tw": "1550",
+      "En": "1550"
+    },
+    "SubRouteUID": "THB1550B2",
+    "SubRouteID": "1550B2",
+    "SubRouteName": {
+      "Zh_tw": "1550B",
+      "En": "1550B"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "307634",
+    "StopSequence": 15,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1558",
+    "RouteID": "1558",
+    "RouteName": {
+      "Zh_tw": "1558",
+      "En": "1558"
+    },
+    "SubRouteUID": "THB155801",
+    "SubRouteID": "155801",
+    "SubRouteName": {
+      "Zh_tw": "1558",
+      "En": "1558"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "271458",
+    "StopSequence": 1,
+    "StopStatus": 4,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1558",
+    "RouteID": "1558",
+    "RouteName": {
+      "Zh_tw": "1558",
+      "En": "1558"
+    },
+    "SubRouteUID": "THB1558A1",
+    "SubRouteID": "1558A1",
+    "SubRouteName": {
+      "Zh_tw": "1558A",
+      "En": "1558A"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "271458",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1558",
+    "RouteID": "1558",
+    "RouteName": {
+      "Zh_tw": "1558",
+      "En": "1558"
+    },
+    "SubRouteUID": "THB1558A2",
+    "SubRouteID": "1558A2",
+    "SubRouteName": {
+      "Zh_tw": "1558A",
+      "En": "1558A"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309640",
+    "StopSequence": 20,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1558",
+    "RouteID": "1558",
+    "RouteName": {
+      "Zh_tw": "1558",
+      "En": "1558"
+    },
+    "SubRouteUID": "THB1558C1",
+    "SubRouteID": "1558C1",
+    "SubRouteName": {
+      "Zh_tw": "1558C",
+      "En": "1558C"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "271458",
+    "StopSequence": 1,
+    "StopStatus": 4,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309640",
+    "StopID": "309640",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1558",
+    "RouteID": "1558",
+    "RouteName": {
+      "Zh_tw": "1558",
+      "En": "1558"
+    },
+    "SubRouteUID": "THB1558C2",
+    "SubRouteID": "1558C2",
+    "SubRouteName": {
+      "Zh_tw": "1558C",
+      "En": "1558C"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309640",
+    "StopSequence": 21,
+    "StopStatus": 4,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1800",
+    "RouteID": "1800",
+    "RouteName": {
+      "Zh_tw": "1800",
+      "En": "1800"
+    },
+    "SubRouteUID": "THB1800A1",
+    "SubRouteID": "1800A1",
+    "SubRouteName": {
+      "Zh_tw": "1800A",
+      "En": "1800A"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309637",
+    "StopSequence": 3,
+    "StopStatus": 4,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1800",
+    "RouteID": "1800",
+    "RouteName": {
+      "Zh_tw": "1800",
+      "En": "1800"
+    },
+    "SubRouteUID": "THB1800A2",
+    "SubRouteID": "1800A2",
+    "SubRouteName": {
+      "Zh_tw": "1800A",
+      "En": "1800A"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "268490",
+    "StopSequence": 1,
+    "StopStatus": 4,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1800",
+    "RouteID": "1800",
+    "RouteName": {
+      "Zh_tw": "1800",
+      "En": "1800"
+    },
+    "SubRouteUID": "THB180001",
+    "SubRouteID": "180001",
+    "SubRouteName": {
+      "Zh_tw": "1800",
+      "En": "1800"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 8,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1800",
+    "RouteID": "1800",
+    "RouteName": {
+      "Zh_tw": "1800",
+      "En": "1800"
+    },
+    "SubRouteUID": "THB180002",
+    "SubRouteID": "180002",
+    "SubRouteName": {
+      "Zh_tw": "1800",
+      "En": "1800"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "310542",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1802",
+    "RouteID": "1802",
+    "RouteName": {
+      "Zh_tw": "1802",
+      "En": "1802"
+    },
+    "SubRouteUID": "THB180201",
+    "SubRouteID": "180201",
+    "SubRouteName": {
+      "Zh_tw": "1802",
+      "En": "1802"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "267035",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1802",
+    "RouteID": "1802",
+    "RouteName": {
+      "Zh_tw": "1802",
+      "En": "1802"
+    },
+    "SubRouteUID": "THB180202",
+    "SubRouteID": "180202",
+    "SubRouteName": {
+      "Zh_tw": "1802",
+      "En": "1802"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 18,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1804",
+    "RouteID": "1804",
+    "RouteName": {
+      "Zh_tw": "1804",
+      "En": "1804"
+    },
+    "SubRouteUID": "THB1804A1",
+    "SubRouteID": "1804A1",
+    "SubRouteName": {
+      "Zh_tw": "1804A",
+      "En": "1804A"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "300416",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1804",
+    "RouteID": "1804",
+    "RouteName": {
+      "Zh_tw": "1804",
+      "En": "1804"
+    },
+    "SubRouteUID": "THB1804A2",
+    "SubRouteID": "1804A2",
+    "SubRouteName": {
+      "Zh_tw": "1804A",
+      "En": "1804A"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309637",
+    "StopSequence": 7,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1804",
+    "RouteID": "1804",
+    "RouteName": {
+      "Zh_tw": "1804",
+      "En": "1804"
+    },
+    "SubRouteUID": "THB180401",
+    "SubRouteID": "180401",
+    "SubRouteName": {
+      "Zh_tw": "1804",
+      "En": "1804"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "300416",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1804",
+    "RouteID": "1804",
+    "RouteName": {
+      "Zh_tw": "1804",
+      "En": "1804"
+    },
+    "SubRouteUID": "THB180402",
+    "SubRouteID": "180402",
+    "SubRouteName": {
+      "Zh_tw": "1804",
+      "En": "1804"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 8,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1806",
+    "RouteID": "1806",
+    "RouteName": {
+      "Zh_tw": "1806",
+      "En": "1806"
+    },
+    "SubRouteUID": "THB180601",
+    "SubRouteID": "180601",
+    "SubRouteName": {
+      "Zh_tw": "1806",
+      "En": "1806"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "276855",
+    "StopSequence": 1,
+    "StopStatus": 4,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1806",
+    "RouteID": "1806",
+    "RouteName": {
+      "Zh_tw": "1806",
+      "En": "1806"
+    },
+    "SubRouteUID": "THB180602",
+    "SubRouteID": "180602",
+    "SubRouteName": {
+      "Zh_tw": "1806",
+      "En": "1806"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 12,
+    "StopStatus": 4,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:43+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1880",
+    "RouteID": "1880",
+    "RouteName": {
+      "Zh_tw": "1880",
+      "En": "1880"
+    },
+    "SubRouteUID": "THB188001",
+    "SubRouteID": "188001",
+    "SubRouteName": {
+      "Zh_tw": "1880",
+      "En": "1880"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309637",
+    "StopSequence": 4,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:44+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1880",
+    "RouteID": "1880",
+    "RouteName": {
+      "Zh_tw": "1880",
+      "En": "1880"
+    },
+    "SubRouteUID": "THB188002",
+    "SubRouteID": "188002",
+    "SubRouteName": {
+      "Zh_tw": "1880",
+      "En": "1880"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "257812",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:44+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309638",
+    "StopID": "309638",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB9006",
+    "RouteID": "9006",
+    "RouteName": {
+      "Zh_tw": "9006",
+      "En": "9006"
+    },
+    "SubRouteUID": "THB900601",
+    "SubRouteID": "900601",
+    "SubRouteName": {
+      "Zh_tw": "9006",
+      "En": "9006"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "295261",
+    "StopSequence": 9,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:45+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309645",
+    "StopID": "309645",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB9006",
+    "RouteID": "9006",
+    "RouteName": {
+      "Zh_tw": "9006",
+      "En": "9006"
+    },
+    "SubRouteUID": "THB900602",
+    "SubRouteID": "900602",
+    "SubRouteName": {
+      "Zh_tw": "9006",
+      "En": "9006"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "270065",
+    "StopSequence": 7,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:45+08:00",
+    "UpdateTime": "2026-09-03T23:55:50+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309648",
+    "StopID": "309648",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1031",
+    "RouteID": "1031",
+    "RouteName": {
+      "Zh_tw": "1031",
+      "En": "1031"
+    },
+    "SubRouteUID": "THB103101",
+    "SubRouteID": "103101",
+    "SubRouteName": {
+      "Zh_tw": "1031",
+      "En": "1031"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "270344",
+    "StopSequence": 9,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309648",
+    "StopID": "309648",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1031",
+    "RouteID": "1031",
+    "RouteName": {
+      "Zh_tw": "1031",
+      "En": "1031"
+    },
+    "SubRouteUID": "THB103102",
+    "SubRouteID": "103102",
+    "SubRouteName": {
+      "Zh_tw": "1031",
+      "En": "1031"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "307466",
+    "StopSequence": 35,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309638",
+    "StopID": "309638",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1191",
+    "RouteID": "1191",
+    "RouteName": {
+      "Zh_tw": "1191",
+      "En": "1191"
+    },
+    "SubRouteUID": "THB119101",
+    "SubRouteID": "119101",
+    "SubRouteName": {
+      "Zh_tw": "1191",
+      "En": "1191"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309638",
+    "StopSequence": 63,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309638",
+    "StopID": "309638",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1191",
+    "RouteID": "1191",
+    "RouteName": {
+      "Zh_tw": "1191",
+      "En": "1191"
+    },
+    "SubRouteUID": "THB119102",
+    "SubRouteID": "119102",
+    "SubRouteName": {
+      "Zh_tw": "1191",
+      "En": "1191"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "300227",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1551",
+    "RouteID": "1551",
+    "RouteName": {
+      "Zh_tw": "1551",
+      "En": "1551"
+    },
+    "SubRouteUID": "THB155101",
+    "SubRouteID": "155101",
+    "SubRouteName": {
+      "Zh_tw": "1551",
+      "En": "1551"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "268098",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1551",
+    "RouteID": "1551",
+    "RouteName": {
+      "Zh_tw": "1551",
+      "En": "1551"
+    },
+    "SubRouteUID": "THB155102",
+    "SubRouteID": "155102",
+    "SubRouteName": {
+      "Zh_tw": "1551",
+      "En": "1551"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309637",
+    "StopSequence": 29,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309870",
+    "StopID": "309870",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1573",
+    "RouteID": "1573",
+    "RouteName": {
+      "Zh_tw": "1573",
+      "En": "1573"
+    },
+    "SubRouteUID": "THB157301",
+    "SubRouteID": "157301",
+    "SubRouteName": {
+      "Zh_tw": "1573",
+      "En": "1573"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "310238",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309870",
+    "StopID": "309870",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1573",
+    "RouteID": "1573",
+    "RouteName": {
+      "Zh_tw": "1573",
+      "En": "1573"
+    },
+    "SubRouteUID": "THB157302",
+    "SubRouteID": "157302",
+    "SubRouteName": {
+      "Zh_tw": "1573",
+      "En": "1573"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309870",
+    "StopSequence": 7,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309870",
+    "StopID": "309870",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1573",
+    "RouteID": "1573",
+    "RouteName": {
+      "Zh_tw": "1573",
+      "En": "1573"
+    },
+    "SubRouteUID": "THB1573A1",
+    "SubRouteID": "1573A1",
+    "SubRouteName": {
+      "Zh_tw": "1573A",
+      "En": "1573A"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "310238",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309870",
+    "StopID": "309870",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1573",
+    "RouteID": "1573",
+    "RouteName": {
+      "Zh_tw": "1573",
+      "En": "1573"
+    },
+    "SubRouteUID": "THB1573A2",
+    "SubRouteID": "1573A2",
+    "SubRouteName": {
+      "Zh_tw": "1573A",
+      "En": "1573A"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309870",
+    "StopSequence": 8,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309870",
+    "StopID": "309870",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1573",
+    "RouteID": "1573",
+    "RouteName": {
+      "Zh_tw": "1573",
+      "En": "1573"
+    },
+    "SubRouteUID": "THB1573B2",
+    "SubRouteID": "1573B2",
+    "SubRouteName": {
+      "Zh_tw": "1573B",
+      "En": "1573B"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "311297",
+    "StopSequence": 7,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1801",
+    "RouteID": "1801",
+    "RouteName": {
+      "Zh_tw": "1801",
+      "En": "1801"
+    },
+    "SubRouteUID": "THB1801A1",
+    "SubRouteID": "1801A1",
+    "SubRouteName": {
+      "Zh_tw": "1801A",
+      "En": "1801A"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "268567",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309637",
+    "StopID": "309637",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1801",
+    "RouteID": "1801",
+    "RouteName": {
+      "Zh_tw": "1801",
+      "En": "1801"
+    },
+    "SubRouteUID": "THB1801A2",
+    "SubRouteID": "1801A2",
+    "SubRouteName": {
+      "Zh_tw": "1801A",
+      "En": "1801A"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309637",
+    "StopSequence": 10,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1801",
+    "RouteID": "1801",
+    "RouteName": {
+      "Zh_tw": "1801",
+      "En": "1801"
+    },
+    "SubRouteUID": "THB180101",
+    "SubRouteID": "180101",
+    "SubRouteName": {
+      "Zh_tw": "1801",
+      "En": "1801"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "268002",
+    "StopSequence": 1,
+    "StopStatus": 4,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1801",
+    "RouteID": "1801",
+    "RouteName": {
+      "Zh_tw": "1801",
+      "En": "1801"
+    },
+    "SubRouteUID": "THB180102",
+    "SubRouteID": "180102",
+    "SubRouteName": {
+      "Zh_tw": "1801",
+      "En": "1801"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 25,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1803",
+    "RouteID": "1803",
+    "RouteName": {
+      "Zh_tw": "1803",
+      "En": "1803"
+    },
+    "SubRouteUID": "THB180301",
+    "SubRouteID": "180301",
+    "SubRouteName": {
+      "Zh_tw": "1803",
+      "En": "1803"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "267061",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1803",
+    "RouteID": "1803",
+    "RouteName": {
+      "Zh_tw": "1803",
+      "En": "1803"
+    },
+    "SubRouteUID": "THB180302",
+    "SubRouteID": "180302",
+    "SubRouteName": {
+      "Zh_tw": "1803",
+      "En": "1803"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 81,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1805",
+    "RouteID": "1805",
+    "RouteName": {
+      "Zh_tw": "1805",
+      "En": "1805"
+    },
+    "SubRouteUID": "THB180501",
+    "SubRouteID": "180501",
+    "SubRouteName": {
+      "Zh_tw": "1805",
+      "En": "1805"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "308697",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1805",
+    "RouteID": "1805",
+    "RouteName": {
+      "Zh_tw": "1805",
+      "En": "1805"
+    },
+    "SubRouteUID": "THB180502",
+    "SubRouteID": "180502",
+    "SubRouteName": {
+      "Zh_tw": "1805",
+      "En": "1805"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 4,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1813",
+    "RouteID": "1813",
+    "RouteName": {
+      "Zh_tw": "1813",
+      "En": "1813"
+    },
+    "SubRouteUID": "THB181301",
+    "SubRouteID": "181301",
+    "SubRouteName": {
+      "Zh_tw": "1813",
+      "En": "1813"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 2,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1813",
+    "RouteID": "1813",
+    "RouteName": {
+      "Zh_tw": "1813",
+      "En": "1813"
+    },
+    "SubRouteUID": "THB181302",
+    "SubRouteID": "181302",
+    "SubRouteName": {
+      "Zh_tw": "1813",
+      "En": "1813"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "300516",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "KKA-1927",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1813",
+    "RouteID": "1813",
+    "RouteName": {
+      "Zh_tw": "1813",
+      "En": "1813"
+    },
+    "SubRouteUID": "THB1813D1",
+    "SubRouteID": "1813D1",
+    "SubRouteName": {
+      "Zh_tw": "1813D",
+      "En": "1813D"
+    },
+    "Direction": 0,
+    "EstimateTime": 1979,
+    "StopCountDown": 13,
+    "CurrentStop": "285673",
+    "DestinationStop": "309639",
+    "StopSequence": 21,
+    "StopStatus": 0,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:02+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1813",
+    "RouteID": "1813",
+    "RouteName": {
+      "Zh_tw": "1813",
+      "En": "1813"
+    },
+    "SubRouteUID": "THB1813D2",
+    "SubRouteID": "1813D2",
+    "SubRouteName": {
+      "Zh_tw": "1813D",
+      "En": "1813D"
+    },
+    "Direction": 1,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "300516",
+    "StopSequence": 1,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "THB309639",
+    "StopID": "309639",
+    "StopName": {
+      "Zh_tw": "基隆轉運站",
+      "En": "Keelung Transit Station"
+    },
+    "RouteUID": "THB1813",
+    "RouteID": "1813",
+    "RouteName": {
+      "Zh_tw": "1813",
+      "En": "1813"
+    },
+    "SubRouteUID": "THB1813I1",
+    "SubRouteID": "1813I1",
+    "SubRouteName": {
+      "Zh_tw": "1813I",
+      "En": "1813I"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309639",
+    "StopSequence": 2,
+    "StopStatus": 1,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  }
+]

@@ -385,6 +385,113 @@ TMP_SAVE_BTN onclick="return doStcollateralSave();"                ←
 所以去重的鍵是**（標籤, onclick）**，而且只能在同一組裡比 ——
 每個標籤頁都有自己的存檔鈕，跨組去重會把第二頁之後的存檔全部吃掉。
 
+## 交通資料（TDX）—— 跟上面的 AIS 完全無關
+
+App 的交通分頁查的是海大附近那五個站（台鐵基隆站、基隆轉運站、海大體育館、
+海大濱海校門、海大祥豐校門）。資料來自交通部的 TDX，**不用登入**，
+所以這一段跟前面的排隊關卡、VIEWSTATE、明文密碼那些完全沾不上邊。
+
+### 為什麼需要一支探索腳本
+
+跟 AIS 同一個理由，但成因不同：**TDX 的公開 swagger 在 schema 那一段是
+截斷的**，而沒有金鑰打不到真實回應。所以 `app/lib/src/transit/` 裡每個欄位
+都準備了好幾個候選名字：
+
+- `EstimateTime` 還是 `EstimatedTime`？
+- `RouteName` 是字串，還是 v2 那種 `{"Zh_tw": "103", "En": "103"}`？
+- 回應是裸陣列（v2），還是包在 `{"TrainLiveBoards": [...]}` 裡（v3）？
+
+賭一個名字的話，猜錯的下場是解析出一片空白 —— 而畫面上「解析失敗」跟
+「這站現在沒車」長得一模一樣，沒有人會發現。`tdx.py` 就是拿來把這件事
+問清楚的：它印出真實欄位名，並標出哪個候選命中、哪個一個都沒中。
+
+### 拿金鑰
+
+1. <https://tdx.transportdata.tw/> 註冊會員（免費）。**帳號審核最多三個工作日。**
+2. 會員中心 → 資料服務 → 取得 Client Id 與 Client Secret。
+3. 放進環境變數，**不要寫進任何檔案**：
+
+```powershell
+$env:TDX_CLIENT_ID = "..."
+$env:TDX_CLIENT_SECRET = "..."
+```
+
+### 跑
+
+```powershell
+.venv\Scripts\python.exe tdx.py                 # 五個站全跑一遍
+.venv\Scripts\python.exe tdx.py --dump-stops    # 海大附近的站牌在 TDX 裡叫什麼
+.venv\Scripts\python.exe tdx.py --save          # 順便存成 fixture
+```
+
+輸出裡標 `[!]` 的地方就是 `app/assets/transit.json` 或
+`transit_repository.dart` 要改的地方。
+
+存下來的 fixture 放 `fixtures/tdx/`。**那些是公開的公車與列車資訊，
+沒有任何個資** —— 跟 AIS 的 fixture 不同，可以直接進版控拿來鎖測試。
+
+### 2026-09-03 第一次拿真金鑰跑的結果
+
+**公車和台鐵都對完了**，五個站的回應存在 `fixtures/tdx/`（進版控），
+`app/test/transit_test.dart` 拿它們釘死解析。台鐵第一次被 429 擋掉，
+補跑 `--stop 台鐵基隆站` 才拿到（那時 `station_id` 已經填好，只要一個請求）。
+
+站名全部精準命中，本來備援的「海洋大學濱海校門」那些寫法 TDX 裡不存在：
+
+| transit.json | TDX | StopUID |
+|---|---|---|
+| 海大體育館 | 海大體育館 | KEE306429 |
+| 海大濱海校門 | 海大濱海校門 | KEE306431 |
+| 海大祥豐校門 | 海大祥豐校門 | KEE306433 |
+
+三個猜錯不會有錯誤訊息的地方：
+
+- **`StopCountDown` 是「還有幾站」，不是秒數。** 同一筆裡 `EstimateTime: 725`
+  配 `StopCountDown: 19`、`1979` 配 `13`。當成秒數的備援，那班十二分鐘後
+  才到的車會顯示「進站中」。
+- **`EstimateTime` 是選擇性欄位**，沒車的那幾筆連 key 都沒有。深夜 15 筆
+  只有 1 筆帶著它。`tdx.py` 原本只看 `rows[0]`，就是因此報了假警報說
+  「候選一個都沒命中」—— 現在改成掃全部並印出「幾筆裡有幾筆」。
+- **`DestinationStop` 是 StopID 不是站名**（`"306195"`）。「往哪裡」那欄
+  目前一律空白；要補站名得另外查路線資料的起訖站，**還沒做**。
+- **台鐵表定時間是 `ScheduleDepartureTime`**，不是 `Scheduled...` —— 少一個 d。
+  原本的候選全落空，那一欄整片空白。
+- **基隆是端點站**，列車的 `EndingStationID` 全是 `0900`（基隆自己），
+  照印會變成「往 基隆」。
+
+### Direction：0 去程、1 返程（`--probe-direction` 問出來的）
+
+公車的「往哪裡」是拿 `RouteUID` 去路線資料查兩頭，再靠 `Direction` 挑一邊。
+弄反了會顯示一個看起來很合理的錯誤終點，使用者搭反方向 —— 所以不能靠慣例賭。
+
+`--probe-direction` 的做法：到站資料裡的 `DestinationStop` 就是那班車真正的
+終點 StopID，解成站名跟路線兩端一比，答案自己會跳出來。結果是
+**0 對終點欄位、1 對起點欄位**，慣例成立。
+
+跑的時候注意一件事：**國道客運的站牌不在基隆市的站牌清單裡**（散在台北、
+南投、台中），所以要連 `v2/Bus/Stop/InterCity` 一起查，否則那些 StopID 全部
+解不出名字，印出一整排「都不是」，看起來像慣例不成立，其實只是查錯地方。
+
+### 刷新頻率：TDX 自己講了
+
+台鐵回應外層帶著 `UpdateInterval: 30`、`SrcUpdateInterval: 60` ——
+資料在 TDX 端每 30 秒才換一次。App 那邊的 30 秒就是照這個訂的，
+調更快只是同一份資料多抓幾次。
+
+### 兩件已經查證過、容易搞錯的事
+
+- **海大那三個站牌是基隆市公車**，不在台北市政府的公車資料裡。
+  唯一的例外是首都客運 1579（圓山轉運站直達海大體育館），那是國道客運。
+- **台鐵基隆站 = `0900`**，2026-09-03 對 `v3/Rail/TRA/Station` 查證過，
+  已經填回 `transit.json`。在那之前是刻意留空的：填一個猜的代碼會
+  **安靜地查出別站的車** —— 畫面上一切正常。要改動它就重跑一次 `tdx.py`。
+
+### 打太快會被擋
+
+那次連續打六個請求（五個站 + 一次車站查詢），第六個就吃到
+`HTTP 429 API rate limit exceeded`。`tdx.py` 本身沒有節流，跑之前心裡有數；
+App 那邊 `min_interval_seconds` 是 0.5，**還沒驗證過夠不夠**。
+
 ## 檔案
 
 | 檔案 | 用途 |
@@ -398,6 +505,7 @@ TMP_SAVE_BTN onclick="return doStcollateralSave();"                ←
 | `test_parsers.py` | parser 回歸測試（含 rowspan / colspan、選單、callback 格式） |
 | `test_ais.py` | 登入判斷、callback 封裝、密碼外洩守門測試 |
 | `test_login.py` | `--fetch-all` 的安全性：不能掃到會改資料的頁面 |
+| `tdx.py` | **交通部 TDX**：驗證公車 / 台鐵 API 的真實欄位名（跟 AIS 無關）|
 | `check.py` | commit 前的把關：個資 → 測試 → lint，一個指令 |
 | `test_check.py` | 把關掃描本身的測試（誤報會擋到整個 repo，包含 app/） |
 | `pyproject.toml` | ruff 設定。每條 ignore 都寫了為什麼 |

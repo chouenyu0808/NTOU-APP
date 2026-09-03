@@ -72,6 +72,8 @@ flutter:
   assets:
     - assets/selectors.json
     - assets/menu_tree.json
+    # TDX（交通部）的端點與站點設定。同樣是「對方改版就會爛」的那類字串。
+    - assets/transit.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:

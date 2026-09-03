@@ -1,0 +1,483 @@
+[
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306429",
+    "StopID": "306429",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0355",
+    "RouteID": "0355",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "SubRouteUID": "KEE035501",
+    "SubRouteID": "035501",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306244",
+    "StopSequence": 16,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306430",
+    "StopID": "306430",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0355",
+    "RouteID": "0355",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "SubRouteUID": "KEE035501",
+    "SubRouteID": "035501",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306244",
+    "StopSequence": 59,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306429",
+    "StopID": "306429",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0356",
+    "RouteID": "0356",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "SubRouteUID": "KEE035601",
+    "SubRouteID": "035601",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306244",
+    "StopSequence": 16,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306430",
+    "StopID": "306430",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0356",
+    "RouteID": "0356",
+    "RouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "SubRouteUID": "KEE035601",
+    "SubRouteID": "035601",
+    "SubRouteName": {
+      "Zh_tw": "103",
+      "En": "103"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306244",
+    "StopSequence": 55,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": false,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306429",
+    "StopID": "306429",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0358",
+    "RouteID": "0358",
+    "RouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "SubRouteUID": "KEE035801",
+    "SubRouteID": "035801",
+    "SubRouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306195",
+    "StopSequence": 13,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306430",
+    "StopID": "306430",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0358",
+    "RouteID": "0358",
+    "RouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "SubRouteUID": "KEE035801",
+    "SubRouteID": "035801",
+    "SubRouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306195",
+    "StopSequence": 56,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306429",
+    "StopID": "306429",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0359",
+    "RouteID": "0359",
+    "RouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "SubRouteUID": "KEE035901",
+    "SubRouteID": "035901",
+    "SubRouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306195",
+    "StopSequence": 13,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306430",
+    "StopID": "306430",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0359",
+    "RouteID": "0359",
+    "RouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "SubRouteUID": "KEE035901",
+    "SubRouteID": "035901",
+    "SubRouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306195",
+    "StopSequence": 52,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "FAC-211",
+    "StopUID": "KEE306430",
+    "StopID": "306430",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0359",
+    "RouteID": "0359",
+    "RouteName": {
+      "Zh_tw": "104",
+      "En": "104"
+    },
+    "SubRouteUID": "KEE0359A1",
+    "SubRouteID": "0359A1",
+    "SubRouteName": {
+      "Zh_tw": "104A",
+      "En": "104A"
+    },
+    "Direction": 0,
+    "EstimateTime": 725,
+    "StopCountDown": 19,
+    "CurrentStop": "306464",
+    "DestinationStop": "306195",
+    "StopSequence": 23,
+    "StopStatus": 0,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:24+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306429",
+    "StopID": "306429",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0366",
+    "RouteID": "0366",
+    "RouteName": {
+      "Zh_tw": "108",
+      "En": "108"
+    },
+    "SubRouteUID": "KEE036601",
+    "SubRouteID": "036601",
+    "SubRouteName": {
+      "Zh_tw": "108",
+      "En": "108"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "307073",
+    "StopSequence": 14,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306430",
+    "StopID": "306430",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0366",
+    "RouteID": "0366",
+    "RouteName": {
+      "Zh_tw": "108",
+      "En": "108"
+    },
+    "SubRouteUID": "KEE036601",
+    "SubRouteID": "036601",
+    "SubRouteName": {
+      "Zh_tw": "108",
+      "En": "108"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "307073",
+    "StopSequence": 53,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306429",
+    "StopID": "306429",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0367",
+    "RouteID": "0367",
+    "RouteName": {
+      "Zh_tw": "108",
+      "En": "108"
+    },
+    "SubRouteUID": "KEE036701",
+    "SubRouteID": "036701",
+    "SubRouteName": {
+      "Zh_tw": "108",
+      "En": "108"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "309534",
+    "StopSequence": 14,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306429",
+    "StopID": "306429",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0387",
+    "RouteID": "0387",
+    "RouteName": {
+      "Zh_tw": "8021",
+      "En": "8021"
+    },
+    "SubRouteUID": "KEE038701",
+    "SubRouteID": "038701",
+    "SubRouteName": {
+      "Zh_tw": "8021",
+      "En": "8021"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306244",
+    "StopSequence": 12,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306430",
+    "StopID": "306430",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0387",
+    "RouteID": "0387",
+    "RouteName": {
+      "Zh_tw": "8021",
+      "En": "8021"
+    },
+    "SubRouteUID": "KEE038701",
+    "SubRouteID": "038701",
+    "SubRouteName": {
+      "Zh_tw": "8021",
+      "En": "8021"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306244",
+    "StopSequence": 85,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:41+08:00",
+    "SrcTransTime": "2026-09-03T23:55:42+08:00",
+    "UpdateTime": "2026-09-03T23:55:45+08:00"
+  },
+  {
+    "PlateNumb": "-1",
+    "StopUID": "KEE306429",
+    "StopID": "306429",
+    "StopName": {
+      "Zh_tw": "海大體育館",
+      "En": "National Taiwan Ocean University (The Gymnasium)"
+    },
+    "RouteUID": "KEE0387",
+    "RouteID": "0387",
+    "RouteName": {
+      "Zh_tw": "8021",
+      "En": "8021"
+    },
+    "SubRouteUID": "KEE0387A1",
+    "SubRouteID": "0387A1",
+    "SubRouteName": {
+      "Zh_tw": "8022A",
+      "En": "8022A"
+    },
+    "Direction": 0,
+    "StopCountDown": 0,
+    "CurrentStop": "-1",
+    "DestinationStop": "306272",
+    "StopSequence": 12,
+    "StopStatus": 3,
+    "MessageType": 2,
+    "IsLastBus": true,
+    "DataTime": "2026-09-03T23:55:10+08:00",
+    "SrcTransTime": "2026-09-03T23:55:12+08:00",
+    "UpdateTime": "2026-09-03T23:55:15+08:00"
+  }
+]

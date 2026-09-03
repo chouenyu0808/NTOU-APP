@@ -8,8 +8,9 @@ import 'login_page.dart';
 import 'module_list_page.dart';
 import 'planner_page.dart';
 import 'timetable_page.dart';
+import 'transit_page.dart';
 
-/// App 的骨架：首頁 / 課表 / 校務。
+/// App 的骨架：首頁 / 課表 / 校務 / 交通。
 ///
 /// 課表為什麼獨立一頁而不是塞進「教務系統」底下：那是每天都會看好幾次的東西，
 /// 藏在三層選單裡等於沒做。其餘 49 個功能是一年用幾次的，放在選單裡剛好。
@@ -113,6 +114,12 @@ class _HomeShellState extends State<HomeShell> {
             controller: widget.controller,
             catalog: widget.catalog,
           ),
+          // 交通只有這一頁需要知道自己有沒有被看著。
+          //
+          // 外面這個 IndexedStack 會讓四個分頁**從開 App 起就一直掛載**，
+          // 而交通頁裡有一個每 30 秒重抓一次的計時器。不告訴它現在是不是
+          // 在前景的話，使用者整天在看課表，它照樣整天打交通部的伺服器。
+          TransitPage(isActive: _index == 3),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -133,6 +140,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.apps_outlined),
             selectedIcon: Icon(Icons.apps),
             label: '校務',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.directions_bus_outlined),
+            selectedIcon: Icon(Icons.directions_bus),
+            label: '交通',
           ),
         ],
       ),

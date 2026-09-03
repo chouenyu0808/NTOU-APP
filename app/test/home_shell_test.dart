@@ -9,11 +9,12 @@ import 'package:ntou_app/src/ui/module_list_page.dart';
 import 'package:ntou_app/src/ui/planner_page.dart';
 import 'package:ntou_app/src/ui/theme.dart';
 import 'package:ntou_app/src/ui/timetable_page.dart';
+import 'package:ntou_app/src/ui/transit_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_ais.dart';
 
-/// 骨架這一層要鎖的是：三個分頁都接上了、切換有反應，
+/// 骨架這一層要鎖的是：四個分頁都接上了、切換有反應，
 /// 而且課表分頁上的「本學期 / 預排」切得動。
 ///
 /// promptLoginOnOpen 關掉 —— 開著的話一掛載就去打學校的伺服器，
@@ -37,18 +38,19 @@ void main() {
         ),
       );
 
-  testWidgets('底部是首頁 / 課表 / 校務三個分頁', (tester) async {
+  testWidgets('底部是首頁 / 課表 / 校務 / 交通四個分頁', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
     final bar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-    expect(bar.destinations, hasLength(3));
+    expect(bar.destinations, hasLength(4));
     expect(find.text('首頁'), findsWidgets);
     expect(find.text('課表'), findsWidgets);
     expect(find.text('校務'), findsWidgets);
+    expect(find.text('交通'), findsWidgets);
   });
 
-  testWidgets('三頁都掛在骨架裡（IndexedStack）', (tester) async {
+  testWidgets('四頁都掛在骨架裡（IndexedStack）', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
@@ -64,6 +66,30 @@ void main() {
     // 再點回來，就被丟回當學期，畫面上沒有任何提示。
     expect(find.byType(TimetablePage, skipOffstage: false), findsOneWidget);
     expect(find.byType(PlannerPage, skipOffstage: false), findsOneWidget);
+    expect(find.byType(TransitPage, skipOffstage: false), findsOneWidget);
+  });
+
+  /// 交通頁掛著，但**開 App 的時候不該開始做事**。
+  ///
+  /// 它裡面有一個每 30 秒重抓的計時器和一顆載入中的轉圈圈。停在首頁的時候
+  /// 兩個都不該啟動：計時器會整天打交通部的伺服器，而那顆轉圈圈是無限動畫，
+  /// 只要它在畫面上，整個 App 的 pumpAndSettle 就永遠等不到穩定。
+  testWidgets('停在首頁時，交通頁沒有在背景轉圈圈', (tester) async {
+    await tester.pumpWidget(wrap());
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<TransitPage>(
+      find.byType(TransitPage, skipOffstage: false),
+    );
+    expect(page.isActive, isFalse);
+    expect(
+      find.descendant(
+        of: find.byType(TransitPage, skipOffstage: false),
+        matching: find.byType(CircularProgressIndicator),
+        skipOffstage: false,
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('切去「本學期」再切回來，預排選的學期還在', (tester) async {

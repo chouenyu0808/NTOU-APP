@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "_comment": "TDX（交通部運輸資料流通服務）的端點與站點設定。跟 selectors.json 同樣的用意：會因為對方改版而爛掉的字串全部集中在這裡，Dart 程式碼裡一個都不寫死。註冊與金鑰見 spike/README.md。",
+
+  "auth": {
+    "_comment": "OIDC client credentials。token 預設 86400 秒（1 天），而 token 端點每個 IP 每分鐘只能打 20 次 —— 所以一定要快取，不要每次呼叫 API 都換一張。",
+    "token_url": "https://tdx.transportdata.tw/auth/realms/TDXConnect/protocol/openid-connect/token",
+    "renew_margin_seconds": 600
+  },
+
+  "api": {
+    "base_url": "https://tdx.transportdata.tw/api/basic/",
+    "min_interval_seconds": 0.5,
+    "timeout_seconds": 15,
+
+    "_endpoints_comment": "{city} 會被站點的 city 代換。這些路徑是照 TDX 的 swagger 抄的，但公開的 swagger 檔在 schema 那段被截斷，沒有金鑰打不到真實回應 —— 跑 spike/tdx.py 驗證過再信。改路徑改這裡就好。",
+    "city_bus_arrivals": "v2/Bus/EstimatedTimeOfArrival/City/{city}",
+    "city_bus_stops": "v2/Bus/Stop/City/{city}",
+    "_routes_comment": "路線資料。到站端點只給 DestinationStop（StopID，像 \"306195\"），沒有終點站名 —— 要把「往哪裡」補起來得從這裡拿路線的起訖站。目前只有 spike/tdx.py --probe-routes 在用，App 還沒接。欄位名還沒驗證過，先別寫進 Dart。",
+    "city_bus_routes": "v2/Bus/Route/City/{city}",
+    "intercity_routes": "v2/Bus/Route/InterCity",
+    "intercity_stops": "v2/Bus/Stop/InterCity",
+    "intercity_arrivals": "v2/Bus/EstimatedTimeOfArrival/InterCity",
+    "train_liveboard": "v3/Rail/TRA/StationLiveBoard",
+    "train_timetable": "v3/Rail/TRA/DailyStationTimetable/Today/Station/{station}",
+    "train_stations": "v3/Rail/TRA/Station",
+
+    "_filter_comment": "OData $filter 的樣板。{name} 會被站名代換；一個站有多個候選名時會用 or 串起來。連這個都放設定檔是因為 v2 的欄位是 StopName/Zh_tw（巢狀多語系物件），而 v3 有可能扁平成 StopName —— 猜錯的話查出來是 0 筆，畫面上跟「這站現在沒車」長得一模一樣，很難發現。",
+    "city_bus_filter": "StopName/Zh_tw eq '{name}'",
+    "intercity_filter": "StopName/Zh_tw eq '{name}'",
+    "train_liveboard_filter": "StationID eq '{station}'",
+    "train_station_filter": "StationName/Zh_tw eq '{name}'",
+    "_route_filter_comment": "{name} 這裡代進去的是 RouteUID 不是站名 —— 樣板的洞沿用同一個名字，因為串多個候選值的程式碼是共用的。",
+    "route_filter": "RouteUID eq '{name}'"
+  },
+
+  "_stop_status_comment": "公車 StopStatus 的代碼對照。0 和 1 是從 TDX 文件確認過的。2026-09-03 深夜 23:55 的真實回應裡出現了 0、1、3、4：那個時間點幾乎每一筆都是 3，而 3 標的是「末班已過」—— 跟時間吻合，但這是旁證不是證明，白天再抓一次才算數。2 一次都沒看過。認不得的代碼畫面上會原樣顯示，不會猜。",
+  "stop_status": {
+    "0": "正常",
+    "1": "尚未發車",
+    "2": "交管不停靠",
+    "3": "末班已過",
+    "4": "今日未營運"
+  },
+
+  "_stops_comment": "使用者要的五個站點。公車站不寫死路線清單 —— 直接用站名向 TDX 要「經過這一站的全部到站資料」，這樣學校旁邊多一條新路線也會自己冒出來，不用改 App。",
+  "_match_names_comment": "match_names 現在都是空的，但這個機制要留著。2026-09-03 用 spike/tdx.py --dump-stops 對過 TDX 的實際站名，四個公車站的 name 全部精準命中（海大體育館 KEE306429、海大濱海校門 KEE306431、海大祥豐校門 KEE306433、基隆轉運站），本來備援的「海洋大學濱海校門」「濱海校門」那些寫法在 TDX 裡根本不存在，留著只是每次查詢多送幾個湊不到的 or 條件。哪天查出來變 0 筆，第一件事就是重跑 --dump-stops 看對方是不是改了站名，再把新名字補進這裡。",
+  "stops": [
+    {
+      "id": "ntou-gym",
+      "name": "海大體育館",
+      "kind": "city_bus",
+      "city": "Keelung",
+      "match_names": [],
+      "note": "基隆市公車 103、104、108 等；首都客運 1579 從圓山轉運站直達也停這裡"
+    },
+    {
+      "id": "ntou-binhai-gate",
+      "name": "海大濱海校門",
+      "kind": "city_bus",
+      "city": "Keelung",
+      "match_names": []
+    },
+    {
+      "id": "ntou-xiangfeng-gate",
+      "name": "海大祥豐校門",
+      "kind": "city_bus",
+      "city": "Keelung",
+      "match_names": []
+    },
+    {
+      "id": "keelung-bus-terminal",
+      "name": "基隆轉運站",
+      "kind": "intercity_bus",
+      "city": "Keelung",
+      "match_names": [],
+      "note": "國道客運往台北。1800/1813/2088 這些走這裡"
+    },
+    {
+      "id": "tra-keelung",
+      "name": "台鐵基隆站",
+      "kind": "train",
+      "_station_id_comment": "2026-09-03 用 spike/tdx.py 對 v3/Rail/TRA/Station 查證：基隆 = 0900。在那之前這裡是刻意留空的 —— 猜一個錯的代碼會安靜地查出別站的車，畫面上一切正常。填好之後就省掉每次開頁先查一次車站清單的那個請求。改天要是查出來的車不是基隆的，第一個該懷疑的就是這一行。",
+      "station_id": "0900",
+      "station_name": "基隆",
+      "match_names": ["基隆"]
+    }
+  ]
+}

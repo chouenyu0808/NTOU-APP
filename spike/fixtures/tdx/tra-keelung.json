@@ -1,0 +1,90 @@
+{
+  "UpdateTime": "2026-09-04T00:08:02+08:00",
+  "UpdateInterval": 30,
+  "SrcUpdateTime": "2026-09-04T00:08:00+08:00",
+  "SrcUpdateInterval": 60,
+  "AuthorityCode": "TRA",
+  "StationLiveBoards": [
+    {
+      "StationID": "0900",
+      "StationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "TrainNo": "1272",
+      "Direction": 0,
+      "TrainTypeID": "1131",
+      "TrainTypeCode": "6",
+      "TrainTypeName": {
+        "Zh_tw": "區間",
+        "En": "Local Train"
+      },
+      "EndingStationID": "0900",
+      "EndingStationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "TripLine": 0,
+      "Platform": "",
+      "ScheduleArrivalTime": "23:18:00",
+      "ScheduleDepartureTime": "23:18:00",
+      "DelayTime": 0,
+      "RunningStatus": 0,
+      "UpdateTime": "2026-09-03T23:16:48+08:00"
+    },
+    {
+      "StationID": "0900",
+      "StationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "TrainNo": "1268",
+      "Direction": 0,
+      "TrainTypeID": "1131",
+      "TrainTypeCode": "6",
+      "TrainTypeName": {
+        "Zh_tw": "區間",
+        "En": "Local Train"
+      },
+      "EndingStationID": "0900",
+      "EndingStationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "TripLine": 1,
+      "Platform": "",
+      "ScheduleArrivalTime": "22:23:00",
+      "ScheduleDepartureTime": "22:23:00",
+      "DelayTime": 7,
+      "RunningStatus": 1,
+      "UpdateTime": "2026-09-03T22:27:06+08:00"
+    },
+    {
+      "StationID": "0900",
+      "StationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "TrainNo": "2234",
+      "Direction": 0,
+      "TrainTypeID": "1131",
+      "TrainTypeCode": "6",
+      "TrainTypeName": {
+        "Zh_tw": "區間",
+        "En": "Local Train"
+      },
+      "EndingStationID": "0900",
+      "EndingStationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "TripLine": 1,
+      "Platform": "",
+      "ScheduleArrivalTime": "22:08:00",
+      "ScheduleDepartureTime": "22:08:00",
+      "DelayTime": 5,
+      "RunningStatus": 1,
+      "UpdateTime": "2026-09-03T22:11:06+08:00"
+    }
+  ]
+}
