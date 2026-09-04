@@ -139,6 +139,97 @@ void main() {
     });
   });
 
+  /// **使用者回報：八個分頁很難找往基隆和往台北的。**
+  ///
+  /// 1579 的八條子路線其實只有兩個方向 —— Direction 0 全是往台北那頭、
+  /// 1 全是往八斗子。分頁改成方向，子路線退到底下那排晶片。
+  group('分頁照方向分', () {
+    List<RouteVariant> the1579() => [
+          _variant('THB157901', ['a', '圓山轉運站(玉門)'], name: '1579', dir: 0),
+          _variant('THB157902', ['b', '八斗子車站'], name: '1579', dir: 1),
+          _variant('THB1579A1', ['c', '圓山轉運站(玉門)'], name: '1579A', dir: 0),
+          _variant('THB1579A2', ['d', '八斗子車站'], name: '1579A', dir: 1),
+          _variant('THB1579B1', ['e', '松山高中(基隆路)'], name: '1579B', dir: 0),
+          _variant('THB1579B2', ['f', '八斗子車站'], name: '1579B', dir: 1),
+          _variant('THB1579C1', ['g', '捷運忠孝復興站'], name: '1579C', dir: 0),
+          _variant('THB1579C2', ['h', '八斗子車站'], name: '1579C', dir: 1),
+        ];
+
+    test('八條子路線收成兩個方向', () {
+      final groups = RoutePage.byDirection(the1579());
+      expect(groups, hasLength(2));
+      expect(groups[0], hasLength(4));
+      expect(groups[1], hasLength(4));
+    });
+
+    /// 方向標題取這個方向裡最多子路線開往的終點。dir 0 有三條到圓山、
+    /// 一條到松山高中 —— 取多數。用真實站名而不是自己編的「往台北」，
+    /// 因為終點站是資料裡有的東西，「台北」是猜的。
+    test('方向標題取多數的終點站', () {
+      final groups = RoutePage.byDirection(the1579());
+      expect(RoutePage.directionLabel(groups[0]), '往 圓山轉運站(玉門)');
+      expect(RoutePage.directionLabel(groups[1]), '往 八斗子車站');
+    });
+
+    /// 晶片只要能把同一個方向裡的幾條分開就好 —— 方向分頁已經說了終點。
+    test('同方向裡的晶片用子路線名就夠短', () {
+      final groups = RoutePage.byDirection(the1579());
+      expect(RoutePage.chipLabelsFor(groups[0]),
+          ['1579', '1579A', '1579B', '1579C']);
+    });
+
+    /// 環狀線兩條子路線的 Direction 都是 0，所以會歸成同一堆 ——
+    /// 那是對的：對使用者來說它們就是同一個方向的兩種繞法。
+    test('環狀線兩條同方向，收成一個分頁', () {
+      final groups = RoutePage.byDirection([
+        _variant('A', ['甲一', '甲二', '八斗子車站'], name: '103'),
+        _variant('B', ['乙一', '八斗子車站'], name: '103'),
+      ]);
+      expect(groups, hasLength(1));
+      expect(RoutePage.directionLabel(groups.single), '往 八斗子車站');
+      // 名字和終點都一樣，只剩站數分得開。
+      expect(RoutePage.chipLabelsFor(groups.single), ['3 站', '2 站']);
+    });
+
+    testWidgets('畫面上是兩個方向分頁，不是八個', (tester) async {
+      await _pump(tester, RouteDetail(routeName: '1579', variants: the1579()));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Tab), findsNWidgets(2));
+      expect(find.text('往 圓山轉運站(玉門)'), findsOneWidget);
+      expect(find.text('往 八斗子車站'), findsOneWidget);
+    });
+
+    testWidgets('分頁底下有選子路線的晶片', (tester) async {
+      await _pump(tester, RouteDetail(routeName: '1579', variants: the1579()));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(ChoiceChip, '1579A'), findsOneWidget);
+      expect(find.widgetWithText(ChoiceChip, '1579C'), findsOneWidget);
+      // 預設顯示第一條的站序。
+      expect(find.text('圓山轉運站(玉門)'), findsOneWidget);
+    });
+
+    testWidgets('點晶片會換成那條子路線的站序', (tester) async {
+      await _pump(tester, RouteDetail(routeName: '1579', variants: the1579()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(ChoiceChip, '1579B'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('松山高中(基隆路)'), findsOneWidget);
+      expect(find.text('圓山轉運站(玉門)'), findsNothing);
+    });
+
+    /// 一個方向只有一條子路線時，那排晶片是純粹的雜訊。
+    testWidgets('只有一條子路線就不要那排晶片', (tester) async {
+      await _pump(tester, _detail([_variant('A', ['甲', '乙'])]));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ChoiceChip), findsNothing);
+    });
+  });
+
   /// 分頁標題分不開的話，使用者切過去看到兩個一樣的標題，
   /// 會以為自己點錯了 —— 比沒有分頁更糟。
   group('分頁標題', () {
@@ -202,12 +293,13 @@ RouteVariant _variant(
   String uid,
   List<String> names, {
   String name = '103',
+  int dir = 0,
   List<BusPosition> buses = const [],
 }) =>
     RouteVariant(
       subRouteUid: uid,
       subRouteName: name,
-      direction: 0,
+      direction: dir,
       stops: [
         for (var i = 0; i < names.length; i++)
           RouteStop(stopUid: '$uid-$i', name: names[i], sequence: i + 1),

@@ -112,6 +112,7 @@ class BusArrival {
     this.isLastBus = false,
     this.nextStop = '',
     this.fromIntercity = false,
+    this.endsHere = false,
   });
 
   /// 路線名（`103`、`1579`）。
@@ -173,6 +174,13 @@ class BusArrival {
   /// 來源要由「這班車是哪個查詢回來的」決定，那是唯一不會錯的依據。
   final bool fromIntercity;
 
+  /// 這一站就是這班車的終點 —— 它到了之後就收班。
+  ///
+  /// **這種車搭不了，所以畫面上不顯示。** 基隆轉運站有好幾條國道客運是
+  /// 以那裡為終點的（1800、1813 等），列出來只是佔位子，使用者還得一條條
+  /// 看過去才發現搭不了。
+  final bool endsHere;
+
   /// 這一筆到底有沒有車。
   ///
   /// 沒有預估時間就是沒有車在路上（末班已過、還沒發車、今天不營運）。
@@ -184,8 +192,13 @@ class BusArrival {
 }
 
 /// 一班列車。
+///
+/// [endsHere] 是「這一站就是它的終點」。基隆是端點站，所以**一整批列車都是
+/// 這樣** —— 那些車到站就收班，搭不了。畫面上會濾掉，但要記得數量：
+/// 全部濾光的時候必須說清楚是「只有收班的車」，不能說成「沒有列車」。
 class TrainDeparture {
   const TrainDeparture({
+    this.endsHere = false,
     required this.trainNo,
     this.trainType = '',
     this.destination = '',
@@ -195,6 +208,9 @@ class TrainDeparture {
   });
 
   /// 車次號碼。
+  /// 這一站就是終點，到了就收班 —— 搭不了，畫面上不顯示。
+  final bool endsHere;
+
   final String trainNo;
 
   /// 車種（自強、區間）。
@@ -229,6 +245,29 @@ class StopBoard {
   /// 這份資料是什麼時候抓的。畫面上要標 —— 交通資訊過期一分鐘就沒有意義，
   /// 使用者得看得出自己在看的是不是舊的。
   final DateTime? updatedAt;
+
+  /// 畫面上真的要顯示的公車：**以本站為終點的搭不了，不畫。**
+  ///
+  /// 基隆轉運站有好幾條國道客運以那裡為終點，列出來只是佔位子。
+  /// 資料層照實回報（見 [BusArrival.endsHere]），要不要畫是這裡決定的。
+  List<BusArrival> get boardableBuses => [
+        for (final b in buses)
+          if (!b.endsHere) b,
+      ];
+
+  /// 同上，列車的。基隆是端點站，深夜可能整批都是這種。
+  List<TrainDeparture> get boardableTrains => [
+        for (final t in trains)
+          if (!t.endsHere) t,
+      ];
+
+  /// 被藏起來的「到站就收班」的班次有幾個。
+  ///
+  /// **全部被藏起來的時候要靠它講實話。** 說「目前沒有即將進站的列車」
+  /// 是錯的 —— 明明有車，只是都到站收班。那兩件事對使用者的意義完全不同。
+  int get endingHere =>
+      (buses.length - boardableBuses.length) +
+      (trains.length - boardableTrains.length);
 
   /// 這一站抓失敗的原因。**一站失敗不影響其他站** ——
   /// 五個站是五次獨立的查詢，台鐵掛了公車還是要能看。

@@ -378,12 +378,14 @@ class _StopCard extends StatelessWidget {
     final error = board.error;
     if (error != null) return error;
 
-    final trains = board.trains;
+    final trains = board.boardableTrains;
     if (trains.isNotEmpty) return '${trains.length} 班列車';
 
-    final running = board.buses.where((b) => b.isRunning).toList();
+    final buses = board.boardableBuses;
+    final running = buses.where((b) => b.isRunning).toList();
     if (running.isEmpty) {
-      return board.buses.isEmpty ? '目前沒有班次資訊' : '目前沒有車在路上';
+      if (buses.isNotEmpty) return '目前沒有車在路上';
+      return board.endingHere > 0 ? '只有到站後收班的車' : '目前沒有班次資訊';
     }
     final soonest = running.first;
     final label = ArrivalLabel.of(
@@ -394,13 +396,22 @@ class _StopCard extends StatelessWidget {
     return '${running.length} 班在路上 · 最快 ${soonest.routeName} ${label.text}';
   }
 
+  String get _emptyMessage {
+    if (board.endingHere > 0) {
+      return '只有 ${board.endingHere} 班到站後收班的車，沒有可搭乘的班次';
+    }
+    return board.stop.kind == TransitStopKind.train
+        ? '目前沒有即將進站的列車'
+        : '目前沒有班次資訊';
+  }
+
   /// 每條路線在這張卡片上出現幾次。
   ///
   /// 出現不只一次 = 馬路兩邊的兩個站牌都停這條路線。那兩列的終點站是一樣的
   /// （103 是環狀線），所以得額外標出方向，否則看起來一模一樣。
   Map<String, int> get _routeCounts {
     final counts = <String, int>{};
-    for (final b in board.buses) {
+    for (final b in board.boardableBuses) {
       counts[b.routeName] = (counts[b.routeName] ?? 0) + 1;
     }
     return counts;
@@ -411,10 +422,11 @@ class _StopCard extends StatelessWidget {
   /// **兩組各自照時間排，不是把最愛全部打散重排。** 釘 103 的人要的是
   /// 「一眼找到 103」，不是「103 一定在最上面但下面亂掉」。
   List<BusArrival> get _sortedBuses {
-    if (favorites.isEmpty) return board.buses;
+    final buses = board.boardableBuses;
+    if (favorites.isEmpty) return buses;
     final pinned = <BusArrival>[];
     final rest = <BusArrival>[];
-    for (final b in board.buses) {
+    for (final b in buses) {
       (favorites.contains(b.routeName) ? pinned : rest).add(b);
     }
     return [...pinned, ...rest];
@@ -433,12 +445,16 @@ class _StopCard extends StatelessWidget {
         child: Text(error, style: TextStyle(color: scheme.onSurfaceVariant)),
       );
     }
-    if (board.isEmpty) {
-      // 「沒有車」和「查不到」要分開講。深夜沒有班次是正常的，
-      // 講成錯誤會讓使用者一直重按重新整理。
+    if (board.boardableBuses.isEmpty && board.boardableTrains.isEmpty) {
+      // 三種情況要講三種話，混在一起就會說謊：
+      //
+      // - 真的什麼都沒有 → 「沒有班次資訊」
+      // - 有車但**全部以本站為終點** → 那些搭不了，但不能說成「沒有車」。
+      //   基隆是端點站，深夜整批列車都是這種。
+      // - 「查不到」是錯誤，走上面那條路，不會到這裡。
       return _Inset(
         child: Text(
-          board.stop.kind == TransitStopKind.train ? '目前沒有即將進站的列車' : '目前沒有班次資訊',
+          _emptyMessage,
           style: TextStyle(color: scheme.onSurfaceVariant),
         ),
       );
@@ -454,7 +470,7 @@ class _StopCard extends StatelessWidget {
             onToggleFavorite: onToggleFavorite,
             onOpenRoute: onOpenRoute,
           ),
-        for (final t in board.trains) _TrainRow(train: t),
+        for (final t in board.boardableTrains) _TrainRow(train: t),
       ],
     );
   }

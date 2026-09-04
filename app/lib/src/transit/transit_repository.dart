@@ -179,6 +179,13 @@ class TransitRepository {
     }
     await _learnStopOrder(ambiguous, city: city, intercity: intercity);
 
+    // **以本站為終點的車不在這裡濾掉。**
+    //
+    // 那些車搭不了，畫面上確實不該顯示 —— 但那是呈現的決定，不是資料的。
+    // 在這裡濾掉的話，資料層就對真實回應說了謊：基隆是端點站，深夜整批
+    // 列車都以它為終點，濾完之後拿 fixture 驗解析的測試會變成沒有東西可驗。
+    //
+    // 所以這裡照實回報，[BusArrival.endsHere] 標著，畫面自己決定要不要畫。
     final now = DateTime.now();
     return [
       for (var i = 0; i < stops.length; i++)
@@ -351,6 +358,21 @@ class TransitRepository {
     }
   }
 
+  /// 這一站就是這班車的終點嗎。
+  ///
+  /// 判斷方式跟 [_destinationFor] 一樣（查出來的終點站名等於這一站的站名），
+  /// 只是答案是布林。基隆轉運站有好幾條國道客運是以那裡為終點的。
+  bool _endsHere(Map<String, dynamic> r) {
+    final ends = _routeEnds[_text(r['RouteUID'])];
+    if (ends == null) return false;
+    final name = switch (_int(r['Direction'])) {
+      0 => ends.destination,
+      1 => ends.departure,
+      _ => '',
+    };
+    return name.isNotEmpty && name == _text(r['StopName']);
+  }
+
   /// 這班車往哪裡。
   ///
   /// **`Direction` 0 是去程、1 是返程**，所以 0 看終點欄位、1 看起點欄位。
@@ -405,6 +427,7 @@ class TransitRepository {
     // 站名是從路線資料補上的，見 [_destinationFor]。補不到就空著，
     // 畫面上那一行會收起來 —— 空白比「往 306195」好。
     destination: _destinationFor(r),
+    endsHere: _endsHere(r),
     estimateSeconds: _int(r['EstimateTime']),
     stopStatus: _int(r['StopStatus']) ?? 0,
     // `-1` 是 TDX 的哨兵值，代表「沒有車」，不是車牌。
@@ -639,6 +662,8 @@ class TransitRepository {
       },
     );
 
+    // 以本站為終點的列車照實回報，[TrainDeparture.endsHere] 標著 ——
+    // 要不要畫是畫面的事，見 _busBoards 上面那段。
     final trains = [for (final r in rows) _trainFrom(r, stationId)];
     return StopBoard(stop: stop, trains: trains, updatedAt: DateTime.now());
   }
@@ -698,6 +723,7 @@ class TransitRepository {
       trainNo: _text(r['TrainNo']),
       trainType: _text(r['TrainTypeName']),
       destination: _destinationOf(r, stationId),
+      endsHere: _text(r['EndingStationID']) == stationId,
       scheduledTime: _clock(_text(time)),
       delayMinutes: _int(r['DelayTime']) ?? 0,
       platform: _text(r['Platform']),

@@ -70,6 +70,56 @@ class RoutePage extends StatefulWidget {
     ];
   }
 
+  /// 照方向把子路線分堆，保持原本的順序。
+  ///
+  /// **這是「往基隆」和「往台北」分開的依據。** 1579 有八條子路線，
+  /// 攤平成八個分頁很難找 —— 但它們其實只有兩個方向，`Direction` 0 全是
+  /// 往台北那頭、1 全是往八斗子。分成兩個分頁之後，要找「下一班往台北的」
+  /// 就只看一個分頁。
+  ///
+  /// 環狀線（103）兩條子路線的 Direction 都是 0，所以會歸成同一堆 ——
+  /// 那是對的：對使用者來說它們就是同一個方向的兩種繞法。
+  static List<List<RouteVariant>> byDirection(List<RouteVariant> variants) {
+    final groups = <int, List<RouteVariant>>{};
+    for (final v in variants) {
+      groups.putIfAbsent(v.direction, () => []).add(v);
+    }
+    return groups.values.toList();
+  }
+
+  /// 方向分頁的標題：這個方向最多子路線開往的那個終點。
+  ///
+  /// 1579 的 dir 0 有三條到圓山、一條到松山高中 —— 取多數的那個，
+  /// 標題就是「往 圓山轉運站(玉門)」。用真實站名而不是自己編的「往台北」，
+  /// 因為終點站是資料裡有的東西，「台北」是我猜的。
+  static String directionLabel(List<RouteVariant> group) {
+    final counts = <String, int>{};
+    for (final v in group) {
+      if (v.destination.isEmpty) continue;
+      counts[v.destination] = (counts[v.destination] ?? 0) + 1;
+    }
+    if (counts.isEmpty) return '路線';
+    final best = counts.entries.reduce((a, b) => b.value > a.value ? b : a);
+    return '往 ${best.key}';
+  }
+
+  /// 同一個方向裡各條子路線的短標籤，畫在分頁底下那排晶片上。
+  ///
+  /// **比分頁標題短。** 方向分頁已經說了終點，晶片只要能把同一個方向裡的
+  /// 幾條分開就好 —— 1579 那邊子路線名（`1579A`）本身就夠；103 那邊兩條
+  /// 同名同終點，只剩站數分得開。
+  static List<String> chipLabelsFor(List<RouteVariant> group) {
+    bool unique(List<String> xs) => xs.toSet().length == group.length;
+
+    final names = [for (final v in group) v.subRouteName];
+    if (!names.any((n) => n.isEmpty) && unique(names)) return names;
+
+    final dests = [for (final v in group) '往 ${v.destination}'];
+    if (unique(dests)) return dests;
+
+    return [for (final v in group) '${v.stops.length} 站'];
+  }
+
   @override
   State<RoutePage> createState() => _RoutePageState();
 }
@@ -101,9 +151,12 @@ class _RoutePageState extends State<RoutePage> {
   Widget build(BuildContext context) {
     final detail = _detail;
     final variants = detail?.variants ?? const <RouteVariant>[];
+    // **分頁是「方向」不是「子路線」。** 1579 攤平成八個分頁很難找，
+    // 但它們其實只有兩個方向；子路線退到分頁底下那排晶片。
+    final groups = RoutePage.byDirection(variants);
 
     return DefaultTabController(
-      length: variants.isEmpty ? 1 : variants.length,
+      length: groups.isEmpty ? 1 : groups.length,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.routeName),
@@ -115,36 +168,89 @@ class _RoutePageState extends State<RoutePage> {
                 onPressed: _load,
               ),
           ],
-          bottom: variants.length > 1
+          bottom: groups.length > 1
               ? TabBar(
-                  // 三條以上就改成可捲的。1579 有八條子路線 —— 硬塞進
-                  // 螢幕寬度的話每個標題只剩幾個字，等於全部看不懂。
-                  isScrollable: variants.length > 2,
-                  tabAlignment: variants.length > 2
+                  isScrollable: groups.length > 2,
+                  tabAlignment: groups.length > 2
                       ? TabAlignment.start
                       : TabAlignment.fill,
                   tabs: [
-                    for (final label in RoutePage.labelsFor(variants))
-                      Tab(text: label),
+                    for (final g in groups)
+                      Tab(text: RoutePage.directionLabel(g)),
                   ],
                 )
               : null,
         ),
-        body: _body(detail, variants),
+        body: _body(detail, groups),
       ),
     );
   }
 
-  Widget _body(RouteDetail? detail, List<RouteVariant> variants) {
+  Widget _body(RouteDetail? detail, List<List<RouteVariant>> groups) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     final error = detail?.error;
     if (error != null) return _Centered(text: error);
-    if (variants.isEmpty) return const _Centered(text: '這條路線沒有站序資料');
+    if (groups.isEmpty) return const _Centered(text: '這條路線沒有站序資料');
 
     return TabBarView(
       children: [
-        for (final v in variants)
-          _StopTimeline(variant: v, highlightStops: widget.highlightStops),
+        for (final g in groups)
+          _DirectionView(group: g, highlightStops: widget.highlightStops),
+      ],
+    );
+  }
+}
+
+/// 一個方向底下的東西：選子路線的那排晶片 + 站序。
+///
+/// 晶片只在這個方向有超過一條子路線的時候才出現 —— 只有一條的時候
+/// 那排東西是純粹的雜訊。
+class _DirectionView extends StatefulWidget {
+  const _DirectionView({required this.group, required this.highlightStops});
+
+  final List<RouteVariant> group;
+  final Set<String> highlightStops;
+
+  @override
+  State<_DirectionView> createState() => _DirectionViewState();
+}
+
+class _DirectionViewState extends State<_DirectionView> {
+  int _picked = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    // 資料重整之後子路線數量可能變了，別讓索引指到不存在的地方。
+    final index = _picked.clamp(0, widget.group.length - 1);
+    final labels = RoutePage.chipLabelsFor(widget.group);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (widget.group.length > 1)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Row(
+              children: [
+                for (var i = 0; i < widget.group.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(labels[i]),
+                      selected: i == index,
+                      onSelected: (_) => setState(() => _picked = i),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: _StopTimeline(
+            variant: widget.group[index],
+            highlightStops: widget.highlightStops,
+          ),
+        ),
       ],
     );
   }

@@ -266,6 +266,75 @@ void main() {
       await _teardown(tester);
     });
 
+    /// **以本站為終點的車搭不了，不要畫。**
+    ///
+    /// 基隆轉運站有好幾條國道客運以那裡為終點，列出來只是佔位子，
+    /// 使用者還得一條條看過去才發現搭不了。
+    testWidgets('以本站為終點的車不顯示', (tester) async {
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [
+              BusArrival(routeName: '可搭的', estimateSeconds: 300),
+              BusArrival(
+                routeName: '到站收班的',
+                estimateSeconds: 60,
+                endsHere: true,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pump();
+
+      expect(find.text('可搭的'), findsOneWidget);
+      expect(find.text('到站收班的'), findsNothing);
+      await _teardown(tester);
+    });
+
+    /// **全部被藏起來的時候不能說「沒有車」。**
+    ///
+    /// 基隆是端點站，深夜整批列車都以它為終點 —— 說「目前沒有即將進站的
+    /// 列車」是錯的，明明有車，只是都到站收班。那兩件事對使用者的意義
+    /// 完全不同（一個是「等下一班」，一個是「今天沒有了」）。
+    testWidgets('全部都是收班車時，講的是實話不是「沒有車」', (tester) async {
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _keelung,
+            trains: const [
+              TrainDeparture(
+                trainNo: '1',
+                scheduledTime: '23:18',
+                endsHere: true,
+              ),
+              TrainDeparture(
+                trainNo: '2',
+                scheduledTime: '23:40',
+                endsHere: true,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pump();
+
+      expect(find.text('只有 2 班到站後收班的車，沒有可搭乘的班次'), findsOneWidget);
+      expect(find.text('目前沒有即將進站的列車'), findsNothing);
+      await _teardown(tester);
+    });
+
+    testWidgets('真的什麼都沒有時還是講「沒有班次資訊」', (tester) async {
+      await _pump(tester, _FakeRepo([StopBoard(stop: _gym)]));
+      await tester.pump();
+
+      expect(find.text('目前沒有班次資訊'), findsOneWidget);
+      await _teardown(tester);
+    });
+
     testWidgets('火車那張卡顯示車次與誤點', (tester) async {
       await _pump(
         tester,
