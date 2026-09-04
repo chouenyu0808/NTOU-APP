@@ -25,6 +25,9 @@ spike/fixtures/callbacks/
 漏洞回報*.md
 zeroday-submission.md
 
+# wrangler 的本機狀態（部署暫存、本機開發用的模擬資料），不進版控
+relay/.wrangler/
+
 # ---- TDX 金鑰，不進版控 ----
 # 交通部 TDX 的 client id / secret。放在檔案裡是為了不用每次重開機都重設
 # 一次環境變數 —— flutter build 和 spike/tdx.py 都讀這一份。

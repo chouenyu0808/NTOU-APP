@@ -180,6 +180,18 @@ void main() {
       }
     });
 
+    /// 出貨的設定要走中繼服務。
+    ///
+    /// **清空它就等於 App 又需要金鑰了** —— 而那個失敗是安靜的：build 少帶
+    /// 金鑰不會報錯，交通頁會變成「交通資訊還沒開通」。要改成直接打 TDX
+    /// 是可以的，但那該是個刻意的決定，連同這個測試一起改。
+    test('出貨的設定指向中繼服務，所以 App 不需要金鑰', () {
+      expect(config.usesRelay, isTrue);
+      expect(config.relayBaseUrl, startsWith('https://'));
+      // 結尾斜線很重要 —— 少了的話網址會跟路徑黏在一起。
+      expect(config.relayBaseUrl, endsWith('/'));
+    });
+
     test('寫給人看的 _comment 沒有被當成端點或狀態碼', () {
       expect(config.endpoints.keys.any((k) => k.startsWith('_')), isFalse);
       expect(config.stopStatus.keys.any((k) => k.startsWith('_')), isFalse);

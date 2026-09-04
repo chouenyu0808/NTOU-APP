@@ -10,7 +10,7 @@
 
   "api": {
     "_relay_comment": "中繼服務的網址。填了就走它：App 不再需要金鑰，也不會撞到 429（因為拿到的是快取）。留空就照舊直接打 TDX，需要 --dart-define-from-file 帶金鑰。build 時可以用 --dart-define=TDX_RELAY_URL=... 蓋過這裡，方便指到測試用的中繼。服務本身在 relay/。",
-    "relay_base_url": "",
+    "relay_base_url": "https://ntou-tdx-relay.chouenyu940808.workers.dev/",
 
     "base_url": "https://tdx.transportdata.tw/api/basic/",
     "min_interval_seconds": 0.5,

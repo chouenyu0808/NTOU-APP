@@ -11,5 +11,15 @@ compatibility_date = "2026-09-04"
 # 的形式進到 worker 裡，不會出現在原始碼、也不會出現在 App 裡。
 # 這才是跟 --dart-define 真正的差別 —— 那個會編進 APK，這個不會。
 
+# 部署時 wrangler 會警告這兩個沒設、於是用預設值。寫明確一點，
+# 順便關掉 Preview URL。
+#
+# workers.dev 要開著 —— App 就是打那個網址。
+workers_dev = true
+
+# **Preview URL 關掉。** 它會為每一個版本各開一個公開網址，而這個 Worker
+# 手上有 TDX 金鑰 —— 多開幾個對外入口只是多幾個要顧的地方，我們一個都用不到。
+preview_urls = false
+
 [observability]
 enabled = true
