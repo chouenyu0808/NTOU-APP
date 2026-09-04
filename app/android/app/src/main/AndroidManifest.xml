@@ -5,6 +5,17 @@
          完全不像權限問題。這個 App 每一個功能都靠網路。 -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- 桌面小組件的更新鬧鐘。開機和 App 更新會把已排的鬧鐘全部清掉，
+         這個權限讓 HomeWidgetScheduledUpdateReceiver 收得到開機廣播、
+         把課表那幾個節次交界重新排回去。
+         少了它的話小組件在重開機之後就不會自己更新了，而且完全不會報錯。 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- 刻意**不**宣告 SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM。
+         沒有它們鬧鐘還是會排，只是變成不精確的 —— 系統可能晚幾分鐘才叫醒。
+         課表的反白晚幾分鐘移動可以接受（真正要看的時候本來就會開 App），
+         而那兩個權限一個要使用者另外授權、一個要通過 Play 的人工審查。 -->
+
     <!-- 刻意不加 usesCleartextTraffic：AIS 全站 HTTPS，
          而這支 App 會送學生的密碼。允許明文等於在校園 Wi-Fi 上開後門。
          （API 28+ 預設就是 false，這裡只是把「不要改它」寫下來。） -->
@@ -34,7 +45,64 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- 點桌面小組件開 App 走這條。 -->
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.LAUNCH" />
+            </intent-filter>
         </activity>
+        <!-- ═══════════════════════════════════════════════ 桌面小組件
+
+             兩個小組件都是「Dart 畫一張 PNG，原生把它貼上去」。原生那一端
+             不做任何判斷，理由見 NtouWidgetProvider 的說明。 -->
+
+        <receiver
+            android:name=".widget.TimetableWidgetProvider"
+            android:label="@string/widget_timetable_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_timetable_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.TransitWidgetProvider"
+            android:label="@string/widget_transit_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_transit_info" />
+        </receiver>
+
+        <!-- 小組件叫背景 Dart 做事的入口（重新整理鈕、自動更新都走這裡）。
+             **套件自己的 manifest 是空的，這一段一定要我們自己宣告** ——
+             少了它按鈕按下去完全沒反應，而且兩邊都不會報錯。 -->
+        <receiver
+            android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 課表小組件的節次交界鬧鐘。同樣要自己宣告。
+             不 exported：這裡收的三個都是系統的保護廣播，照樣送得到。 -->
+        <receiver
+            android:name="es.antonborri.home_widget.HomeWidgetScheduledUpdateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

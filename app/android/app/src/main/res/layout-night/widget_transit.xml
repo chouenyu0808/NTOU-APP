@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 深色版。跟 layout/ 那份只差在哪一個 ImageView 顯示；
+     理由寫在 layout/ 那一份裡。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_image_light"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:visibility="gone"
+        android:contentDescription="@string/widget_transit_label" />
+
+    <ImageView
+        android:id="@+id/widget_image_dark"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:visibility="visible"
+        android:contentDescription="@string/widget_transit_label" />
+
+    <TextView
+        android:id="@+id/widget_placeholder"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="12dp"
+        android:textSize="12sp"
+        android:textColor="@color/widget_icon"
+        android:visibility="gone"
+        android:text="@string/widget_loading" />
+
+    <!-- **按鈕不能畫進 PNG 裡** —— 圖是不能點的。所以它是疊在圖上面的真
+         View，而 Dart 那邊的排版在右上角留了一塊空位（_kActionSlot）
+         讓它，不然會蓋到字。 -->
+    <ImageButton
+        android:id="@+id/widget_refresh"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="2dp"
+        android:padding="9dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/ic_widget_refresh"
+        android:contentDescription="@string/widget_refresh" />
+</FrameLayout>

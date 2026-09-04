@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 小組件在系統裡露臉的字：選取器上的名字、說明、無障礙朗讀。
+     App 本身沒有多語系（介面一律繁體中文），所以這裡不分 values-xx。 -->
+<resources>
+    <string name="widget_timetable_label">今日課表</string>
+    <string name="widget_timetable_description">今天要上什麼課、在哪間教室。不用登入也看得到。</string>
+
+    <string name="widget_transit_label">交通</string>
+    <string name="widget_transit_description">海大三個站牌和基隆車站的下一班車。</string>
+
+    <string name="widget_refresh">重新整理</string>
+
+    <!-- 圖還沒畫好時顯示的字。**不要寫「沒有課」之類的話** ——
+         這個狀態是「還沒算出來」，跟「今天沒課」是兩件事，
+         而使用者分不出來就會照著它做決定。 -->
+    <string name="widget_loading">載入中…</string>
+</resources>

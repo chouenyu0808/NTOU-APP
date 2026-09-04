@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 交通小組件的規格。
+
+     updatePeriodMillis 是 30 分鐘 —— 那**就是系統下限**，寫小的值不會更快，
+     系統會直接無視。公車的到站時間 30 秒就過期，所以這個小組件上的數字
+     必然是舊的，畫面上一定要標資料時間（Dart 那邊畫的）。
+
+     真正要看即時資料的時候按右上角的重新整理，或打開 App。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="70dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_transit"
+    android:previewImage="@mipmap/launcher_icon"
+    android:description="@string/widget_transit_description" />

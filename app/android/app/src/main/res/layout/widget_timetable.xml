@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 課表小組件。一列一堂，現在那堂反白。
+
+     整個畫面是 Dart 畫出來的一張 PNG（見 lib/src/widget/widget_views.dart）。
+     這裡有**兩個 ImageView** 是刻意的：一張淺色一張深色，
+     layout/ 和 layout-night/ 各自只讓其中一個顯示。
+
+     為什麼不用一個 ImageView 自己挑圖：RemoteViews 是由 launcher 那個
+     process 依它當下的設定 inflate 的。使用者切成深色模式時 launcher 會
+     重新 inflate，這一套就跟著換；由我們挑的話得等到下一次更新才會變，
+     中間那段時間桌面上是一塊白的，看起來完全就是壞了。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_image_light"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:visibility="visible"
+        android:contentDescription="@string/widget_timetable_label" />
+
+    <ImageView
+        android:id="@+id/widget_image_dark"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:visibility="gone"
+        android:contentDescription="@string/widget_timetable_label" />
+
+    <TextView
+        android:id="@+id/widget_placeholder"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="12dp"
+        android:textSize="12sp"
+        android:textColor="@color/widget_icon"
+        android:visibility="gone"
+        android:text="@string/widget_loading" />
+</FrameLayout>

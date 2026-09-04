@@ -78,7 +78,7 @@ $env:PATH = "$env:USERPROFILE\flutter\bin;$env:PATH"
 
 ```bash
 cd app && flutter analyze          # 應該是 No issues found
-cd app && flutter test             # 585 個測試
+cd app && flutter test             # 672 個測試
 ```
 
 沒有 `spike/fixtures/` 的機器會 skip 掉 54 個（讀真實擷取頁面的那些），
@@ -341,6 +341,83 @@ TDX 會回 429，畫面上五張卡片全變「服務忙碌中」。
 `SrcUpdateInterval: 60` —— **資料在 TDX 端每 30 秒才換一次**。調成 15 秒
 只會把同一份資料抓兩次，請求量翻倍、429 風險翻倍，畫面上的數字一個都不會
 提早變。
+
+
+## 桌面小組件（Android）
+
+兩個：**今日課表**和**交通**。都是「Dart 畫一張 PNG，原生把它貼上去」，
+用 `home_widget` 這個套件。
+
+**原生那一層刻意什麼都不判斷。** 它只有三件事：貼圖、在該重畫的時間點叫醒
+Dart、把點擊轉回去。「現在是第幾節」「這班車還有幾分鐘」「這條路線往哪裡」
+全部留在 Dart —— 那些判斷錯了畫面上完全看不出來（顯示的是一個看起來很合理
+的別的東西），而 Dart 這邊有測試守著，Kotlin 那邊沒有。
+
+### 兩個小組件的性質完全相反
+
+- **課表不用網路、不用登入。** 來源是 `TimetableCache` 已經抓下來的那份。
+  學校系統掛掉、或帳號正在電腦上登著（一次只允許一個 session）的時候，
+  桌面上這一塊照樣是對的 —— 那正是課表快取原本要救的情境。
+- **交通每次更新都要打網路。** 而 Android 小組件最快只能 30 分鐘自動更新
+  一次（`updatePeriodMillis` 的系統下限，寫更小的值系統直接無視），
+  所以上面的數字**必然是舊的**，畫面上一定要標資料時間。
+
+### 更新是怎麼被觸發的
+
+課表**沒有** `updatePeriodMillis`，完全靠 `scheduleWidgetUpdates` 排的鬧鐘，
+時刻是 Dart 算的（`TimetableWidgetPayload.updateTimes` —— 每堂課的開始和
+結束，加上換日）。**那個 API 是整批取代的語意**，只給下一個時刻的話其餘會被
+洗掉，症狀是小組件更新一次之後就再也不動了。
+
+鬧鐘是**不精確的**：沒有宣告 `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`
+（一個要使用者另外授權、一個要通過 Play 人工審查）。反白晚幾分鐘移動可以
+接受，真的要看的時候本來就會開 App。
+
+### 「叫 Dart 重畫」一定要有終止條件
+
+Dart 畫完會呼叫 `updateWidget`，那會觸發 `onUpdate`，而 `onUpdate` 又可能叫
+Dart —— **這是一個會一直繞的迴圈**，交通那邊每繞一圈還會打一次 TDX。
+
+所以每次都要留下記錄，`onUpdate` 才有東西可以比：
+
+- 課表看 `timetable_valid_until`（Dart 算的下一個節次交界）
+- 交通要**同時**滿足「資料超過 25 分鐘」和「距離上次嘗試超過 5 分鐘」——
+  少了後者，抓失敗時「畫更新失敗 → onUpdate → 資料還是舊的 → 再抓」一樣
+  繞不停，而**重試本身正是被回 429 的原因**
+- **畫失敗時也要記下尺寸**，不然「尺寸對不上 → 再叫一次 → 又失敗」會繞
+
+### 深色模式要畫兩張圖
+
+小組件是一張 PNG，跟不了系統的深淺色切換。所以淺色深色各畫一張，
+`res/layout/` 和 `res/layout-night/` 各自只讓其中一個 ImageView 顯示 ——
+RemoteViews 是 launcher 依它自己當下的設定 inflate 的，切換就跟著變。
+由我們挑圖的話得等下一次更新才會變，中間桌面上是一塊白的，看起來就是壞了。
+
+同理，**尺寸也不能假設**：使用者拉大縮小會觸發 `onAppWidgetOptionsChanged`，
+要照新尺寸重畫，不然圖會被 ImageView 拉成一張糊的。
+
+### 圖要用 setImageViewBitmap，不能用 setImageViewUri
+
+PNG 存在 App 的私有目錄（`getApplicationSupportDirectory()`），
+**launcher 是另一個 process，那個路徑它讀不到** —— 畫面上就是一片空白，
+沒有任何錯誤。Bitmap 走的是 ashmem，不會撞到 binder 的傳輸上限。
+
+### 換帳號要清掉課表那張圖
+
+`AppController.submitLogin` 發現學號換了的時候，除了 `cache.clear()` 還要
+`widgets.clearTimetable()`。換帳號通常正是「這支手機借給別人用」的情境，
+而那張圖上有前一個人的課名和教室，**掛在桌面上，不用解鎖 App 就看得到**。
+
+交通那半邊不清 —— 它跟帳號完全無關。
+
+### 還沒驗證的一件事
+
+`renderFlutterWidget` 內部用的是 `PlatformDispatcher.implicitView!`，而背景
+是一個從來沒附著過 `FlutterView` 的 `FlutterEngine(context)`。**背景畫圖
+到底能不能成，要在真機上看過才算數** —— 目前的程式碼在 `implicitView` 是
+null 時會安全退出（桌面上留著上一張圖），不會炸，但那條路等於「小組件不會
+自己更新」。同一個理由，`pixelRatio` 是明確傳進去的，不能吃套件的預設值
+（那是 `implicitView?.devicePixelRatio ?? 1`，背景會讀到 1.0，畫出來是糊的）。
 
 
 ## 安全紅線

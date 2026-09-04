@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 
 import 'src/config/selectors.dart';
 import 'src/data/ais_repository.dart';
@@ -12,6 +13,8 @@ import 'src/storage/timetable_cache.dart';
 import 'src/ui/app_controller.dart';
 import 'src/ui/auth_gate.dart';
 import 'src/ui/theme.dart';
+import 'src/widget/widget_background.dart';
+import 'src/widget/widget_updater.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,9 +29,21 @@ Future<void> main() async {
     log: kDebugMode ? (line) => debugPrint(line) : null,
   );
 
+  // 桌面小組件。**註冊背景進入點要在這裡做，不是第一次用到的時候** ——
+  // 它記的是一個 callback handle，原生下次要在背景叫 Dart 的時候就靠它，
+  // 而那個時候 App 通常根本沒在跑。沒註冊過的話小組件永遠不會自己更新，
+  // 而且不會有任何錯誤訊息。
+  //
+  // 註冊失敗（例如平台不支援）不該讓 App 開不起來，所以吞掉。
+  unawaited(
+    HomeWidget.registerInteractivityCallback(ntouWidgetBackground)
+        .catchError((_) => null),
+  );
+
   final controller = AppController(
     repository: repository,
     credentials: CredentialStore(),
+    widgets: WidgetUpdater(),
   );
   await controller.init();
 

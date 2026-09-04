@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 小組件上唯一不是畫進 PNG 的東西：那顆重新整理鈕的顏色。
+     圖是 Dart 畫的（深淺色各一張），但按鈕是真的 View，
+     所以它的顏色要靠 values / values-night 這一套。 -->
+<resources>
+    <color name="widget_icon">#5F6B72</color>
+</resources>

@@ -89,6 +89,14 @@ const ALLOWED_PARAMS = new Set(['$filter', '$top', '$format', '$select', '$order
 const MAX_QUERY_LENGTH = 2000;
 
 /**
+ * `/batch` 一次最多問幾個。
+ *
+ * App 現在最多用到 3 個（基隆市公車、國道客運、台鐵）。留一點餘裕，
+ * 但**一定要有上限** —— 沒有的話這就變成「一個請求打 N 個上游」的放大器。
+ */
+const MAX_BATCH = 6;
+
+/**
  * token 放在 isolate 的記憶體裡。
  *
  * **不寫進任何快取。** 它是金鑰換來的東西，而 `caches.default` 是共用的邊緣
@@ -114,11 +122,6 @@ export default {
       return json({ ok: true, service: 'ntou-app tdx relay' });
     }
 
-    if (!ALLOWED_PREFIXES.some((p) => path.startsWith(p))) {
-      // 刻意不說「哪些路徑可以」—— 那只是在幫想濫用的人省事。
-      return json({ error: '這個路徑不開放' }, 404);
-    }
-
     if (url.search.length > MAX_QUERY_LENGTH) {
       return json({ error: '查詢字串太長' }, 414);
     }
@@ -129,67 +132,177 @@ export default {
       return json({ error: '中繼服務尚未設定金鑰' }, 503);
     }
 
-    const upstream = buildUpstreamUrl(path, url.searchParams);
-    const cacheKey = new Request(upstream, { method: 'GET' });
-    const staleKey = new Request(`${upstream}&__stale=1`, { method: 'GET' });
-    const cache = caches.default;
+    if (path === 'batch') return serveBatch(url, env, ctx);
 
-    const hit = await cache.match(cacheKey);
-    if (hit) return withHeaders(hit, 'HIT');
-
-    let res = null;
-    try {
-      res = await fetchFromTdx(upstream, env);
-    } catch (e) {
-      res = null;
+    if (!ALLOWED_PREFIXES.some((p) => path.startsWith(p))) {
+      // 刻意不說「哪些路徑可以」—— 那只是在幫想濫用的人省事。
+      return json({ error: '這個路徑不開放' }, 404);
     }
 
-    if (!res || !res.ok) {
-      // **TDX 掛了或擋我們的時候，寧可給舊資料也不要給錯誤。**
-      //
-      // 公車還有幾分鐘這種東西，晚三十秒的版本仍然有用；一個錯誤訊息
-      // 一點用都沒有。而 TDX 是會擋人的 —— 開發過程就撞過好幾次 429。
-      const stale = await cache.match(staleKey);
-      if (stale) return withHeaders(stale, 'STALE');
-
-      // 真的什麼都沒有才報錯。**不要把 TDX 的回應原文往下傳** ——
-      // 失敗的回應有可能把送出的參數回吐，而換 token 那個請求的 body
-      // 就是 client_secret 本人。
-      if (!res) return json({ error: '連不上交通資料服務' }, 502);
-      const status = res.status === 429 ? 429 : 502;
-      return json({ error: `交通資料服務回應 ${res.status}` }, status);
-    }
-
-    const ttl = ttlFor(path);
-    const body = await res.text();
-    const cached = new Response(body, {
-      status: 200,
-      headers: {
-        'content-type': 'application/json; charset=utf-8',
-        // 這一行同時控制邊緣快取和 App 端的 http 快取。
-        'cache-control': `public, max-age=${ttl}`,
-      },
-    });
-
-    // 存兩份：一份照正常 TTL（給命中用），一份放久一點當**備胎**。
-    //
-    // 為什麼要第二份：邊緣快取過期之後那筆就不見了，而「過期」跟「沒用」
-    // 是兩回事 —— TDX 擋人的時候，一份三分鐘前的公車時間遠比一個錯誤有用。
-    const backup = new Response(body, {
-      status: 200,
-      headers: {
-        'content-type': 'application/json; charset=utf-8',
-        'cache-control': `public, max-age=${STALE_TTL}`,
-      },
-    });
-
-    // 寫快取不要擋著回應 —— 使用者等的是資料，不是我們的記帳。
-    ctx.waitUntil(
-      Promise.all([cache.put(cacheKey, cached.clone()), cache.put(staleKey, backup)]),
+    const result = await serveOne(path, url.searchParams, env, ctx);
+    return withHeaders(
+      new Response(result.body, {
+        status: result.status,
+        headers: {
+          'content-type': 'application/json; charset=utf-8',
+          'cache-control': `public, max-age=${result.maxAge}`,
+        },
+      }),
+      result.cache,
     );
-    return withHeaders(cached, 'MISS');
   },
 };
+
+/**
+ * 一次問好幾個端點。
+ *
+ * ## 為什麼要這個
+ *
+ * 桌面小組件每次更新要三份資料（基隆市公車、國道客運、台鐵），分開打就是
+ * **三個 Worker 請求**。而小組件跟 App 不一樣 —— 它裝了就一直在背景更新，
+ * 跟使用者有沒有在看無關。五百個人各裝一個、每 30 分鐘更新一次，
+ * 一天就是七萬多個請求，逼近 Cloudflare 免費方案每天十萬的上限。
+ *
+ * 併成一個就降到兩萬四。
+ *
+ * ## 這不會增加打到 TDX 的量
+ *
+ * 每一份還是走 [serveOne]、用**同一組快取鍵** —— 所以 batch 和單獨查詢是
+ * 共用快取的，打到 TDX 的請求量完全不變（還是每 30 秒 3 個）。
+ * 這裡省的是 Worker 自己的請求數，不是 TDX 的。
+ *
+ * ## 格式
+ *
+ * `GET /batch?r=<路徑?查詢>&r=<...>`，每個 `r` 都是 URL 編碼過的。
+ * 回應是 `{ results: [{ path, status, data }] }`，順序跟 `r` 一致。
+ *
+ * **一個失敗不會拖垮整批** —— 那是刻意的，跟 App 裡「一站失敗不影響其他站」
+ * 同一個道理：台鐵掛了公車還是要能看。
+ */
+async function serveBatch(url, env, ctx) {
+  const requests = url.searchParams.getAll('r');
+  if (requests.length === 0) return json({ error: '沒有指定要問什麼' }, 400);
+  if (requests.length > MAX_BATCH) {
+    // 沒有上限的話這就變成一個「一個請求打 N 個上游」的放大器。
+    return json({ error: `一次最多 ${MAX_BATCH} 個` }, 400);
+  }
+
+  const results = await Promise.all(
+    requests.map(async (raw) => {
+      const [rawPath, rawQuery] = raw.split('?');
+      const path = (rawPath ?? '').replace(/^\/+/, '');
+      if (!ALLOWED_PREFIXES.some((p) => path.startsWith(p))) {
+        return { maxAge: 0, row: { path, status: 404, cache: 'MISS', data: null } };
+      }
+      const one = await serveOne(path, new URLSearchParams(rawQuery ?? ''), env, ctx);
+      return {
+        maxAge: one.maxAge,
+        row: {
+          path,
+          status: one.status,
+          cache: one.cache,
+          // 這裡是**解析過的物件**不是字串。讓 App 端多做一次 JSON.parse
+          // 沒有任何好處，而且巢狀字串很難除錯。
+          data: one.status === 200 ? JSON.parse(one.body) : null,
+        },
+      };
+    }),
+  );
+
+  // 整批的 max-age 取最短的那個。取最長的話，公車時間會被列車那份
+  // 六小時的快取一起壓著不更新 —— 而畫面上完全看不出來。
+  //
+  // 有任何一個失敗（maxAge 0）就整批不要快取：**把一份缺了公車的結果
+  // 快取起來，等於讓每個人都看到同一個破洞**，而下一個人來問的時候
+  // TDX 可能早就好了。
+  const maxAge = results.reduce((min, r) => Math.min(min, r.maxAge), DEFAULT_TTL);
+  return new Response(JSON.stringify({ results: results.map((r) => r.row) }), {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': `public, max-age=${maxAge}`,
+    },
+  });
+}
+
+/**
+ * 問一個端點。回 `{ status, body, maxAge, cache }`。
+ *
+ * 單獨查詢和 batch 都走這裡，所以兩條路**共用同一組快取鍵** ——
+ * 分開實作的話同一份資料會被抓兩次，而這個服務存在的全部理由就是快取。
+ */
+async function serveOne(path, searchParams, env, ctx) {
+  const upstream = buildUpstreamUrl(path, searchParams);
+  const cacheKey = new Request(upstream, { method: 'GET' });
+  const staleKey = new Request(`${upstream}&__stale=1`, { method: 'GET' });
+  const cache = caches.default;
+
+  const hit = await cache.match(cacheKey);
+  if (hit) {
+    return { status: 200, body: await hit.text(), maxAge: ttlFor(path), cache: 'HIT' };
+  }
+
+  let res = null;
+  try {
+    res = await fetchFromTdx(upstream, env);
+  } catch (e) {
+    res = null;
+  }
+
+  if (!res || !res.ok) {
+    // **TDX 掛了或擋我們的時候，寧可給舊資料也不要給錯誤。**
+    //
+    // 公車還有幾分鐘這種東西，晚三十秒的版本仍然有用；一個錯誤訊息
+    // 一點用都沒有。而 TDX 是會擋人的 —— 開發過程就撞過好幾次 429。
+    const stale = await cache.match(staleKey);
+    if (stale) {
+      return { status: 200, body: await stale.text(), maxAge: 30, cache: 'STALE' };
+    }
+
+    // 真的什麼都沒有才報錯。**不要把 TDX 的回應原文往下傳** ——
+    // 失敗的回應有可能把送出的參數回吐，而換 token 那個請求的 body
+    // 就是 client_secret 本人。
+    if (!res) {
+      return { status: 502, body: JSON.stringify({ error: '連不上交通資料服務' }), maxAge: 0, cache: 'MISS' };
+    }
+    const status = res.status === 429 ? 429 : 502;
+    return {
+      status,
+      body: JSON.stringify({ error: `交通資料服務回應 ${res.status}` }),
+      maxAge: 0,
+      cache: 'MISS',
+    };
+  }
+
+  const ttl = ttlFor(path);
+  const body = await res.text();
+  const cached = new Response(body, {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      // 這一行同時控制邊緣快取和 App 端的 http 快取。
+      'cache-control': `public, max-age=${ttl}`,
+    },
+  });
+
+  // 存兩份：一份照正常 TTL（給命中用），一份放久一點當**備胎**。
+  //
+  // 為什麼要第二份：邊緣快取過期之後那筆就不見了，而「過期」跟「沒用」
+  // 是兩回事 —— TDX 擋人的時候，一份三分鐘前的公車時間遠比一個錯誤有用。
+  const backup = new Response(body, {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': `public, max-age=${STALE_TTL}`,
+    },
+  });
+
+  // 寫快取不要擋著回應 —— 使用者等的是資料，不是我們的記帳。
+  ctx.waitUntil(
+    Promise.all([cache.put(cacheKey, cached.clone()), cache.put(staleKey, backup)]),
+  );
+  return { status: 200, body, maxAge: ttl, cache: 'MISS' };
+}
 
 /**
  * 把路徑和查詢參數組回 TDX 的網址。

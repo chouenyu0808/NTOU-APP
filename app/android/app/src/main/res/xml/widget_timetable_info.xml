@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 課表小組件的規格。
+
+     **刻意沒有 updatePeriodMillis。** 那個系統下限是 30 分鐘，而課表要在
+     每個節次交界重畫（反白要跟著移動）—— 30 分鐘太粗，而且它會叫醒裝置。
+     這個小組件完全靠 HomeWidget.scheduleWidgetUpdates 排的鬧鐘，時刻是
+     Dart 算出來的（見 TimetableWidgetPayload.updateTimes）。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="70dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:initialLayout="@layout/widget_timetable"
+    android:previewImage="@mipmap/launcher_icon"
+    android:description="@string/widget_timetable_description" />

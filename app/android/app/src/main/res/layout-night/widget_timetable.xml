@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 深色版。跟 layout/ 那份只差在哪一個 ImageView 顯示；
+     理由寫在 layout/ 那一份裡。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_image_light"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:visibility="gone"
+        android:contentDescription="@string/widget_timetable_label" />
+
+    <ImageView
+        android:id="@+id/widget_image_dark"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:visibility="visible"
+        android:contentDescription="@string/widget_timetable_label" />
+
+    <TextView
+        android:id="@+id/widget_placeholder"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="12dp"
+        android:textSize="12sp"
+        android:textColor="@color/widget_icon"
+        android:visibility="gone"
+        android:text="@string/widget_loading" />
+</FrameLayout>

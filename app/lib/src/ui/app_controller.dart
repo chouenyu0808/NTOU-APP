@@ -10,6 +10,7 @@ import '../parsing/academic_calendar.dart';
 import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../storage/credential_store.dart';
+import '../widget/widget_updater.dart';
 
 enum AppPhase {
   /// 讀本機資料中（學號、上次看的學期、快取課表）。
@@ -41,10 +42,17 @@ class AppController extends ChangeNotifier {
     required this.repository,
     required this.credentials,
     AcademicCalendarSource? calendar,
+    this.widgets,
   }) : calendar = calendar ?? AcademicCalendarSource();
 
   final AisRepository repository;
   final CredentialStore credentials;
+
+  /// 桌面小組件。
+  ///
+  /// **可以是 null**，那時候整個小組件功能就是不存在 —— 測試不用為了一個
+  /// 桌面上的東西去接 method channel，而 App 本身少了它一樣能跑。
+  final WidgetUpdater? widgets;
 
   /// 校園行事曆。**不是 AIS 的東西** —— 學校官網的公開頁面，不用登入。
   final AcademicCalendarSource calendar;
@@ -157,6 +165,10 @@ class AppController extends ChangeNotifier {
       // 舊的課表會一路留到第一次查詢回來為止，中間他看到的是別人的課。
       if (username.isNotEmpty && username != account) {
         await repository.cache.clear();
+        // **桌面上那張圖也要清。** 同一支手機換一個學號登入，通常正是
+        // 「借給別人用」的情境 —— 而那張圖上有前一個人的課名和教室，
+        // 就掛在桌面上，不用解鎖 App 就看得到。
+        await widgets?.clearTimetable();
         timetable = null;
         showingCache = false;
         // 學年學期也要放掉 —— 那是上一個人選的，新的人要用他自己的預設值。
@@ -327,6 +339,13 @@ class AppController extends ChangeNotifier {
 
     loadingTimetable = false;
     notifyListeners();
+
+    // 抓到新課表就順手把桌面上那張圖重畫。
+    //
+    // **放在 _guard 外面**：抓失敗時也要重畫 —— 快取沒變，但「今天」可能
+    // 已經換了一天（App 在背景放了一夜），那張圖還停在昨天。
+    // 桌面上沒有這個小組件的話 refreshTimetable 自己會直接回來，不做事。
+    await widgets?.refreshTimetable();
   }
 
   // ---------- 錯誤處理 ----------

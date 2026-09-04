@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../transit/arrival_text.dart';
 import '../transit/tdx_client.dart';
 import '../transit/transit_config.dart';
 import '../transit/transit_models.dart';
 import '../storage/transit_prefs_store.dart';
 import '../transit/transit_repository.dart';
+import '../widget/widget_updater.dart';
 import 'route_page.dart';
 import 'theme.dart';
 
@@ -25,7 +27,13 @@ class TransitPage extends StatefulWidget {
     this.prefs,
     this.isActive = true,
     this.autoRefresh = const Duration(seconds: 30),
+    this.widgets,
   });
+
+  /// 桌面小組件。抓到資料時順手把桌面上那張圖也更新掉。
+  ///
+  /// **可以是 null** —— 測試不用為了一個桌面上的東西去接 method channel。
+  final WidgetUpdater? widgets;
 
   /// 測試會注入一個假的。正式執行時是 null，開頁的時候自己建。
   final TransitRepository? repository;
@@ -232,6 +240,20 @@ class _TransitPageState extends State<TransitPage> {
       _boards = boards;
       _loading = false;
     });
+
+    // 順手把桌面小組件也更新掉。**資料已經在手上，不會多打一次網路** ——
+    // 這一頁每 30 秒抓一次，再抓一輪就是把請求量翻倍。
+    //
+    // 不 await：畫圖要花幾十毫秒，而使用者要看的是螢幕上這一頁，
+    // 不該為了桌面上那塊東西卡一下。
+    unawaited(
+      widget.widgets?.publishTransit(
+            boards: boards,
+            config: repo.config,
+            favorites: _favorites,
+          ) ??
+          Future<void>.value(),
+    );
   }
 
   @override
@@ -396,26 +418,12 @@ class _StopCard extends StatelessWidget {
     return '${running.length} 班在路上 · 最快 ${soonest.routeName} ${label.text}';
   }
 
-  String get _emptyMessage {
-    if (board.endingHere > 0) {
-      return '只有 ${board.endingHere} 班到站後收班的車，沒有可搭乘的班次';
-    }
-    return board.stop.kind == TransitStopKind.train
-        ? '目前沒有即將進站的列車'
-        : '目前沒有班次資訊';
-  }
+  /// 這一站沒有可搭乘的班次時說的話。內容在 [ArrivalText.empty] ——
+  /// 桌面小組件要說一模一樣的話。
+  String get _emptyMessage => ArrivalText.empty(board);
 
-  /// 每條路線在這張卡片上出現幾次。
-  ///
-  /// 出現不只一次 = 馬路兩邊的兩個站牌都停這條路線。那兩列的終點站是一樣的
-  /// （103 是環狀線），所以得額外標出方向，否則看起來一模一樣。
-  Map<String, int> get _routeCounts {
-    final counts = <String, int>{};
-    for (final b in board.boardableBuses) {
-      counts[b.routeName] = (counts[b.routeName] ?? 0) + 1;
-    }
-    return counts;
-  }
+  /// 每條路線在這張卡片上出現幾次。內容在 [ArrivalText.routeCounts]。
+  Map<String, int> get _routeCounts => ArrivalText.routeCounts(board);
 
   /// 釘起來的路線排最前面，其餘照到站時間。
   ///
@@ -505,21 +513,10 @@ class _BusRow extends StatelessWidget {
   final void Function(String route)? onToggleFavorite;
   final void Function(BusArrival arrival)? onOpenRoute;
 
-  /// 「往哪裡」那一行。
-  ///
-  /// 平常就是終點站。**但同一條路線在這張卡片上出現兩次的時候，終點站分不出
-  /// 方向** —— 103 是環狀線，馬路兩邊的車終點都是八斗子車站。那時候補上
-  /// 下一站：一邊「經 海大濱海校門」（往市區），一邊「經 北寧路」
-  /// （往八斗子），使用者才知道要站哪一邊。
-  ///
-  /// 連終點都查不到時，下一站就是唯一的線索，直接拿它當方向講。
-  String get _towards {
-    final to = arrival.destination;
-    final next = arrival.nextStop;
-    if (to.isEmpty) return next.isEmpty ? '' : '往 $next 方向';
-    if (needsDirection && next.isNotEmpty) return '往 $to（經 $next）';
-    return '往 $to';
-  }
+  /// 「往哪裡」那一行。規則在 [ArrivalText.towards] ——
+  /// 桌面小組件用的是同一份，兩邊說的話不能不一樣。
+  String get _towards =>
+      ArrivalText.towards(arrival, needsDirection: needsDirection);
 
   @override
   Widget build(BuildContext context) {

@@ -119,7 +119,10 @@ class _HomeShellState extends State<HomeShell> {
           // 外面這個 IndexedStack 會讓四個分頁**從開 App 起就一直掛載**，
           // 而交通頁裡有一個每 30 秒重抓一次的計時器。不告訴它現在是不是
           // 在前景的話，使用者整天在看課表，它照樣整天打交通部的伺服器。
-          TransitPage(isActive: _index == 3),
+          TransitPage(
+            isActive: _index == 3,
+            widgets: widget.controller.widgets,
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
