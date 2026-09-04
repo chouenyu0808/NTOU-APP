@@ -34,7 +34,6 @@ class TransitStop {
     this.matchNames = const [],
     this.stationId = '',
     this.stationName = '',
-    this.note,
   });
 
   final String id;
@@ -71,9 +70,6 @@ class TransitStop {
   final String stationId;
   final String stationName;
 
-  /// 給使用者看的補充（哪幾條路線會停）。
-  final String? note;
-
   factory TransitStop.fromJson(Map<String, dynamic> json) => TransitStop(
         id: json['id'] as String? ?? '',
         name: json['name'] as String? ?? '',
@@ -89,7 +85,6 @@ class TransitStop {
         ],
         stationId: json['station_id'] as String? ?? '',
         stationName: json['station_name'] as String? ?? '',
-        note: json['note'] as String?,
       );
 
   /// 比對用的名字集合。[name] 一定包含在內，不用在 JSON 裡重複寫一次。

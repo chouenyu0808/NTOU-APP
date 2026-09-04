@@ -63,8 +63,7 @@
       "_also_comment": "1579 是首都客運的國道客運，資料不在基隆市公車那個端點裡 —— 不多問一次 InterCity 的話它永遠不會出現，而畫面上看起來只是「這站沒有這條路線」。多問不會多打請求：所有站的國道客運查詢會跟基隆轉運站那次合併成同一個。",
       "also": ["intercity_bus"],
       "city": "Keelung",
-      "match_names": ["海大(體育館)"],
-      "note": "基隆市公車 103、104、108 等；首都客運 1579 從圓山轉運站直達也停這裡"
+      "match_names": ["海大(體育館)"]
     },
     {
       "id": "ntou-binhai-gate",
@@ -87,8 +86,7 @@
       "name": "基隆轉運站",
       "kind": "intercity_bus",
       "city": "Keelung",
-      "match_names": [],
-      "note": "國道客運往台北。1800/1813/2088 這些走這裡"
+      "match_names": []
     },
     {
       "id": "tra-keelung",

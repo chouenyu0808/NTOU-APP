@@ -332,7 +332,6 @@ class _StopCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final note = board.stop.note;
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -355,14 +354,6 @@ class _StopCard extends StatelessWidget {
                           board.stop.name,
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        // 收起來的時候備註也一起收 —— 那一行是兩行字，
-                        // 留著的話「收合」省不到多少高度。
-                        if (note != null && !isCollapsed)
-                          Text(
-                            note,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: scheme.onSurfaceVariant),
-                          ),
                         // 收起來之後看不到內容，所以標題底下補一句摘要，
                         // 讓人不用展開就知道這站現在有沒有車。
                         if (isCollapsed)
