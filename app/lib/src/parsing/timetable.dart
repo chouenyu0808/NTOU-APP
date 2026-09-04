@@ -348,6 +348,62 @@ List<TimeSlot> parseCourseTimeSlots(String html) {
   return group == null ? const [] : parseTimeCodes(group.group(0)!);
 }
 
+/// 課程內容頁上放上課地點和課號的欄位 id。
+///
+/// 地點那一格的值是**每一節各一個代號**：`INS105,INS105,INS105`
+/// （三節課都在同一間）。直接顯示的話使用者看到的是同一個教室印三次。
+const String kCourseRoomFieldId = 'M_CLSSRM_ID';
+const String kCourseCodeFieldId = 'M_COSID';
+
+/// 課程內容頁上的上課地點。去掉重複，保持原本的順序。
+///
+/// **只認有 id 的那一格，認不到就回空字串。** 教室代號長得跟時間代碼、
+/// 人數、學號一模一樣（都是三位數起跳的英數），掃文字猜出來的「教室」
+/// 使用者看不出是猜的 —— 他會直接照著去那間教室。
+String parseCourseRoom(String html) {
+  final doc = html_parser.parse(html);
+  for (final el in doc.querySelectorAll('script, style')) {
+    el.remove();
+  }
+
+  var cell = doc.querySelector('#$kCourseRoomFieldId');
+  if (cell == null) {
+    for (final el in doc.querySelectorAll('span, td')) {
+      final cname = el.attributes['cname'] ?? el.attributes['CNAME'];
+      if (cname == '教室代號' || cname == '教室' || cname == '上課地點') {
+        cell = el;
+        break;
+      }
+    }
+  }
+  if (cell == null) return '';
+
+  final seen = <String>[];
+  for (final part in clean(cell.text).split(RegExp(r'[\s,、;/]+'))) {
+    final room = part.trim();
+    if (room.isNotEmpty && !seen.contains(room)) seen.add(room);
+  }
+  return seen.join('、');
+}
+
+/// 課程內容頁 → [CourseDetail]。
+///
+/// 一門課的細節**一次收齊**：同一份 HTML 已經在手上了，時間解析一次、
+/// 地點再解析一次，比為了教室多打學校一趟便宜太多。
+///
+/// 回傳的 [CourseDetail.isBlank] 為真時代表拿到的是空殼（PKNO 不對），
+/// 呼叫端要當成「沒問到」而不是「這門課沒排時間」——
+/// 前者重問會有答案，後者重問一百次都一樣。
+CourseDetail parseCourseDetail(String html) {
+  final doc = html_parser.parse(html);
+  final code = doc.querySelector('#$kCourseCodeFieldId');
+  return CourseDetail(
+    code: code == null ? '' : clean(code.text),
+    slots: parseCourseTimeSlots(html),
+    room: parseCourseRoom(html),
+  );
+}
+
 /// 這一格是不是「上課時間」的標籤；是的話回標籤後面剩下的字。
 ///
 /// 要求**開頭**就是標籤，不是「有出現」—— 不然整個 `<td>` 的外層容器也會中，

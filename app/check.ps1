@@ -13,8 +13,21 @@
 
 $ErrorActionPreference = 'Stop'
 
-$flutter = 'C:\Users\choue\flutter\bin\flutter.bat'
-$dart = 'C:\Users\choue\flutter\bin\cache\dart-sdk\bin\dart.exe'
+# Flutter SDK 的位置**每台機器不一樣**（choue 那台在 C:\Users\choue\flutter，
+# user 那台在 C:\Users\user\flutter）。寫死一條路徑的話，另一台跑這支腳本
+# 得到的是「找不到檔案」—— 看起來像 Flutter 壞了，其實只是裝在別的地方。
+function Resolve-FlutterRoot {
+    $cmd = Get-Command flutter.bat -ErrorAction SilentlyContinue
+    if ($cmd) { return (Split-Path (Split-Path $cmd.Source -Parent) -Parent) }
+    foreach ($root in @("$env:USERPROFILE\flutter", 'C:\Users\choue\flutter')) {
+        if (Test-Path (Join-Path $root 'bin\flutter.bat')) { return $root }
+    }
+    throw 'Flutter SDK not found - add it to PATH or install to %USERPROFILE%\flutter'
+}
+
+$flutterRoot = Resolve-FlutterRoot
+$flutter = Join-Path $flutterRoot 'bin\flutter.bat'
+$dart = Join-Path $flutterRoot 'bin\cache\dart-sdk\bin\dart.exe'
 
 Push-Location $PSScriptRoot
 try {

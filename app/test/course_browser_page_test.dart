@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ntou_app/src/parsing/models.dart';
 import 'package:ntou_app/src/parsing/timetable.dart';
 import 'package:ntou_app/src/planner/plan_models.dart';
-import 'package:ntou_app/src/storage/course_time_cache.dart';
+import 'package:ntou_app/src/storage/course_detail_cache.dart';
 import 'package:ntou_app/src/storage/plan_store.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
 import 'package:ntou_app/src/ui/course_browser_page.dart';
@@ -108,6 +108,20 @@ String _detailPage(String codes) =>
     '<div><span id="M_CLSSRM_ID" cname="教室代號">INS105,INS105,INS105</span>'
     '</div></body></html>';
 
+/// PKNO 不對時課程內容頁回的**空殼**：版面和標籤都在，每一格都是空的。
+///
+/// 這一份不是「這門課沒排時間」，是「我們沒問到」—— 記成前者的話，
+/// 那門課會永遠停在查不到，而且重開 App 也好不了。
+const _emptyDetailPage =
+    '<html><head><title>TKE2240_03 課程內容</title></head><body>'
+    '<div><span ml="PL_課號">課號</span></div>'
+    '<div><span id="M_COSID" cname="課號"></span></div>'
+    '<div><span ml="PL_上課時間">上課時間</span></div>'
+    '<div><span id="M_SEG" class="form-label" cname="時間"></span></div>'
+    '<div><span ml="PL_上課地點">上課地點</span></div>'
+    '<div><span id="M_CLSSRM_ID" cname="教室代號"></span></div>'
+    '</body></html>';
+
 /// 點課號的 postback 回應。
 ///
 /// **跟查詢結果頁幾乎一模一樣，只多注入這一行。** 真實資料裡整份 HTML 只差
@@ -175,14 +189,14 @@ void main() {
     WidgetTester tester, {
     String year = '114',
     String semester = '1',
-    CourseTimeCache? timeCache,
+    CourseDetailCache? detailCache,
   }) async {
     await tester.pumpWidget(MaterialApp(
       theme: NtouTheme.of(Brightness.light),
       home: CourseBrowserPage(
         controller: controller,
         planStore: store,
-        timeCache: timeCache,
+        detailCache: detailCache,
         year: year,
         semester: semester,
       ),
@@ -809,6 +823,33 @@ void main() {
       );
     });
 
+    test('上課地點是每一節各印一次，要去掉重複', () {
+      // 真實資料：INS105,INS105,INS105（三節課都在同一間）。
+      // 照原樣顯示的話，使用者看到的是同一個教室印三次。
+      expect(parseCourseRoom(_detailPage('102 103 104')), 'INS105');
+    });
+
+    test('認不出上課地點那一格就回空字串，不要掃文字猜', () {
+      // 教室代號長得跟時間代碼、人數、學號一模一樣 —— 猜錯的話使用者
+      // 看不出是猜的，他會直接照著去那間教室。
+      expect(
+        parseCourseRoom('<html><body><p>綜一301</p></body></html>'),
+        isEmpty,
+      );
+    });
+
+    test('一份詳細頁一次收齊時間和地點', () {
+      final d = parseCourseDetail(_detailPage('102 103 104'));
+      expect(d.code, 'B57011RQ');
+      expect(d.room, 'INS105');
+      expect(d.slots, const [TimeSlot(0, 2), TimeSlot(0, 3), TimeSlot(0, 4)]);
+      expect(d.isBlank, isFalse);
+    });
+
+    test('每一格都是空的就是空殼，不是「這門課沒排時間」', () {
+      expect(parseCourseDetail(_emptyDetailPage).isBlank, isTrue);
+    });
+
     test('相鄰兩格的數字不會黏成一串而漏掉代碼', () {
       // <td>65</td><td>102 103</td> 直接取 text 會變成「65102 103」
       expect(
@@ -909,16 +950,16 @@ void main() {
     });
 
     testWidgets('離開這一頁再進來，也不用重問', (tester) async {
-      // 每次進來都是新的 State，記憶體裡是空的 —— 靠 CourseTimeCache 讀回來。
+      // 每次進來都是新的 State，記憶體裡是空的 —— 靠 CourseDetailCache 讀回來。
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final cache = CourseTimeCache(prefs: prefs);
+      final cache = CourseDetailCache(prefs: prefs);
 
       script(
         onKeyword: _searchPage(result: _resultTable()),
         onDetail: _detailPage('102,103,104'),
       );
-      await open(tester, timeCache: cache);
+      await open(tester, detailCache: cache);
       await searchByKeyword(tester, '計算機');
       final afterFirst = ais.seen
           .where((r) => r.page.startsWith('TKE2240_03.aspx'))
@@ -927,7 +968,7 @@ void main() {
       await unmount(tester);
 
       // 重開一次同一頁
-      await open(tester, timeCache: cache);
+      await open(tester, detailCache: cache);
       await searchByKeyword(tester, '計算機');
 
       expect(
@@ -935,6 +976,65 @@ void main() {
         afterFirst,
         reason: '上次查過的要從本機讀回來，不是重問學校',
       );
+      await unmount(tester);
+    });
+
+    testWidgets('加入預排時把上課地點一起帶過去', (tester) async {
+      // 查詢結果那 17 欄沒有教室，教室只在詳細頁上 —— 那一趟本來就跑了，
+      // 順手帶回來的話預排課表的格子就畫得出教室。
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage('102,103,104'),
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+      await addFirstCourse(tester);
+
+      final plan = await readPlan();
+      expect(plan!.courses.first.course.room, 'INS105');
+      await unmount(tester);
+    });
+
+    testWidgets('詳細頁回空殼時要說「沒問到」，而且按得動再問一次', (tester) async {
+      // 使用者實際回報的：通識搜到後面幾十門全寫「查不到上課時間」，
+      // 重搜也一樣 —— 因為抓失敗被記成了「學校沒排時間」存進表裡。
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _emptyDetailPage,
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+
+      expect(find.textContaining('沒問到上課時間'), findsWidgets);
+      expect(find.text('再問一次'), findsOneWidget);
+
+      final asked =
+          ais.seen.where((r) => r.page.startsWith('TKE2240_03.aspx')).length;
+      expect(asked, 2);
+
+      await tester.tap(find.text('再問一次'));
+      await tester.pumpAndSettle();
+
+      expect(
+        ais.seen.where((r) => r.page.startsWith('TKE2240_03.aspx')).length,
+        asked * 2,
+        reason: '沒問到的要能重問，不是永遠記著一個沒問到的答案',
+      );
+      await unmount(tester);
+    });
+
+    testWidgets('學校說沒排時間的課，講法要跟「沒問到」不一樣', (tester) async {
+      // 有些課本來就沒時間（要親洽系辦的實習）。那種重問一百次都一樣，
+      // 不該給使用者一顆按不出東西的重試鈕。
+      script(
+        onKeyword: _searchPage(result: _resultTable()),
+        onDetail: _detailPage(''),
+      );
+      await open(tester);
+      await searchByKeyword(tester, '計算機');
+
+      expect(find.textContaining('學校沒有排上課時間'), findsWidgets);
+      expect(find.text('再問一次'), findsNothing);
       await unmount(tester);
     });
 

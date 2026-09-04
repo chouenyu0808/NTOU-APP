@@ -8,7 +8,7 @@ import '../parsing/models.dart';
 import '../parsing/tables.dart';
 import '../parsing/timetable.dart';
 import '../planner/plan_models.dart';
-import '../storage/course_time_cache.dart';
+import '../storage/course_detail_cache.dart';
 import '../storage/plan_store.dart';
 import 'app_controller.dart';
 import 'plan_dialogs.dart';
@@ -19,16 +19,17 @@ class CourseBrowserPage extends StatefulWidget {
     super.key,
     required this.controller,
     required this.planStore,
-    CourseTimeCache? timeCache,
+    CourseDetailCache? detailCache,
     required this.year,
     required this.semester,
-  }) : timeCache = timeCache ?? const CourseTimeCache.shared();
+  }) : detailCache = detailCache ?? const CourseDetailCache.shared();
 
   final AppController controller;
   final PlanStore planStore;
 
-  /// 查過的上課時間存哪。預設用 SharedPreferences，測試可以塞自己的。
-  final CourseTimeCache timeCache;
+  /// 查過的課程細節（上課時間、上課地點）存哪。
+  /// 預設用 SharedPreferences，測試可以塞自己的。
+  final CourseDetailCache detailCache;
 
   /// 要加進**哪一份**預排。
   ///
@@ -70,36 +71,56 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   /// 的當下從使用者手指底下消失 —— 他正在看的東西自己不見了。
   bool _showClashing = true;
 
-  // ---------- 每一列的上課時間（拿來標衝堂） ----------
+  // ---------- 每一門課的細節（上課時間、上課地點） ----------
   //
-  // **查詢結果那 17 欄沒有上課時間**，所以每一門都得走一次「點課號 →
-  // fn_open → GET 詳細頁」才知道它排在哪幾節。一次把整頁結果都抓完是不行的：
-  // 搜「計算機」會回好幾十筆，那是上百次請求，而選課尖峰時學校的機器正忙。
+  // **查詢結果那 17 欄沒有上課時間、也沒有教室**，所以每一門都得走一次
+  // 「點課號 → fn_open → GET 詳細頁」才知道它排在哪幾節、在哪一間教室。
+  // 一門兩次請求，加上節流，通識這種一次開上百門的要等好幾分鐘。
   //
-  // 所以只抓**使用者真的捲到的那幾列**（`itemBuilder` 只會為看得見的列跑），
-  // 一次一門排隊送，抓過的存起來不重抓。
+  // 所以查到的東西**一律存進 [CourseDetailCache]**，一個學期一張表：
+  // 同一個學期裡課的時間和教室不會變，問過的課之後不管從哪一次搜尋看到，
+  // 都直接讀表，一次請求都不用。
 
-  /// 課號＋班別 → 那門課的時段。抓成功才會進來。
-  final Map<String, List<TimeSlot>> _slots = {};
-
-  /// 抓過但失敗（或學校根本沒給時間）的。
+  /// 課號＋班別 → 學校對那門課的回答。
   ///
-  /// 跟「還沒抓」要分得開：都當成「沒有時段」的話，畫面上會用一模一樣的樣子
+  /// **在這裡就代表學校答過了**，`slots` 是空的代表學校說這門課沒排時間
+  /// （例如要親洽系辦的實習），不是「我們沒問到」。
+  final Map<String, CourseDetail> _details = {};
+
+  /// 這一次沒問到的（連線斷了、詳細頁回空殼）。
+  ///
+  /// **不會存進表裡，也不會自動重問。** 三件事要分得開：還沒問、問不到、
+  /// 學校說沒有。把「問不到」當成「沒有時段」的話，畫面上會用一模一樣的樣子
   /// 表達「不衝堂」和「不知道衝不衝」—— 而前者是承諾，後者不是。
-  final Set<String> _slotsUnknown = {};
+  ///
+  /// 不自動重問是因為失敗多半是一整批一起失敗（session 掉了、學校忙），
+  /// 自動重試只會變成一個打不完的迴圈。改成畫面上給一顆「重試」讓使用者按。
+  final Set<String> _failed = {};
 
   final List<Course> _probeQueue = [];
   bool _probing = false;
 
+  /// 正在問學校的那一門。
+  ///
+  /// **一定要記著。** 它已經從佇列裡拿出來、答案還沒回來，所以三個判斷
+  /// （在表裡、問不到、在佇列裡）全都不成立 —— 這段時間裡只要畫面重繪一次，
+  /// `itemBuilder` 就會把它當成「還沒排隊」再排一次，於是每一門課都被問兩遍。
+  /// 對學校來說是請求量直接翻倍，而畫面上完全看不出來。
+  final Set<String> _inFlight = {};
+
   /// 這一批總共要查幾門（給進度用）。
   int _probeTotal = 0;
 
-  /// 一次搜尋最多主動查幾門的時間。
+  /// 一次搜尋最多主動查幾門。
   ///
-  /// 剩下的仍然會在使用者捲到時補查。設上限是因為全校範圍的查詢可能回上百筆，
-  /// 每一門兩次請求 —— 那在選課尖峰時是對學校機器的一次小型洪水，
-  /// 而使用者八成只看前面幾十筆。
-  static const int _probeEagerLimit = 60;
+  /// 對齊 `AisRepository` 送出的 `PC$PageSize`（一頁 100 筆）—— 也就是
+  /// **整頁結果都查**。以前只查前 60 門，後面的等使用者捲到才補；但通識
+  /// 一次開上百門，捲到後面看到的就是一整排還沒查的列，使用者只會覺得
+  /// 「後面這些查不到」。
+  ///
+  /// 敢整頁查是因為查到的會存進表裡：同一門課一個學期只會問這麼一次，
+  /// 第二次搜到它是零請求。
+  static const int _probeEagerLimit = 100;
 
   /// 換一次搜尋就 +1。舊的探測回來時對不上就丟掉 ——
   /// 不然上一次搜尋的結果會蓋到這一次的列上。
@@ -109,7 +130,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadCachedTimes();
+    _loadCachedDetails();
     _open();
   }
 
@@ -228,7 +249,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       _results = const [];
     } else {
       _results = parseCourseList(html);
-      // 先把整批的上課時間查起來，不要等使用者捲到才一列一列等。
+      // 先把整批的細節查起來，不要等使用者捲到才一列一列等。
       _probeAll(_results!);
     }
   }
@@ -237,6 +258,9 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
 
   String _keyOf(Course c) => PlannedCourse(course: c).key;
 
+  /// 這門課的時段。表上沒有（還沒問到）時回 null，跟「學校說沒有」分得開。
+  List<TimeSlot>? _slotsOf(Course c) => _details[_keyOf(c)]?.slots;
+
   /// 搜尋一有結果就把整批排進去查，不要等使用者捲到。
   ///
   /// 原本是捲到哪一列才查哪一列，省請求，但畫面上就是一路「查上課時間中…」
@@ -244,22 +268,40 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   /// 使用者捲下去的時候多半已經有答案了。
   void _probeAll(List<Course> results) {
     for (final c in results.take(_probeEagerLimit)) {
-      _ensureSlots(c);
+      _ensureDetail(c);
     }
     _probeTotal = _probeQueue.length;
   }
 
-  /// 這一列還不知道時間的話，排進佇列。
-  void _ensureSlots(Course course) {
+  /// 這一列還不知道細節的話，排進佇列。
+  void _ensureDetail(Course course) {
     final key = _keyOf(course);
-    if (_slots.containsKey(key) ||
-        _slotsUnknown.contains(key) ||
+    if (_details.containsKey(key) ||
+        _failed.contains(key) ||
+        _inFlight.contains(key) ||
         _probeQueue.any((c) => _keyOf(c) == key)) {
       return;
     }
     _probeQueue.add(course);
     // itemBuilder 正在 build，不能在這裡 setState —— 下一格再開工。
     scheduleMicrotask(_drainProbeQueue);
+  }
+
+  /// 把這一次沒問到的那幾門重新排進佇列。
+  ///
+  /// 失敗通常是一整批一起失敗（session 掉了、學校忙），所以重試也是整批 ——
+  /// 一列一列按對使用者來說等於要按幾十次。
+  void _retryFailed() {
+    final results = _results;
+    if (results == null) return;
+    final again = results.where((c) => _failed.contains(_keyOf(c))).toList();
+    setState(() {
+      _failed.clear();
+      for (final c in again) {
+        _ensureDetail(c);
+      }
+      _probeTotal = _probeQueue.length;
+    });
   }
 
   Future<void> _drainProbeQueue() async {
@@ -270,7 +312,8 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     while (_probeQueue.isNotEmpty && mounted && token == _probeToken) {
       final course = _probeQueue.removeAt(0);
       final key = _keyOf(course);
-      var slots = const <TimeSlot>[];
+      _inFlight.add(key);
+      CourseDetail? detail;
       try {
         // 同一個課號常有 A班／B班，時間不一樣 —— 要帶班別和老師才認得出這一列。
         final target = courseDetailTarget(
@@ -280,23 +323,28 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
           teacher: course.teacher,
         );
         if (target != null) {
-          slots = await widget.controller.repository
-              .fetchCourseTimeSlots(_view!, target);
+          detail = await widget.controller.repository
+              .fetchCourseDetail(_view!, target);
         }
       } catch (e) {
         // 探測失敗只影響「標不標得出衝堂」，不該讓整頁跳錯誤 ——
         // 使用者是來找課的，不是來看錯誤訊息的。
-        debugPrint('探測上課時間失敗（${course.code}）：$e');
+        debugPrint('探測課程細節失敗（${course.code}）：$e');
       }
+      _inFlight.remove(key);
       if (!mounted || token != _probeToken) break;
       setState(() {
-        if (slots.isEmpty) {
-          _slotsUnknown.add(key);
+        if (detail == null) {
+          _failed.add(key);
         } else {
-          _slots[key] = slots;
+          _details[key] = detail;
         }
       });
-      _persistTimes();
+      // **沒問到的不進表。** 存下去的話那門課會永遠停在「查不到上課時間」，
+      // 而且重開 App 也好不了 —— 表上已經有一筆「問過了，沒有」。
+      if (detail != null) {
+        widget.detailCache.merge(widget.year, widget.semester, {key: detail});
+      }
     }
     _probing = false;
     if (mounted && _probeQueue.isEmpty && token == _probeToken) {
@@ -306,45 +354,35 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
 
   /// 換搜尋條件時取消還沒跑完的探測。
   ///
-  /// **查到的時間留著。** 同一個學期裡課的上課時間不會變，而且 key 是
+  /// **查到的細節留著。** 同一個學期裡課的上課時間和教室不會變，而且 key 是
   /// 課號＋班別，跟這次搜的是哪一組條件無關 —— 清掉的話，同一個系所搜第二次
   /// 又要把整批重問一遍，使用者就在那邊等第二次。
+  ///
+  /// 沒問到的那些要清掉：換一次搜尋就是一次重試的機會。
   void _resetProbes() {
     _probeToken++;
     _probeQueue.clear();
     _probeTotal = 0;
+    _failed.clear();
+    // 還在飛的那一門會因為 token 對不上而被丟掉，但它的 key 不清掉的話，
+    // 這一次搜尋就再也不會去問它了。
+    _inFlight.clear();
   }
 
-  /// 開頁時把上次查過的時間讀回來。
+  /// 開頁時把表讀回來。
   ///
   /// 這是「離開這一頁再進來就不用重問」的關鍵 —— 每次進來都是一個新的
-  /// State，記憶體裡的 `_slots` 是空的。
-  Future<void> _loadCachedTimes() async {
-    final cached = await widget.timeCache.read(widget.year, widget.semester);
+  /// State，記憶體裡的 `_details` 是空的。
+  Future<void> _loadCachedDetails() async {
+    final cached = await widget.detailCache.read(widget.year, widget.semester);
     if (!mounted || cached.isEmpty) return;
-    setState(() {
-      for (final e in cached.entries) {
-        // 空陣列代表「問過了，學校沒給時間」。
-        if (e.value.isEmpty) {
-          _slotsUnknown.add(e.key);
-        } else {
-          _slots[e.key] = e.value;
-        }
-      }
-    });
-  }
-
-  void _persistTimes() {
-    widget.timeCache.write(widget.year, widget.semester, {
-      ..._slots,
-      for (final k in _slotsUnknown) k: const <TimeSlot>[],
-    });
+    setState(() => _details.addAll(cached));
   }
 
   /// 這門課跟預排裡的哪一門撞在哪幾節。不衝突或還不知道就回 null。
   ({PlannedCourse other, List<TimeSlot> slots})? _clashOf(Course course) {
     final plan = _plan;
-    final mine = _slots[_keyOf(course)];
+    final mine = _slotsOf(course);
     if (plan == null || mine == null) return null;
 
     final key = _keyOf(course);
@@ -377,13 +415,15 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
 
     setState(() => _busy = true);
 
-    // 查詢結果那張表（17 欄）**沒有上課時間**，要點進課號的詳細頁才看得到。
+    // 查詢結果那張表（17 欄）**沒有上課時間、也沒有教室**，要點進課號的
+    // 詳細頁才看得到。
     //
-    // 標衝堂的探測多半已經抓過這一門了 —— 有就直接用，不要再打一次學校的
-    // 伺服器問同一個問題。
-    var slots = _slots[_keyOf(course)] ?? const <TimeSlot>[];
+    // 表裡多半已經有這一門了（搜尋完就整批查過）—— 有就直接用，
+    // 不要再打一次學校的伺服器問同一個問題。
+    final key = _keyOf(course);
+    var detail = _details[key];
     try {
-      if (slots.isEmpty) {
+      if (detail == null) {
         // 同一個課號常常有好幾列（A班／B班），上課時間不一樣 ——
         // 要帶著班別和老師才認得出使用者按的是哪一列。
         final target = courseDetailTarget(
@@ -393,22 +433,35 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
           teacher: course.teacher,
         );
         if (target != null) {
-          slots = await widget.controller.repository
-              .fetchCourseTimeSlots(_view!, target);
+          detail = await widget.controller.repository
+              .fetchCourseDetail(_view!, target);
+          if (detail != null) {
+            _details[key] = detail;
+            await widget.detailCache
+                .merge(widget.year, widget.semester, {key: detail});
+          }
         }
       }
     } catch (e) {
-      // 抓時間失敗不該擋住「加入預排」—— 使用者回預排頁手動填就好，
+      // 抓細節失敗不該擋住「加入預排」—— 使用者回預排頁手動填就好，
       // 而整個動作失敗的話他連課都加不進去。
-      debugPrint('抓上課時間失敗：$e');
+      debugPrint('抓課程細節失敗：$e');
     }
     if (mounted) setState(() => _busy = false);
+
+    final slots = detail?.slots ?? const <TimeSlot>[];
+
+    // 教室放進 **Course.room**：預排頁的格子畫的是 `CoursePlan.asCourses()`，
+    // 那裡只有 slots 會被 PlannedCourse 蓋掉，其餘一律讀 Course 自己的欄位。
+    final withRoom = (detail?.room ?? '').isEmpty
+        ? course
+        : course.copyWith(room: detail!.room);
 
     // 時段要放進 **PlannedCourse.slots**，不是 Course.slots ——
     // 預排頁的格子、衝堂檢查、「未填時段」的統計看的全是前者
     // （`CoursePlan.asCourses()` 還會拿它蓋掉 Course.slots）。
     // 放錯地方的話：時間抓到了，但畫面上跟沒抓到一模一樣。
-    final planned = PlannedCourse(course: course, slots: slots);
+    final planned = PlannedCourse(course: withRoom, slots: slots);
     final newPlan = plan.copyWith(courses: [...plan.courses, planned]);
     await widget.planStore.write(newPlan);
     await _loadPlan();
@@ -723,6 +776,17 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
 
     return Column(
       children: [
+        // 學校那邊還有下一頁。
+        //
+        // **一定要講。** 送出時 `PC$PageSize` 被調到 100，超過的就在第二頁，
+        // 而這一頁沒有翻頁的 UI —— 通識這種一次開上百門的，使用者捲到底
+        // 看到的是一個沒有任何說明的結尾，他會以為學校就開這些。
+        if (_view?.result?.paging.hasMore ?? false)
+          _NoticeBar(
+            icon: Icons.more_horiz,
+            label: '只顯示前 ${results.length} 筆，學校那邊還有 ——'
+                '把條件縮小一點比較找得到',
+          ),
         if (planned > 0)
           _FilterBar(
             icon: Icons.filter_alt_outlined,
@@ -745,6 +809,14 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
           _ProbeProgress(
             done: _probeTotal - _probeQueue.length,
             total: _probeTotal,
+          )
+        // 沒問到的整批重試。失敗通常是一整批一起失敗（session 掉了、學校忙），
+        // 一列一列按等於要按幾十次 —— 而放著不管的話，那幾十門就一直是
+        // 「查不到上課時間」，看起來像是學校真的沒給。
+        else if (shown.any((c) => _failed.contains(_keyOf(c))))
+          _RetryBar(
+            count: shown.where((c) => _failed.contains(_keyOf(c))).length,
+            onRetry: _retryFailed,
           ),
         // **開關要一直在**，就算濾到一筆都不剩。
         // 收起來之後整頁變空白又沒有開關的話，使用者就切不回來了。
@@ -776,8 +848,9 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
         final course = results[index];
         final selection = widget.controller.repository.config.courseSearch
             .selectionLabel(course.selectionType);
-        // 捲到才抓時間 —— build 的時候順手排隊。
-        _ensureSlots(course);
+        // 搜尋完就整批查過了，這裡是補網：超過 `_probeEagerLimit` 的列
+        // 等使用者捲到才排隊。
+        _ensureDetail(course);
         final clash = _clashOf(course);
 
         return ListTile(
@@ -798,8 +871,8 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
               const SizedBox(height: 2),
               _ClashHint(
                 clash: clash,
-                slots: _slots[_keyOf(course)],
-                unknown: _slotsUnknown.contains(_keyOf(course)),
+                detail: _details[_keyOf(course)],
+                failed: _failed.contains(_keyOf(course)),
               ),
             ],
           ),
@@ -903,21 +976,29 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-/// 一列上的衝堂標示。
+/// 一列上的上課時間／衝堂標示。
 ///
-/// **三種狀態要分得開**：還在查、查不到、以及查到了。把「查不到」畫成
-/// 跟「沒衝堂」一樣的空白，等於用沉默承諾了一件我們其實不知道的事 ——
-/// 使用者會照著加課，然後在預排頁才發現撞在一起。
+/// **四種狀態要分得開**：還在查、沒問到、學校說沒排時間、以及查到了。
+/// 把「沒問到」畫成跟「沒衝堂」一樣的空白，等於用沉默承諾了一件我們其實
+/// 不知道的事 —— 使用者會照著加課，然後在預排頁才發現撞在一起。
+///
+/// 「沒問到」和「學校說沒排時間」也不能混：前者按一下重試就會有答案，
+/// 後者重問一百次都一樣。混在一起的話，使用者會一直重試一個不會變的答案，
+/// 或是放棄一門其實查得到的課。
 class _ClashHint extends StatelessWidget {
   const _ClashHint({
     required this.clash,
-    required this.slots,
-    required this.unknown,
+    required this.detail,
+    required this.failed,
   });
 
   final ({PlannedCourse other, List<TimeSlot> slots})? clash;
-  final List<TimeSlot>? slots;
-  final bool unknown;
+
+  /// 學校對這門課的回答。null 代表還沒問到。
+  final CourseDetail? detail;
+
+  /// 這一次問失敗了（可以重試）。
+  final bool failed;
 
   @override
   Widget build(BuildContext context) {
@@ -942,14 +1023,32 @@ class _ClashHint extends StatelessWidget {
       );
     }
 
-    if (slots != null) {
-      final when = slots!.map((s) => s.toString()).join('、');
-      return Text(when, style: small?.copyWith(color: scheme.onSurfaceVariant));
+    if (detail case final d?) {
+      // 學校答了、但這門課沒有時間。**不要畫成空白** —— 空白跟「不衝堂」
+      // 長得一樣，而這門課其實排不進課表，使用者得自己去問系辦。
+      if (d.slots.isEmpty) {
+        return Text(
+          d.room.isEmpty ? '學校沒有排上課時間' : '學校沒有排上課時間 • ${d.room}',
+          style: small?.copyWith(color: scheme.onSurfaceVariant),
+        );
+      }
+      final when = d.slots.map((s) => s.toString()).join('、');
+      return Text(
+        d.room.isEmpty ? when : '$when • ${d.room}',
+        style: small?.copyWith(color: scheme.onSurfaceVariant),
+      );
     }
 
-    if (unknown) {
-      return Text('查不到上課時間',
-          style: small?.copyWith(color: scheme.onSurfaceVariant));
+    if (failed) {
+      return Row(
+        children: [
+          Icon(Icons.cloud_off_outlined,
+              size: 14, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Text('沒問到上課時間',
+              style: small?.copyWith(color: scheme.onSurfaceVariant)),
+        ],
+      );
     }
 
     return Text('查上課時間中…',
@@ -957,6 +1056,61 @@ class _ClashHint extends StatelessWidget {
   }
 }
 
+/// 清單上方純粹交代一件事的那一條（沒有開關可以按）。
+class _NoticeBar extends StatelessWidget {
+  const _NoticeBar({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(label,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 「有幾門沒問到，要不要再問一次」那一條。
+class _RetryBar extends StatelessWidget {
+  const _RetryBar({required this.count, required this.onRetry});
+
+  final int count;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_outlined,
+              size: 16, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('有 $count 門沒問到上課時間',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('再問一次')),
+        ],
+      ),
+    );
+  }
+}
 
 /// 「正在查上課時間」那一條。
 ///

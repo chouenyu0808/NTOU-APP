@@ -456,15 +456,19 @@ class AisRepository {
     );
   }
 
-  /// 點課號進課程詳細頁，把「上課時間」抓回來。
+  /// 點課號進課程詳細頁，把上課時間和上課地點抓回來。
   ///
   /// [eventTarget] 是那一列課號連結上的 `__doPostBack` 目標，
   /// 用 [courseDetailTarget] 從查詢結果讀出來 —— **不要自己組**，
   /// 那串 id 是 ASP.NET 依列數編的（`DataGrid$ctl02$COSID`）。
   ///
-  /// 抓不到時間就回空的。**這件事必須是可以失敗的**：使用者要的是
+  /// **回 null 是「沒問到」，回一筆沒有時段的是「學校說這門課沒排時間」。**
+  /// 兩者一定要分得開：前者重問會有答案，而把它當成後者存進表裡的話，
+  /// 那門課就永遠停在「查不到上課時間」了。
+  ///
+  /// 抓不到就回 null。**這件事必須是可以失敗的**：使用者要的是
   /// 「把課加進預排」，時間抓不到頂多回頭手動填，不該讓整個動作失敗。
-  Future<List<TimeSlot>> fetchCourseTimeSlots(
+  Future<CourseDetail?> fetchCourseDetail(
     FunctionView view,
     String eventTarget,
   ) async {
@@ -481,7 +485,7 @@ class AisRepository {
     // 點課號**不會換頁**，回應只多注入一行 `fn_open('<PKNO>','<型別>')`。
     // 內容在它指的那一頁 —— 見 [courseDetailUrl]。
     final detail = courseDetailUrl(posted.html);
-    if (detail == null) return const [];
+    if (detail == null) return null;
 
     // **不要跟 JS 導向。** 課程內容頁自己帶著一行指向 `/Portal.aspx` 的 script，
     // 跟下去會把剛拿到的 57KB 內容整份換成首頁 —— 而且不會報錯，
@@ -489,7 +493,9 @@ class AisRepository {
     final page = await session.get(detail);
     session.checkSession(page);
 
-    return parseCourseTimeSlots(page.html);
+    final parsed = parseCourseDetail(page.html);
+    // 每一格都是空的 —— 那是 PKNO 不對時回的空殼，不是「這門課沒排時間」。
+    return parsed.isBlank ? null : parsed;
   }
 
   /// 按下結果表格某一列上的鈕（加選 / 退選 / 詳）。

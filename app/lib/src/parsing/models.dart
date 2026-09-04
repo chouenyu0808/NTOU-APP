@@ -157,3 +157,48 @@ class TimetableResult {
         columns: (j['columns'] as List?)?.whereType<String>().toList() ?? const [],
       );
 }
+
+/// 課程內容頁（`TKE2240_03.aspx`）上那門課的細節。
+///
+/// 存在的理由：**課程查詢結果那 17 欄沒有上課時間、也沒有教室**，
+/// 每一門都要另外走「點課號 → fn_open → GET 詳細頁」兩次請求才問得到。
+/// 問到的東西一次收在這裡，不要時間走一條路、教室再走一條。
+///
+/// [isBlank] 是「這一頁根本沒有內容」，不是「這門課沒排時間」——
+/// 課程內容頁在 PKNO 不對時會回一份 `Mode=ADD` 的空殼，每一格都是空的。
+/// 兩者要分得開：前者該重問，後者重問一百次答案都一樣。
+class CourseDetail {
+  const CourseDetail({
+    this.code = '',
+    this.slots = const [],
+    this.room = '',
+  });
+
+  /// 詳細頁自己說這是哪一門課（`M_COSID`）。拿來認出空殼。
+  final String code;
+
+  /// 上課時段。空的代表**學校沒給這門課時間**（例如要親洽系辦的實習）。
+  final List<TimeSlot> slots;
+
+  /// 上課地點。真實資料是每一節各一個代號（`INS105,INS105,INS105`），
+  /// 這裡已經去掉重複。
+  final String room;
+
+  /// 整頁都是空的 —— 那是空殼，不是「這門課沒排時間」。
+  bool get isBlank => code.isEmpty && slots.isEmpty && room.isEmpty;
+
+  Map<String, dynamic> toJson() => {
+        'code': code,
+        'slots': [for (final s in slots) s.toJson()],
+        'room': room,
+      };
+
+  static CourseDetail fromJson(Map<String, dynamic> j) => CourseDetail(
+        code: j['code'] as String? ?? '',
+        slots: [
+          for (final s in (j['slots'] as List? ?? const []))
+            TimeSlot.fromJson((s as Map).cast<String, dynamic>()),
+        ],
+        room: j['room'] as String? ?? '',
+      );
+}
