@@ -166,6 +166,38 @@ void main() {
       expect(keelung.stationName, '基隆');
     });
 
+    /// **同一個站牌在兩個資料集裡叫不同名字。**
+    ///
+    /// 基隆市公車叫「海大體育館」，國道客運叫「海大(體育館)」—— 多了括號。
+    /// 而 filter 是精準比對，所以少一個寫法就整個資料集查不到：1579
+    /// （首都客運，八斗子總站↔圓山轉運站）和 1813 本來完全不會出現在畫面上，
+    /// 而那看起來只像「這站沒有這條路線」。
+    ///
+    /// 這個測試存在的理由是：基隆市公車那邊的名字**是**精準命中的，
+    /// 很容易讓人下結論說「候選清單用不到，清掉吧」—— 那正是我犯過的錯。
+    test('海大那三個站帶著國道客運的括號寫法', () {
+      for (final plain in const ['海大體育館', '海大濱海校門', '海大祥豐校門']) {
+        final stop = config.stops.firstWhere((s) => s.name == plain);
+        final paren = '${plain.replaceFirst('海大', '海大(')})';
+        expect(
+          stop.allNames,
+          contains(paren),
+          reason: '$plain 少了國道客運的寫法，1579 / 1813 會查不到',
+        );
+      }
+    });
+
+    /// 海大那三個站要同時問市區公車和國道客運，否則 1579 永遠不會出現。
+    test('海大那三個站同時問兩種來源', () {
+      for (final name in const ['海大體育館', '海大濱海校門', '海大祥豐校門']) {
+        final stop = config.stops.firstWhere((s) => s.name == name);
+        expect(stop.kinds, containsAll(const [
+          TransitStopKind.cityBus,
+          TransitStopKind.interCityBus,
+        ]));
+      }
+    });
+
     /// 站名對過真實回應了，所以 `match_names` 現在是空的 —— 本來備援的
     /// 「海洋大學濱海校門」「濱海校門」那些寫法 TDX 裡根本不存在。
     ///

@@ -54,7 +54,7 @@
   },
 
   "_stops_comment": "使用者要的五個站點。公車站不寫死路線清單 —— 直接用站名向 TDX 要「經過這一站的全部到站資料」，這樣學校旁邊多一條新路線也會自己冒出來，不用改 App。",
-  "_match_names_comment": "match_names 現在都是空的，但這個機制要留著。2026-09-03 用 spike/tdx.py --dump-stops 對過 TDX 的實際站名，四個公車站的 name 全部精準命中（海大體育館 KEE306429、海大濱海校門 KEE306431、海大祥豐校門 KEE306433、基隆轉運站），本來備援的「海洋大學濱海校門」「濱海校門」那些寫法在 TDX 裡根本不存在，留著只是每次查詢多送幾個湊不到的 or 條件。哪天查出來變 0 筆，第一件事就是重跑 --dump-stops 看對方是不是改了站名，再把新名字補進這裡。",
+  "_match_names_comment": "**同一個站牌在不同資料集裡叫不同名字，這就是 match_names 存在的理由。** 基隆市公車叫「海大體育館」，國道客運叫「海大(體育館)」—— 多了括號。而 filter 是精準比對，所以少一個寫法就整個資料集查不到：1579（首都客運，八斗子總站↔圓山轉運站）本來完全不會出現在畫面上，而那看起來只像「這站沒有這條路線」。2026-09-04 用 v2/Bus/StopOfRoute/InterCity 查 1579 的站序才發現。改動這裡之前先確認**兩個資料集都查過**，不要拿其中一個的結果推論另一個。",
   "stops": [
     {
       "id": "ntou-gym",
@@ -63,7 +63,7 @@
       "_also_comment": "1579 是首都客運的國道客運，資料不在基隆市公車那個端點裡 —— 不多問一次 InterCity 的話它永遠不會出現，而畫面上看起來只是「這站沒有這條路線」。多問不會多打請求：所有站的國道客運查詢會跟基隆轉運站那次合併成同一個。",
       "also": ["intercity_bus"],
       "city": "Keelung",
-      "match_names": [],
+      "match_names": ["海大(體育館)"],
       "note": "基隆市公車 103、104、108 等；首都客運 1579 從圓山轉運站直達也停這裡"
     },
     {
@@ -72,7 +72,7 @@
       "kind": "city_bus",
       "also": ["intercity_bus"],
       "city": "Keelung",
-      "match_names": []
+      "match_names": ["海大(濱海校門)"]
     },
     {
       "id": "ntou-xiangfeng-gate",
@@ -80,7 +80,7 @@
       "kind": "city_bus",
       "also": ["intercity_bus"],
       "city": "Keelung",
-      "match_names": []
+      "match_names": ["海大(祥豐校門)"]
     },
     {
       "id": "keelung-bus-terminal",
