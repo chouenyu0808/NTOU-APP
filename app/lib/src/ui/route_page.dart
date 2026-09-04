@@ -291,7 +291,13 @@ class _StopTimeline extends StatelessWidget {
     return ListView.builder(
       itemCount: variant.stops.length + 1,
       itemBuilder: (context, i) {
-        if (i == 0) return _Summary(count: variant.buses.length);
+        if (i == 0) {
+          return _Summary(
+            count: variant.buses.length,
+            stops: variant.stops,
+            stopStatus: stopStatus,
+          );
+        }
         final stop = variant.stops[i - 1];
         return _StopTile(
           stop: stop,
@@ -311,20 +317,49 @@ class _StopTimeline extends StatelessWidget {
 /// 沒有這句的話，一條沒有任何車的路線看起來就只是一長串站名，
 /// 使用者會以為是資料沒載到。
 class _Summary extends StatelessWidget {
-  const _Summary({required this.count});
+  const _Summary({
+    required this.count,
+    required this.stops,
+    required this.stopStatus,
+  });
 
   final int count;
+  final List<RouteStop> stops;
+  final Map<String, String> stopStatus;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      child: Text(
-        count == 0 ? '現在路上沒有這條路線的車' : '現在路上有 $count 台車',
-        style: TextStyle(color: scheme.onSurfaceVariant),
-      ),
+      child: Text(_text, style: TextStyle(color: scheme.onSurfaceVariant)),
     );
+  }
+
+  /// 沒有車的時候要說**為什麼**沒有車。
+  ///
+  /// 「現在路上沒有這條路線的車」是實話但沒有用 —— 使用者接著要問的是
+  /// 「那是還沒發車，還是我錯過末班了？」那兩件事差很多。
+  ///
+  /// 答案在站牌狀態裡：實測 108 和 8021 在下午三點多是整條路線 97／148 筆
+  /// 全部 `StopStatus 3`（末班已過），那是上午班次的路線。103 同一時間是
+  /// 44 筆正常 + 88 筆尚未發車。
+  String get _text {
+    if (count > 0) return '現在路上有 $count 台車';
+
+    // 取沒有預估時間的那些站裡最多的那個狀態 —— 一條路線通常整條同一個狀態。
+    final counts = <int, int>{};
+    for (final s in stops) {
+      if (s.estimateSeconds != null) continue;
+      counts[s.stopStatus] = (counts[s.stopStatus] ?? 0) + 1;
+    }
+    if (counts.isEmpty) return '現在路上沒有這條路線的車';
+
+    final dominant = counts.entries.reduce((a, b) => b.value > a.value ? b : a);
+    // 0 是「正常」—— 那個狀態說不出為什麼沒有車，講了反而更迷惑。
+    final label = dominant.key == 0 ? null : stopStatus['${dominant.key}'];
+    if (label == null) return '現在路上沒有這條路線的車';
+    return '$label，現在路上沒有車';
   }
 }
 
@@ -365,12 +400,20 @@ class _StopTile extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
+              // **沒有預估時間就留一個破折號，不要把狀態重複二十遍。**
+              //
+              // 一條路線通常整條同一個狀態（108 收班時 97 個站牌全是
+              // 末班已過），逐站印出來會變成一整欄一模一樣的字，把這一欄
+              // 唯一的用處 —— 上下掃找一個夠小的數字 —— 完全淹掉。
+              // 為什麼沒有車，最上面那一行說一次就夠了。
               child: _EtaPill(
-                label: ArrivalLabel.of(
-                  stop.estimateSeconds,
-                  stop.stopStatus,
-                  stopStatus,
-                ),
+                label: stop.estimateSeconds == null
+                    ? const ArrivalLabel('—', ArrivalTone.idle)
+                    : ArrivalLabel.of(
+                        stop.estimateSeconds,
+                        stop.stopStatus,
+                        stopStatus,
+                      ),
               ),
             ),
             const SizedBox(width: 12),

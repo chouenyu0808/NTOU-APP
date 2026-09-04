@@ -67,7 +67,42 @@ void main() {
 
       expect(find.text('將到站'), findsOneWidget);
       expect(find.text('44 分'), findsOneWidget);
-      expect(find.text('尚未發車'), findsOneWidget);
+      // 沒有預估時間的那一站只留破折號 —— 為什麼沒有車，最上面說一次就好。
+      expect(find.text('—'), findsOneWidget);
+    });
+
+    /// **「現在路上沒有這條路線的車」是實話但沒有用。**
+    ///
+    /// 使用者接著要問的是「那是還沒發車，還是我錯過末班了？」那兩件事差很多。
+    /// 答案在站牌狀態裡：實測 108 和 8021 在下午三點多是整條路線 97／148 筆
+    /// 全部末班已過（那是上午班次的路線）。
+    testWidgets('沒有車的時候要說出為什麼', (tester) async {
+      await _pump(
+        tester,
+        _detail([
+          RouteVariant(
+            subRouteUid: 'A',
+            subRouteName: '108',
+            direction: 0,
+            stops: const [
+              RouteStop(stopUid: 'a', name: '第一站', sequence: 1, stopStatus: 3),
+              RouteStop(stopUid: 'b', name: '第二站', sequence: 2, stopStatus: 3),
+            ],
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('末班已過，現在路上沒有車'), findsOneWidget);
+      expect(find.text('現在路上沒有這條路線的車'), findsNothing);
+    });
+
+    /// 狀態是「正常」卻沒有車 —— 那個狀態說不出為什麼，講了反而更迷惑。
+    testWidgets('狀態說不出為什麼時，就講原本那句', (tester) async {
+      await _pump(tester, _detail([_variant('A', ['第一站', '第二站'])]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('現在路上沒有這條路線的車'), findsOneWidget);
     });
 
     testWidgets('有車的那一站畫公車圖示，並標出車牌', (tester) async {
