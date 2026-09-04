@@ -111,6 +111,7 @@ class BusArrival {
     this.stopsAway,
     this.isLastBus = false,
     this.nextStop = '',
+    this.fromIntercity = false,
   });
 
   /// 路線名（`103`、`1579`）。
@@ -162,6 +163,15 @@ class BusArrival {
   /// 只有在同一張卡片上同一條路線出現不只一次的時候才會去查，因為那時候
   /// 才需要分辨。查不到就是空字串。
   final String nextStop;
+
+  /// 這一筆是從國道客運那個端點回來的。
+  ///
+  /// **點進路線詳情時要靠它決定去問哪一組 API。** 不能用站牌的 `kind` 判斷 ——
+  /// 海大體育館的主要類別是市區公車，但 1579、1813 是國道客運，用站牌類別
+  /// 去問會查到基隆市公車那邊，回 0 筆，畫面上變成「查不到這條路線的站序」。
+  ///
+  /// 來源要由「這班車是哪個查詢回來的」決定，那是唯一不會錯的依據。
+  final bool fromIntercity;
 
   /// 這一筆到底有沒有車。
   ///

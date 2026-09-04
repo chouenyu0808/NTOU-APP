@@ -15,7 +15,7 @@ class RoutePage extends StatefulWidget {
     required this.repository,
     required this.city,
     required this.intercity,
-    this.highlightStop = '',
+    this.highlightStops = const {},
   });
 
   final String routeName;
@@ -25,28 +25,44 @@ class RoutePage extends StatefulWidget {
 
   /// 使用者是從哪一站點進來的。那一列會標起來 —— 一條 68 站的路線攤開來
   /// 很長，沒有這個標記的話他得自己一站一站找「我在哪」。
-  final String highlightStop;
+  ///
+  /// **是一組名字不是一個。** 同一個站牌在不同資料集裡叫不同名字：市區公車
+  /// 叫「海大體育館」，國道客運叫「海大(體育館)」—— 只比對一個的話，
+  /// 點進 1579（國道客運）會整條 27 站都沒有標記。
+  final Set<String> highlightStops;
 
   /// 分頁標題。
   ///
-  /// 優先用子路線名稱，但**環狀線的兩條子路線常常同名**（103 就是這樣，
-  /// 兩條站序連 Direction 都一樣），那時候退回「往終點站」；如果連終點都
-  /// 一樣（同一個終點的兩種繞法），再補上站數。
+  /// 一條路線的子路線可以很多 —— 1579 有八條（`1579`／`1579A`／`1579B`／
+  /// `1579C` 各有去回兩程），103 有兩條。標題要能把它們分開，而且要看得懂。
   ///
-  /// 分不開的分頁比沒有分頁更糟 —— 使用者切過去看到兩個一樣的標題，
+  /// 四層退路，一層比一層囉唆，用第一個分得開的：
+  ///
+  /// 1. **子路線名**（`1579A`）—— 最短，但去回兩程同名所以常常不夠
+  /// 2. **往終點站** —— 103 的兩條終點都是八斗子車站，所以也常常不夠
+  /// 3. **子路線名 + 往終點站**（`1579A 往 八斗子車站`）—— 1579 靠這層分開
+  /// 4. **再補站數** —— 103 靠這層（兩條都往八斗子車站，只有站數不同）
+  ///
+  /// 分不開的分頁比沒有分頁更糟：使用者切過去看到兩個一樣的標題，
   /// 會以為自己點錯了。
   static List<String> labelsFor(List<RouteVariant> variants) {
+    bool unique(List<String> labels) =>
+        labels.toSet().length == variants.length;
+
     final names = [for (final v in variants) v.subRouteName];
-    if (!names.any((n) => n.isEmpty) &&
-        names.toSet().length == variants.length) {
-      return names;
-    }
+    if (!names.any((n) => n.isEmpty) && unique(names)) return names;
 
     final byDestination = [
       for (final v in variants)
         v.destination.isEmpty ? '路線' : '往 ${v.destination}',
     ];
-    if (byDestination.toSet().length == variants.length) return byDestination;
+    if (unique(byDestination)) return byDestination;
+
+    final combined = [
+      for (var i = 0; i < variants.length; i++)
+        names[i].isEmpty ? byDestination[i] : '${names[i]} ${byDestination[i]}',
+    ];
+    if (unique(combined)) return combined;
 
     return [
       for (var i = 0; i < variants.length; i++)
@@ -101,6 +117,12 @@ class _RoutePageState extends State<RoutePage> {
           ],
           bottom: variants.length > 1
               ? TabBar(
+                  // 三條以上就改成可捲的。1579 有八條子路線 —— 硬塞進
+                  // 螢幕寬度的話每個標題只剩幾個字，等於全部看不懂。
+                  isScrollable: variants.length > 2,
+                  tabAlignment: variants.length > 2
+                      ? TabAlignment.start
+                      : TabAlignment.fill,
                   tabs: [
                     for (final label in RoutePage.labelsFor(variants))
                       Tab(text: label),
@@ -122,7 +144,7 @@ class _RoutePageState extends State<RoutePage> {
     return TabBarView(
       children: [
         for (final v in variants)
-          _StopTimeline(variant: v, highlightStop: widget.highlightStop),
+          _StopTimeline(variant: v, highlightStops: widget.highlightStops),
       ],
     );
   }
@@ -130,10 +152,10 @@ class _RoutePageState extends State<RoutePage> {
 
 /// 一條子路線的站序，車畫在上面。
 class _StopTimeline extends StatelessWidget {
-  const _StopTimeline({required this.variant, required this.highlightStop});
+  const _StopTimeline({required this.variant, required this.highlightStops});
 
   final RouteVariant variant;
-  final String highlightStop;
+  final Set<String> highlightStops;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +173,7 @@ class _StopTimeline extends StatelessWidget {
         return _StopTile(
           stop: stop,
           buses: byStop[stop.sequence] ?? const [],
-          isHighlighted: stop.name == highlightStop,
+          isHighlighted: highlightStops.contains(stop.name),
           isFirst: i == 1,
           isLast: i == variant.stops.length,
         );

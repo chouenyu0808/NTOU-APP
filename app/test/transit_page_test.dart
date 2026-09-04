@@ -440,6 +440,33 @@ void main() {
       await _teardown(tester);
     });
 
+    /// **點國道客運的路線要開到國道客運那邊去查。**
+    ///
+    /// 海大體育館的 kind 是市區公車，但 1579 是國道客運 —— 用站牌類別
+    /// 判斷的話會去問基隆市公車，回 0 筆，畫面上是「查不到這條路線的站序」。
+    testWidgets('點國道客運的路線，詳情頁要問國道客運那組 API', (tester) async {
+      final repo = _FakeRepo([
+        StopBoard(
+          stop: _gym,
+          buses: const [
+            BusArrival(
+              routeName: '1579',
+              estimateSeconds: 300,
+              fromIntercity: true,
+            ),
+          ],
+        ),
+      ]);
+      await _pump(tester, repo);
+      await tester.pump();
+
+      await tester.tap(find.text('1579'));
+      await tester.pumpAndSettle();
+
+      expect(repo.lastRouteDetailIntercity, isTrue);
+      await _teardown(tester);
+    });
+
     /// 愛心是那一列裡面的另一個按鈕。按它只能切換釘選，
     /// **不可以順便把詳情頁也打開** —— 使用者只是想釘一下。
     testWidgets('按愛心不會連帶打開路線頁', (tester) async {
@@ -690,6 +717,19 @@ class _FakeRepo extends TransitRepository {
 
   @override
   bool get isConfigured => configured;
+
+  /// 上一次 routeDetail 是用哪一組 API 問的。點進國道客運路線時要是 true。
+  bool? lastRouteDetailIntercity;
+
+  @override
+  Future<RouteDetail> routeDetail(
+    String routeName, {
+    required String city,
+    required bool intercity,
+  }) async {
+    lastRouteDetailIntercity = intercity;
+    return RouteDetail(routeName: routeName, error: '測試用');
+  }
 
   @override
   Future<StopBoard> board(TransitStop stop) async {

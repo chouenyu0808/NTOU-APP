@@ -167,18 +167,24 @@ class _TransitPageState extends State<TransitPage> {
     }
   }
 
-  void _openRoute(StopBoard board, String routeName) {
+  void _openRoute(StopBoard board, BusArrival arrival) {
     final repo = _repo;
-    if (repo == null || routeName.isEmpty) return;
+    if (repo == null || arrival.routeName.isEmpty) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => RoutePage(
-          routeName: routeName,
+          routeName: arrival.routeName,
           repository: repo,
           city: board.stop.city,
-          intercity: board.stop.kind == TransitStopKind.interCityBus,
+          // **來源看這班車是從哪個查詢回來的，不看站牌的類別。**
+          // 海大體育館的主要類別是市區公車，但 1579、1813 是國道客運 ——
+          // 用站牌類別去問會查到基隆市公車那邊，回 0 筆，畫面上變成
+          // 「查不到這條路線的站序」。
+          intercity: arrival.fromIntercity,
           // 從哪一站點進來的就標哪一站 —— 68 站的路線攤開來很長。
-          highlightStop: board.stop.name,
+          // 用整組名字比對：國道客運那邊這個站叫「海大(體育館)」，
+          // 只傳主要名字的話點進 1579 會整條路線都沒有標記。
+          highlightStops: board.stop.allNames.toSet(),
         ),
       ),
     );
@@ -272,7 +278,7 @@ class _TransitPageState extends State<TransitPage> {
                 onToggleCollapsed: () =>
                     _toggleCollapsed(_boards[i - 1].stop.id),
                 onToggleFavorite: _toggleFavorite,
-                onOpenRoute: (route) => _openRoute(_boards[i - 1], route),
+                onOpenRoute: (a) => _openRoute(_boards[i - 1], a),
               ),
       ),
     );
@@ -299,7 +305,7 @@ class _StopCard extends StatelessWidget {
   final bool isCollapsed;
   final VoidCallback? onToggleCollapsed;
   final void Function(String route)? onToggleFavorite;
-  final void Function(String route)? onOpenRoute;
+  final void Function(BusArrival arrival)? onOpenRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -481,7 +487,7 @@ class _BusRow extends StatelessWidget {
   final bool needsDirection;
   final bool isFavorite;
   final void Function(String route)? onToggleFavorite;
-  final void Function(String route)? onOpenRoute;
+  final void Function(BusArrival arrival)? onOpenRoute;
 
   /// 「往哪裡」那一行。
   ///
@@ -511,7 +517,7 @@ class _BusRow extends StatelessWidget {
     // 整列可以點進去看這條路線開到哪。愛心是列裡面的另一個按鈕，
     // Flutter 會讓它先吃掉自己的點擊，不會連帶開頁。
     return InkWell(
-      onTap: onOpenRoute == null ? null : () => onOpenRoute!(arrival.routeName),
+      onTap: onOpenRoute == null ? null : () => onOpenRoute!(arrival),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(

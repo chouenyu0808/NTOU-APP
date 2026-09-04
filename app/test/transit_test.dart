@@ -1465,6 +1465,46 @@ void main() {
       expect(spy.intercityCalls, 1);
     });
 
+    /// **點進去要問對端點，而端點看的是「這班車從哪來」不是站牌的類別。**
+    ///
+    /// 海大體育館的主要類別是市區公車，但 1579、1813 是國道客運。用站牌
+    /// 類別去問會查到基隆市公車那邊，回 0 筆 —— 畫面上變成「查不到這條
+    /// 路線的站序」，而使用者只看到點進去就壞掉。
+    test('國道客運回來的車帶著來源標記，市區公車的沒有', () async {
+      final spy = _CannedAdapter(
+        rows: const [
+          {
+            'RouteName': '103',
+            'StopUID': 'A',
+            'StopName': {'Zh_tw': '海大體育館'},
+            'EstimateTime': 600,
+          },
+        ],
+      )..intercityRows = const [
+          {
+            'RouteName': '1579',
+            'StopUID': 'B',
+            'StopName': {'Zh_tw': '海大(體育館)'},
+            'EstimateTime': 120,
+          },
+        ];
+
+      final boards = await repoWith(spy).boards(const [
+        TransitStop(
+          id: 'ntou-gym',
+          name: '海大體育館',
+          kind: TransitStopKind.cityBus,
+          extraKinds: [TransitStopKind.interCityBus],
+          matchNames: ['海大(體育館)'],
+        ),
+      ]);
+
+      final byRoute = {
+        for (final b in boards.single.buses) b.routeName: b.fromIntercity,
+      };
+      expect(byRoute, {'1579': true, '103': false});
+    });
+
     test('只有一個來源有車也照樣顯示，不會變成錯誤卡片', () async {
       final spy = _CannedAdapter(rows: const [])
         ..intercityRows = const [

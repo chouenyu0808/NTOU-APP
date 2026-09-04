@@ -100,7 +100,7 @@ void main() {
         _detail([
           _variant('A', ['第一站', '海大體育館', '第三站']),
         ]),
-        highlightStop: '海大體育館',
+        highlightStops: {'海大體育館'},
       );
       await tester.pumpAndSettle();
 
@@ -108,6 +108,24 @@ void main() {
       expect(marked.style?.fontWeight, FontWeight.w700);
       final plain = tester.widget<Text>(find.text('第一站'));
       expect(plain.style?.fontWeight, FontWeight.w400);
+    });
+
+    /// **同一個站牌在不同資料集裡叫不同名字。**
+    ///
+    /// 市區公車叫「海大體育館」，國道客運叫「海大(體育館)」—— 點進 1579
+    /// 的話站序裡是括號那個寫法，只比對一個名字會整條路線都沒有標記。
+    testWidgets('站名的另一種寫法也標得到', (tester) async {
+      await _pump(
+        tester,
+        _detail([
+          _variant('A', ['第一站', '海大(體育館)', '第三站']),
+        ]),
+        highlightStops: {'海大體育館', '海大(體育館)'},
+      );
+      await tester.pumpAndSettle();
+
+      final marked = tester.widget<Text>(find.text('海大(體育館)'));
+      expect(marked.style?.fontWeight, FontWeight.w700);
     });
 
     testWidgets('查不到站序時給一句話', (tester) async {
@@ -139,6 +157,32 @@ void main() {
         _variant('B', ['乙一', '基隆轉運站'], name: '103'),
       ]);
       expect(labels, ['往 八斗子車站', '往 基隆轉運站']);
+    });
+
+    /// **1579 是這裡最極端的案例：八條子路線。**
+    ///
+    /// 名字是 1579／1579A／1579B／1579C，各有去回兩程 —— 所以名字本身
+    /// 重複、終點站也重複（四條的終點都是八斗子車站）。前兩層都分不開，
+    /// 靠「子路線名 + 往終點站」這一層才行。
+    ///
+    /// 這個形狀是 2026-09-04 從 v2/Bus/StopOfRoute/InterCity 抓下來的真實資料。
+    test('1579 八條子路線：名字加終點才分得開', () {
+      final labels = RoutePage.labelsFor([
+        _variant('THB157901', ['a', '圓山轉運站(玉門)'], name: '1579'),
+        _variant('THB157902', ['b', '八斗子車站'], name: '1579'),
+        _variant('THB1579A1', ['c', '圓山轉運站(玉門)'], name: '1579A'),
+        _variant('THB1579A2', ['d', '八斗子車站'], name: '1579A'),
+        _variant('THB1579B1', ['e', '松山高中(基隆路)'], name: '1579B'),
+        _variant('THB1579B2', ['f', '八斗子車站'], name: '1579B'),
+        _variant('THB1579C1', ['g', '捷運忠孝復興站'], name: '1579C'),
+        _variant('THB1579C2', ['h', '八斗子車站'], name: '1579C'),
+      ]);
+
+      expect(labels.toSet(), hasLength(8), reason: '八個分頁有標題重複的');
+      expect(labels.first, '1579 往 圓山轉運站(玉門)');
+      expect(labels[3], '1579A 往 八斗子車站');
+      // 站數是最後一層，這裡不該用到 —— 那層很囉唆。
+      expect(labels.any((l) => l.contains('站）')), isFalse);
     });
 
     test('連終點都一樣就補站數，至少兩個分頁分得開', () {
@@ -177,7 +221,7 @@ RouteDetail _detail(List<RouteVariant> variants) =>
 Future<void> _pump(
   WidgetTester tester,
   RouteDetail detail, {
-  String highlightStop = '',
+  Set<String> highlightStops = const {},
 }) async {
   await tester.pumpWidget(MaterialApp(
     theme: NtouTheme.of(Brightness.light),
@@ -186,7 +230,7 @@ Future<void> _pump(
       repository: _FakeRepo(detail),
       city: 'Keelung',
       intercity: false,
-      highlightStop: highlightStop,
+      highlightStops: highlightStops,
     ),
   ));
 }

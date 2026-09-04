@@ -184,7 +184,7 @@ class TransitRepository {
       for (var i = 0; i < stops.length; i++)
         StopBoard(
           stop: stops[i],
-          buses: [for (final r in perStop[i]) _busFrom(r)]
+          buses: [for (final r in perStop[i]) _busFrom(r, intercity)]
             ..sort((a, b) => a.sortKey.compareTo(b.sortKey)),
           updatedAt: now,
         ),
@@ -399,7 +399,7 @@ class TransitRepository {
   ///
   /// 3. **`DestinationStop` 給的是 StopID 不是站名**（`"306195"`）。
   ///    見 [BusArrival.destination] 下面那段。
-  BusArrival _busFrom(Map<String, dynamic> r) => BusArrival(
+  BusArrival _busFrom(Map<String, dynamic> r, bool intercity) => BusArrival(
     routeName: _text(r['RouteName']),
     // 到站資料本身**沒有終點站名**，只有 `DestinationStop`（StopID）。
     // 站名是從路線資料補上的，見 [_destinationFor]。補不到就空著，
@@ -415,6 +415,7 @@ class TransitRepository {
       _text(r['SubRouteUID']),
       _int(r['StopSequence']) ?? 0,
     ),
+    fromIntercity: intercity,
   );
 
   static String _plate(String raw) => raw == '-1' ? '' : raw;
