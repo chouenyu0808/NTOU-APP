@@ -20,6 +20,7 @@ class TransitWidgetProvider : NtouWidgetProvider() {
     override val lightKey = "transit_image_light"
     override val darkKey = "transit_image_dark"
     override val surfaceKey = "transit_surface"
+    override val drawnKey = "transit_drawn"
 
     /**
      * 該不該再去抓一次。

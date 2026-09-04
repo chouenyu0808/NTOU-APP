@@ -6,6 +6,9 @@
      必然是舊的，畫面上一定要標資料時間（Dart 那邊畫的）。
 
      真正要看即時資料的時候按右上角的重新整理，或打開 App。 -->
+<!-- previewLayout 和 previewImage 兩個都留：Android 12 以上用前者
+     （系統直接 inflate，深淺色和字級都自然跟著走），以下退回後者。
+     只留 previewImage 的話選取器裡是一張放大的 App 圖示，很醜。 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
     android:minHeight="110dp"
@@ -17,5 +20,6 @@
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/widget_transit"
+    android:previewLayout="@layout/widget_preview_transit"
     android:previewImage="@mipmap/launcher_icon"
     android:description="@string/widget_transit_description" />

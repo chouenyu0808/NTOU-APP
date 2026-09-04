@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'widget_updater.dart';
 
 /// 原生叫 Dart 做事的入口。
@@ -14,6 +16,7 @@ import 'widget_updater.dart';
 /// 而 debug build 一切正常。症狀是「裝 release 版之後小組件不會自己更新」。
 @pragma('vm:entry-point')
 Future<void> ntouWidgetBackground(Uri? uri) async {
+  if (kDebugMode) debugPrint('[widget] 背景被叫醒：$uri');
   if (uri == null) return;
 
   final surface = WidgetSurface.fromQuery(uri.queryParameters);

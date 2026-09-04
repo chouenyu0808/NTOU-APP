@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 預覽裡「現在」那個標，和反白那一列的底。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/widget_preview_accent_bg" />
+    <corners android:radius="8dp" />
+</shape>

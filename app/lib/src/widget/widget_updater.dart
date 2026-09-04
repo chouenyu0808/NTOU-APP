@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
 
@@ -84,11 +85,11 @@ class WidgetUpdater {
       surface: where,
     );
 
-    // **成敗都要記下尺寸。** 原生是靠「存的尺寸跟現在對不對得上」判斷要不要
-    // 叫我們重畫的 —— 失敗時不記的話它每次 onUpdate 都會看到對不上、
+    // **成敗都要記下尺寸。** 原生是靠「畫的時候是多大」跟現在比，判斷要不要
+    // 叫我們重畫 —— 失敗時不記的話它每次 onUpdate 都會看到對不上、
     // 每次都再叫一次，而每次都失敗。那是一個不會停的迴圈。
     await HomeWidget.saveWidgetData<String>(
-      WidgetKeys.timetableSurface,
+      WidgetKeys.timetableDrawn,
       where.encode(),
     );
 
@@ -128,11 +129,21 @@ class WidgetUpdater {
   ///
   /// 抓失敗時畫的是上一次的資料加上「更新失敗」，不是把畫面清空：
   /// 舊的班次資訊加上一個誠實的時間戳，比一片空白有用得多。
-  Future<void> refreshTransit({WidgetSurface? surface}) async {
+  Future<void> refreshTransit({
+    WidgetSurface? surface,
+    Duration? ifOlderThan,
+  }) async {
     final where = surface ?? await _storedSurface(WidgetKeys.transitSurface);
     if (where == null) return;
 
     final now = _now();
+
+    // 前景那條路徑（開 App 的時候）會帶著這個 —— 桌面上那張圖還很新的話
+    // 就不要為了它多打一次 TDX。背景那條不帶，因為原生已經先判斷過了。
+    if (ifOlderThan != null) {
+      final at = await _storedMillis(WidgetKeys.transitUpdatedAt);
+      if (at != null && now.difference(at) < ifOlderThan) return;
+    }
     // 不論成敗都先記下這次嘗試。原生靠它退避 —— 沒有的話一次失敗會變成
     // 一直重試（我們畫「更新失敗」→ onUpdate → 又叫我們抓），
     // 而重試本身正是 TDX 回 429 的原因。
@@ -199,7 +210,7 @@ class WidgetUpdater {
     // 跟課表那邊同樣的理由：成敗都要記尺寸，不然「對不上 → 再叫一次 →
     // 又失敗」會一直繞。這裡的迴圈還會**每繞一圈就打一次 TDX**。
     await HomeWidget.saveWidgetData<String>(
-      WidgetKeys.transitSurface,
+      WidgetKeys.transitDrawn,
       where.encode(),
     );
     if (!drawn) return;
@@ -286,6 +297,21 @@ class WidgetUpdater {
 
   // ------------------------------------------------------------------ 共用
 
+  /// 開 App 的時候把兩個小組件都補一次。
+  ///
+  /// **這是唯一保證修得好的路徑。** 背景那條有太多會靜靜失敗的環節
+  /// （callback handle 還沒註冊、WorkManager 的鏈中毒、背景引擎畫不出圖），
+  /// 而使用者發現小組件壞掉之後會做的第一件事就是開 App —— 那一刻要能修好。
+  ///
+  /// 課表是免費的（只讀本機快取），所以無條件重畫。交通要打網路，
+  /// 所以只有在桌面上那份夠舊的時候才抓。
+  ///
+  /// 桌面上沒有小組件的話兩邊都會直接回來，不做任何事。
+  Future<void> refreshAll() async {
+    await refreshTimetable();
+    await refreshTransit(ifOlderThan: const Duration(minutes: 25));
+  }
+
   /// 換帳號時把小組件上的東西清掉。
   ///
   /// **一定要做。** 不清的話前一個人的課表會留在桌面上 —— 而換帳號的人
@@ -301,6 +327,9 @@ class WidgetUpdater {
       WidgetKeys.timetableValidUntil,
       null,
     );
+    // 這個也要清：留著的話原生會以為手上那張圖還是照現在的尺寸畫的，
+    // 而圖已經被刪了 —— 小組件會停在佔位字上不動。
+    await HomeWidget.saveWidgetData<String>(WidgetKeys.timetableDrawn, null);
     await HomeWidget.updateWidget(
       qualifiedAndroidName: WidgetKeys.timetableProvider,
     );
@@ -325,7 +354,10 @@ class WidgetUpdater {
     // 沒附著過 FlutterView），而 renderFlutterWidget 內部是
     // `implicitView!` —— 沒有的話會是一個 null check 例外。畫不出來不是
     // 世界末日（桌面上留著上一張圖），炸掉才是。
-    if (ui.PlatformDispatcher.instance.implicitView == null) return false;
+    if (ui.PlatformDispatcher.instance.implicitView == null) {
+      _log('沒有 implicitView，這個 isolate 畫不了圖');
+      return false;
+    }
 
     try {
       for (final (key, view) in [(lightKey, light), (darkKey, dark)]) {
@@ -340,10 +372,23 @@ class WidgetUpdater {
           pixelRatio: surface.pixelRatio,
         );
       }
+      _log('畫好了 $lightKey / $darkKey，${surface.size} @${surface.pixelRatio}');
       return true;
-    } catch (_) {
+    } catch (e) {
+      _log('畫圖失敗：${e.runtimeType} $e');
       return false;
     }
+  }
+
+  /// 只在 debug build 印。
+  ///
+  /// 這一整條路徑上的失敗全都是**安靜的** —— 畫不出來就留著上一張圖，
+  /// 桌面上看起來只是「沒更新」。沒有 log 的話，唯一的除錯方式是猜。
+  ///
+  /// release 版一行都不印：跟 AIS 那邊同一條規則（見 main.dart）。
+  /// 這裡雖然沒有密碼，但沒必要在正式版留下任何東西。
+  static void _log(String line) {
+    if (kDebugMode) debugPrint('[widget] $line');
   }
 
   Future<void> _schedule(List<DateTime> times, String provider) async {
@@ -355,6 +400,16 @@ class WidgetUpdater {
     } catch (_) {
       // 排不到鬧鐘（權限、找不到 provider）就算了 —— 小組件還是會在
       // 使用者點它、或系統自己 onUpdate 的時候更新，只是反白會慢一點移動。
+    }
+  }
+
+  Future<DateTime?> _storedMillis(String key) async {
+    try {
+      final raw = await HomeWidget.getWidgetData<String>(key);
+      final ms = int.tryParse(raw ?? '');
+      return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -426,11 +481,20 @@ class WidgetKeys {
   /// Int、否則送 Long」，兩邊要各自處理兩種型別。epoch millis 一定超過
   /// 32 bit，但把型別分岔留在那裡遲早會踩到。
   static const String timetableValidUntil = 'timetable_valid_until';
+
+  /// 小組件現在多大。**這一個是原生寫的**（`NtouWidgetProvider.remember`）——
+  /// 前景路徑靠它知道桌面上有這塊東西、而且它多大。只有 Dart 會寫的話，
+  /// 新裝的 App 永遠畫不出第一張圖：沒畫過就沒有尺寸，沒有尺寸就不畫。
   static const String timetableSurface = 'timetable_surface';
+
+  /// 手上那張圖是照什麼尺寸畫的。**這一個是 Dart 寫的**，原生拿它跟
+  /// 現在的尺寸比，判斷使用者是不是把小組件拉大縮小了。
+  static const String timetableDrawn = 'timetable_drawn';
 
   static const String transitLight = 'transit_image_light';
   static const String transitDark = 'transit_image_dark';
   static const String transitSurface = 'transit_surface';
+  static const String transitDrawn = 'transit_drawn';
   static const String transitUpdatedAt = 'transit_updated_at';
   static const String transitLastAttempt = 'transit_last_attempt';
   static const String transitPayload = 'transit_payload';

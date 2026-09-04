@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 小組件上唯一不是畫進 PNG 的東西：那顆重新整理鈕的顏色。
-     圖是 Dart 畫的（深淺色各一張），但按鈕是真的 View，
-     所以它的顏色要靠 values / values-night 這一套。 -->
+<!-- 小組件上唯一不是畫進 PNG 的東西：那顆重新整理鈕，和小工具選取器裡那張
+     預覽。圖是 Dart 畫的（深淺色各一張），但這兩個是真的 View，
+     所以顏色要靠 values / values-night 這一套。
+
+     色值抄自 NtouTheme（seed #00506B 出來的 Material 3 配色），
+     跟真正畫出來的那張圖對得上 —— 預覽跟實物差太多比沒有預覽更糟。 -->
 <resources>
     <color name="widget_icon">#5F6B72</color>
+
+    <color name="widget_preview_bg">#F6FAFE</color>
+    <color name="widget_preview_text">#191C1E</color>
+    <color name="widget_preview_dim">#40484C</color>
+    <color name="widget_preview_accent_bg">#C2E8FF</color>
+    <color name="widget_preview_accent_text">#001E2C</color>
+    <color name="widget_preview_now">#BA1A1A</color>
 </resources>

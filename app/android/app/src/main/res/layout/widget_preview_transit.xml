@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 交通小組件在小工具選取器裡的預覽。靜態假資料，理由見
+     widget_preview_timetable.xml。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_preview_bg"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="交通"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/widget_preview_text" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="資料時間 08:14"
+                android:textSize="11sp"
+                android:textColor="@color/widget_preview_dim" />
+        </LinearLayout>
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_widget_refresh"
+            android:contentDescription="@string/widget_refresh" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="海大體育館"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="@color/widget_preview_dim" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="4dp">
+
+        <TextView
+            android:layout_width="46dp"
+            android:layout_height="wrap_content"
+            android:text="103"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_preview_text" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="往 八斗子車站"
+            android:textSize="11sp"
+            android:textColor="@color/widget_preview_dim" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="12 分"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_preview_text" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp">
+
+        <TextView
+            android:layout_width="46dp"
+            android:layout_height="wrap_content"
+            android:text="1579"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_preview_text" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="往 圓山轉運站"
+            android:textSize="11sp"
+            android:textColor="@color/widget_preview_dim" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="進站中"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_preview_now" />
+    </LinearLayout>
+</LinearLayout>

@@ -40,12 +40,21 @@ Future<void> main() async {
         .catchError((_) => null),
   );
 
+  final widgets = WidgetUpdater();
   final controller = AppController(
     repository: repository,
     credentials: CredentialStore(),
-    widgets: WidgetUpdater(),
+    widgets: widgets,
   );
   await controller.init();
+
+  // 開 App 就把桌面小組件補一次。
+  //
+  // **這是唯一保證修得好的路徑** —— 背景那條有太多會靜靜失敗的環節，
+  // 而使用者發現小組件不動之後會做的第一件事正好就是開 App。
+  //
+  // 不 await：它會讀本機快取、可能打一次網路，那不該擋著第一幀。
+  unawaited(widgets.refreshAll());
 
   runApp(NtouApp(controller: controller, catalog: catalog, planStore: PlanStore()));
 }

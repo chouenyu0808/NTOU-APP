@@ -5,6 +5,9 @@
      每個節次交界重畫（反白要跟著移動）—— 30 分鐘太粗，而且它會叫醒裝置。
      這個小組件完全靠 HomeWidget.scheduleWidgetUpdates 排的鬧鐘，時刻是
      Dart 算出來的（見 TimetableWidgetPayload.updateTimes）。 -->
+<!-- previewLayout 和 previewImage 兩個都留：Android 12 以上用前者
+     （系統直接 inflate，深淺色和字級都自然跟著走），以下退回後者。
+     只留 previewImage 的話選取器裡是一張放大的 App 圖示，很醜。 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
     android:minHeight="110dp"
@@ -15,5 +18,6 @@
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/widget_timetable"
+    android:previewLayout="@layout/widget_preview_timetable"
     android:previewImage="@mipmap/launcher_icon"
     android:description="@string/widget_timetable_description" />

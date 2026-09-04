@@ -49,6 +49,14 @@ kotlin {
     }
 }
 
+dependencies {
+    // MainActivity 要用 WorkManager 把桌面小組件那條中毒的背景工作鏈清掉
+    // （理由見 MainActivity.unpoisonWidgetWork）。home_widget 本來就把它帶
+    // 進來了，這裡明寫是因為**我們自己的程式碼直接用到它** ——
+    // 靠傳遞依賴的話，哪天套件換掉實作，這裡會在編譯期才炸。
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+}
+
 flutter {
     source = "../.."
 }

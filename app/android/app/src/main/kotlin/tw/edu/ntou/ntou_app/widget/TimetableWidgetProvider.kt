@@ -17,6 +17,7 @@ class TimetableWidgetProvider : NtouWidgetProvider() {
     override val lightKey = "timetable_image_light"
     override val darkKey = "timetable_image_dark"
     override val surfaceKey = "timetable_surface"
+    override val drawnKey = "timetable_drawn"
 
     /**
      * 手上這張圖過期了沒有。

@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="widget_icon">#B9C6CD</color>
+
+    <color name="widget_preview_bg">#191C1E</color>
+    <color name="widget_preview_text">#E1E3E5</color>
+    <color name="widget_preview_dim">#BFC8CC</color>
+    <color name="widget_preview_accent_bg">#004C68</color>
+    <color name="widget_preview_accent_text">#C2E8FF</color>
+    <color name="widget_preview_now">#FFB4AB</color>
 </resources>

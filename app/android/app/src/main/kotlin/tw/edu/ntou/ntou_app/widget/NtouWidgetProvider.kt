@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
+import es.antonborri.home_widget.HomeWidgetPlugin
 import es.antonborri.home_widget.HomeWidgetProvider
 import java.io.File
 import tw.edu.ntou.ntou_app.MainActivity
@@ -38,8 +39,26 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
     protected abstract val lightKey: String
     protected abstract val darkKey: String
 
-    /** 存「上次畫的尺寸」的 key。 */
+    /**
+     * 存「小組件現在多大」的 key。**這一個是原生寫的。**
+     *
+     * 為什麼要原生寫：Dart 的前景路徑（App 開著、剛抓完課表）不知道桌面上
+     * 那塊東西多大，它只能讀這裡。而如果只有 Dart 在畫完之後才寫，就會變成
+     * 一個解不開的死結 —— 新裝的 App 還沒畫過任何一張圖，前景路徑讀不到
+     * 尺寸就直接放棄，於是永遠畫不出第一張。
+     *
+     * 這個值同時也是「桌面上真的有這個小組件」的唯一證據。
+     */
     protected abstract val surfaceKey: String
+
+    /**
+     * 存「手上那張圖是照什麼尺寸畫的」的 key。**這一個是 Dart 寫的。**
+     *
+     * 跟 [surfaceKey] 分開是必要的：要判斷「使用者把小組件拉大了」，比的是
+     * 「現在多大」對「圖是照多大畫的」。兩件事寫進同一個 key 的話，原生一寫
+     * 就等於把自己要比對的對象也蓋掉，尺寸變化永遠偵測不到。
+     */
+    protected abstract val drawnKey: String
 
     /**
      * 尺寸沒變的時候，這次要不要叫 Dart 重算。
@@ -67,6 +86,10 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
 
         for (id in appWidgetIds) {
             val surface = surfaceOf(context, appWidgetManager, id)
+            // 先把尺寸記下來，**在問 Dart 之前**。這是 App 前景那條路徑
+            // 唯一能知道「桌面上有這塊東西、而且它這麼大」的方式。
+            remember(context, surface)
+
             val views = RemoteViews(context.packageName, layoutId)
 
             val hasImage = bindImages(views, widgetData)
@@ -86,7 +109,7 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
             // 允許的，每個都叫的話同樣的工作會做兩遍 —— 交通那邊就是打兩次
             // TDX，而那正是會被回 429 的原因。
             if (asked) continue
-            val sizeChanged = !surface.matches(widgetData.getString(surfaceKey, null))
+            val sizeChanged = !surface.matches(widgetData.getString(drawnKey, null))
             if (sizeChanged || isStale(widgetData, now)) {
                 askDart(context, surface)
                 asked = true
@@ -99,6 +122,12 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
      *
      * 一定要接：圖是照當時的尺寸畫的，尺寸變了還貼同一張就會被 ImageView
      * 拉伸成一張糊圖，而那看起來只像「這個 App 的小組件畫質很差」。
+     *
+     * **但一定要先確認尺寸真的變了。** 這個回呼不是只有拉大縮小才會來 ——
+     * launcher 重新排版、換桌布、旋轉、甚至我們自己 updateWidget 之後
+     * 重新量測，都可能發它。無條件叫 Dart 的話就是
+     * 「畫完 → updateWidget → 重新量測 → 又叫 → 再畫」，一個不會停的迴圈，
+     * 而交通那邊每繞一圈還會打一次 TDX。實測一次回桌面就繞了四圈。
      */
     override fun onAppWidgetOptionsChanged(
         context: Context,
@@ -107,7 +136,29 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
         newOptions: Bundle,
     ) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
-        askDart(context, surfaceOf(context, appWidgetManager, appWidgetId))
+        val surface = surfaceOf(context, appWidgetManager, appWidgetId)
+        remember(context, surface)
+        val data = HomeWidgetPlugin.getData(context)
+        if (!surface.matches(data.getString(drawnKey, null))) askDart(context, surface)
+    }
+
+    /**
+     * 把現在的尺寸寫進 widget data。
+     *
+     * 寫的是 `home_widget` 自己那份 SharedPreferences，所以 Dart 用
+     * `HomeWidget.getWidgetData` 就讀得到。**檔名是套件內部的常數**
+     * （`HomeWidgetPlugin.PREFERENCES`，internal 拿不到），只能照抄 ——
+     * 套件哪天改掉這個名字，症狀會是前景路徑永遠讀不到尺寸、
+     * 小組件只能靠背景更新，而且不會有任何錯誤。
+     */
+    private fun remember(context: Context, surface: Surface) {
+        runCatching {
+            context
+                .getSharedPreferences(HOME_WIDGET_PREFERENCES, Context.MODE_PRIVATE)
+                .edit()
+                .putString(surfaceKey, surface.encode())
+                .apply()
+        }
     }
 
     /**
@@ -137,8 +188,26 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
             runCatching { BitmapFactory.decodeFile(it) }.getOrNull()
         }
 
-    /** 叫背景的 Dart 重算並重畫。 */
+    /**
+     * 叫背景的 Dart 重算並重畫。
+     *
+     * **最後一道防線：短時間內只叫一次。**
+     *
+     * 上面每一個呼叫點都各自有自己的條件（資料夠舊了、尺寸變了……），
+     * 但那些條件都依賴「Dart 有把狀態寫回來」。只要有一條路徑寫失敗、
+     * 或者哪天多加一個呼叫點忘了加條件，整件事就會變成一個每次都打 TDX 的
+     * 迴圈 —— 而畫面上完全看不出來，只有電池和 429 會告訴你。
+     *
+     * 這個節流不看任何業務狀態，所以那些條件全錯的時候它還是擋得住。
+     * 使用者按右上角的重新整理鈕不經過這裡（那是直接掛 PendingIntent），
+     * 所以擋不到他。
+     */
     protected fun askDart(context: Context, surface: Surface) {
+        val prefs = context.getSharedPreferences(HOME_WIDGET_PREFERENCES, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        if (now - prefs.millis(ASK_KEY) < ASK_COOLDOWN_MS) return
+        runCatching { prefs.edit().putString(ASK_KEY, now.toString()).apply() }
+
         runCatching {
             HomeWidgetBackgroundIntent.getBroadcast(context, surface.uri(host)).send()
         }
@@ -181,6 +250,20 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
         /** 跟 xml/widget_*_info.xml 的 minWidth / minHeight 一致。 */
         const val FALLBACK_WIDTH_DP = 250f
         const val FALLBACK_HEIGHT_DP = 110f
+
+        /** `home_widget` 存資料的 SharedPreferences 檔名。見 [remember]。 */
+        const val HOME_WIDGET_PREFERENCES = "HomeWidgetPreferences"
+
+        /** 上次叫 Dart 是什麼時候。見 [askDart]。 */
+        const val ASK_KEY = "widget_last_ask"
+
+        /**
+         * 兩次叫 Dart 之間至少隔多久。
+         *
+         * 十秒：**足夠短到使用者感覺不到**（正常情況下一次動作只會叫一次），
+         * 又足夠長到把任何一種「畫完又被叫」的迴圈切斷。
+         */
+        const val ASK_COOLDOWN_MS = 10_000L
     }
 }
 
@@ -195,6 +278,9 @@ data class Surface(val width: Float, val height: Float, val density: Float) {
 
     fun uri(host: String): Uri =
         Uri.parse("$SCHEME://$host?w=$width&h=$height&dpr=$density")
+
+    /** 存進 widget data 的樣子：`寬|高|密度`。要跟 Dart 的 `WidgetSurface` 一致。 */
+    fun encode(): String = "$width|$height|$density"
 
     /** 跟 Dart 存下來的那份（`寬|高|密度`）是不是同一個尺寸。 */
     fun matches(stored: String?): Boolean {

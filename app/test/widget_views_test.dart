@@ -283,6 +283,49 @@ void main() {
       expect(find.textContaining('收班'), findsOneWidget);
     });
 
+    testWidgets('放不下內容的站，連站名都不要印', (tester) async {
+      // 只印一個站名、底下什麼都沒有，看起來像資料載到一半壞掉了 ——
+      // 而其實只是空間用完。
+      await draw(
+        tester,
+        TransitWidgetView(
+          payload: transit(
+            stops: const [
+              TransitWidgetStop(
+                name: '海大體育館',
+                rows: [
+                  TransitWidgetRow(
+                    route: '103',
+                    towards: '往 八斗子車站',
+                    eta: '12 分',
+                    tone: ArrivalTone.normal,
+                    favorite: false,
+                  ),
+                ],
+              ),
+              TransitWidgetStop(name: '海大濱海校門', rows: [
+                TransitWidgetRow(
+                  route: '104',
+                  towards: '往 深美國小',
+                  eta: '5 分',
+                  tone: ArrivalTone.normal,
+                  favorite: false,
+                ),
+              ]),
+            ],
+          ),
+          // 剛好只放得下第一站的標題加一列。
+          size: const Size(320, 108),
+          brightness: Brightness.light,
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('海大體育館'), findsOneWidget);
+      expect(find.text('103'), findsOneWidget);
+      expect(find.text('海大濱海校門'), findsNothing);
+    });
+
     testWidgets('塞不下就少畫幾列，不要溢位', (tester) async {
       await draw(
         tester,

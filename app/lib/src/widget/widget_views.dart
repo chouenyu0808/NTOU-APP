@@ -347,7 +347,13 @@ class TransitWidgetView extends StatelessWidget {
     var used = 0.0;
 
     for (final stop in payload.stops) {
-      if (used + stopHeight > body) break;
+      final note = stop.note;
+      // **站名底下至少要放得下一樣東西才寫站名。**
+      // 只印一個站名、底下什麼都沒有，畫面上就是一個孤兒標題 ——
+      // 看起來像資料載入到一半壞掉了，而其實只是空間用完。
+      final first = note != null ? stopHeight : rowHeight;
+      if (used + stopHeight + first > body) break;
+
       children.add(
         SizedBox(
           height: stopHeight,
@@ -356,9 +362,7 @@ class TransitWidgetView extends StatelessWidget {
       );
       used += stopHeight;
 
-      final note = stop.note;
       if (note != null) {
-        if (used + stopHeight > body) break;
         children.add(
           SizedBox(
             height: stopHeight,

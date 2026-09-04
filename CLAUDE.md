@@ -78,7 +78,7 @@ $env:PATH = "$env:USERPROFILE\flutter\bin;$env:PATH"
 
 ```bash
 cd app && flutter analyze          # 應該是 No issues found
-cd app && flutter test             # 672 個測試
+cd app && flutter test             # 673 個測試
 ```
 
 沒有 `spike/fixtures/` 的機器會 skip 掉 54 個（讀真實擷取頁面的那些），
@@ -386,6 +386,33 @@ Dart —— **這是一個會一直繞的迴圈**，交通那邊每繞一圈還�
   繞不停，而**重試本身正是被回 429 的原因**
 - **畫失敗時也要記下尺寸**，不然「尺寸對不上 → 再叫一次 → 又失敗」會繞
 
+### 真機上踩到的三個坑（都會安靜地永遠卡住）
+
+**1. `home_widget` 的背景工作鏈會中毒。** 它用
+`ExistingWorkPolicy.APPEND` 把每次背景請求接到同一條 unique work 上，而
+WorkManager 的規則是**鏈上只要有一筆 FAILED 或 CANCELLED，之後每一次 append
+都被立刻取消**。第一次失敗幾乎是必然的：使用者裝好 App、還沒開過就先把小組件
+放上桌面，那時候 Dart 的 callback handle 還沒註冊，worker 一定丟例外。
+從此小組件永遠停在「載入中」，沒有錯誤、沒有 log。
+`MainActivity.onCreate` 會 `pruneWork()` 把那條鏈清掉。
+
+**2. 尺寸要兩個 key，不能共用一個。** 原生在 `onUpdate` 寫
+`*_surface`（現在多大），Dart 畫完寫 `*_drawn`（圖是照多大畫的）。
+共用一個的話：原生一寫就把自己要比對的對象蓋掉，尺寸變化永遠偵測不到；
+而只有 Dart 寫的話會變成死結 —— **新裝的 App 沒畫過就沒有尺寸，
+前景路徑讀不到尺寸就直接放棄，於是永遠畫不出第一張。**
+
+**3. `onAppWidgetOptionsChanged` 不是只有拉大縮小才會來。** launcher 重新
+排版、換桌布、旋轉、甚至我們自己 `updateWidget` 之後重新量測都會發它。
+無條件叫 Dart 就是「畫完 → updateWidget → 重新量測 → 又叫」，實測一次回
+桌面繞了四圈。所以要先比對尺寸真的變了才叫，而且 `askDart` 有一道
+**不看任何業務狀態的十秒節流**當最後防線 —— 上面那些條件全錯的時候它還擋得住。
+
+同一個理由讓 **`main()` 一開就 `widgets.refreshAll()`**：背景那條路徑有太多
+會靜靜失敗的環節，而使用者發現小組件不動之後會做的第一件事正好是開 App。
+那一刻要能修好。課表無條件重畫（只讀本機快取），交通只在桌面上那份超過
+25 分鐘才抓。
+
 ### 深色模式要畫兩張圖
 
 小組件是一張 PNG，跟不了系統的深淺色切換。所以淺色深色各畫一張，
@@ -410,14 +437,23 @@ PNG 存在 App 的私有目錄（`getApplicationSupportDirectory()`），
 
 交通那半邊不清 —— 它跟帳號完全無關。
 
-### 還沒驗證的一件事
+### 背景畫圖是可以的（2026-09-05 在真機上驗過）
 
 `renderFlutterWidget` 內部用的是 `PlatformDispatcher.implicitView!`，而背景
-是一個從來沒附著過 `FlutterView` 的 `FlutterEngine(context)`。**背景畫圖
-到底能不能成，要在真機上看過才算數** —— 目前的程式碼在 `implicitView` 是
-null 時會安全退出（桌面上留著上一張圖），不會炸，但那條路等於「小組件不會
-自己更新」。同一個理由，`pixelRatio` 是明確傳進去的，不能吃套件的預設值
-（那是 `implicitView?.devicePixelRatio ?? 1`，背景會讀到 1.0，畫出來是糊的）。
+是一個從來沒附著過 `FlutterView` 的 `FlutterEngine(context)` —— 本來擔心
+那裡是 null。實測（Galaxy S23 Ultra／Android 15）**背景 isolate 畫得出來**，
+log 上是 `背景被叫醒` 接著 `畫好了 transit_image_light / ...`。
+
+`implicitView` 是 null 時的安全退出還是留著，那不是白寫的 —— 換一台機器、
+換一版 Flutter 都可能不一樣，而畫不出來時留著上一張圖遠比崩掉好。
+
+**`pixelRatio` 一定要自己帶。** 套件的預設值是
+`implicitView?.devicePixelRatio ?? 1` —— 那個 view 沒有真正的畫面，
+讀到的是 1.0。前景畫出來是清晰的、背景畫出來是糊的，而且只有在手機上
+看得出來。
+
+畫圖失敗的路徑上有一行 `debugPrint`（只在 debug build）—— 這一整條路徑上的
+失敗全都是安靜的，沒有 log 的話唯一的除錯方式是猜。
 
 
 ## 安全紅線
