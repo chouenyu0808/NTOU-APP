@@ -25,5 +25,18 @@ spike/fixtures/callbacks/
 漏洞回報*.md
 zeroday-submission.md
 
+# ---- TDX 金鑰，不進版控 ----
+# 交通部 TDX 的 client id / secret。放在檔案裡是為了不用每次重開機都重設
+# 一次環境變數 —— flutter build 和 spike/tdx.py 都讀這一份。
+#
+# 這把金鑰的層級跟學校密碼完全不同：最壞的下場是配額被別人用掉，
+# 所以放在本機檔案是可以接受的。真正該藏的東西走的是 Keystore。
+# 但它一樣不該進 git —— 進去就跟著原始碼被推上 GitHub 了。
+# 用萬用字元是因為「複製一份來改」很自然（Windows 會產生
+# 「tdx.local.json - 複製.example」這種名字），而那種檔名不會被
+# 單一檔名的規則擋到 —— 裡面卻是同一把金鑰。
+tdx.local*
+!tdx.local.json.example
+
 # Claude Code：本機專屬設定（含機器路徑、裝置序號），不進版控
 .claude/settings.local.json

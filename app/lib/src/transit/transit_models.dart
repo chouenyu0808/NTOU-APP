@@ -29,6 +29,7 @@ class TransitStop {
     required this.id,
     required this.name,
     required this.kind,
+    this.extraKinds = const [],
     this.city = 'Keelung',
     this.matchNames = const [],
     this.stationId = '',
@@ -42,6 +43,20 @@ class TransitStop {
   final String name;
 
   final TransitStopKind kind;
+
+  /// 這一站還要問哪些來源。
+  ///
+  /// **一個站牌可能同時有市區公車和國道客運。** 海大體育館就是：基隆市公車
+  /// 103/104/108 在 `EstimatedTimeOfArrival/City/Keelung`，但首都客運 1579
+  /// （圓山轉運站直達）在 `EstimatedTimeOfArrival/InterCity` —— 只問前者的話
+  /// 1579 永遠不會出現，而畫面上看起來就只是「這站沒有這條路線」。
+  ///
+  /// 多問一種來源**不會多打請求**：所有站的國道客運查詢會跟基隆轉運站那次
+  /// 合併成同一個，只是 filter 裡多幾個站名。
+  final List<TransitStopKind> extraKinds;
+
+  /// 這一站要問的全部來源。
+  List<TransitStopKind> get kinds => [kind, ...extraKinds];
 
   /// TDX 的縣市代碼。基隆市是 `Keelung`。
   final String city;
@@ -63,6 +78,10 @@ class TransitStop {
         id: json['id'] as String? ?? '',
         name: json['name'] as String? ?? '',
         kind: TransitStopKind.parse(json['kind'] as String?),
+        extraKinds: [
+          for (final k in (json['also'] as List?) ?? const [])
+            if (k is String) TransitStopKind.parse(k),
+        ],
         city: json['city'] as String? ?? 'Keelung',
         matchNames: [
           for (final n in (json['match_names'] as List?) ?? const [])
@@ -91,6 +110,7 @@ class BusArrival {
     this.plateNumber = '',
     this.stopsAway,
     this.isLastBus = false,
+    this.nextStop = '',
   });
 
   /// 路線名（`103`、`1579`）。
@@ -131,6 +151,17 @@ class BusArrival {
   /// 十幾行同時喊「末班車」，那是雜訊；擋掉之後它才會變成它該有的意思：
   /// **這是最後一班，而且還沒走。** 對學生來說那是整排資訊裡最要緊的一件事。
   final bool isLastBus;
+
+  /// 這班車離開這一站之後的下一站。
+  ///
+  /// **拿來分辨馬路兩邊。** 「海大體育館」這個站名在 TDX 裡是兩個實體站牌：
+  /// `KEE306429` 的下一站是海大濱海校門（往市區），`KEE306430` 的下一站是
+  /// 北寧路（往八斗子）。兩邊的終點站都是八斗子車站（103 是環狀線），
+  /// 所以**終點分不出方向，下一站才分得出**。
+  ///
+  /// 只有在同一張卡片上同一條路線出現不只一次的時候才會去查，因為那時候
+  /// 才需要分辨。查不到就是空字串。
+  final String nextStop;
 
   /// 這一筆到底有沒有車。
   ///

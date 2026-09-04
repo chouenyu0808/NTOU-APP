@@ -9,6 +9,9 @@
   },
 
   "api": {
+    "_relay_comment": "中繼服務的網址。填了就走它：App 不再需要金鑰，也不會撞到 429（因為拿到的是快取）。留空就照舊直接打 TDX，需要 --dart-define-from-file 帶金鑰。build 時可以用 --dart-define=TDX_RELAY_URL=... 蓋過這裡，方便指到測試用的中繼。服務本身在 relay/。",
+    "relay_base_url": "",
+
     "base_url": "https://tdx.transportdata.tw/api/basic/",
     "min_interval_seconds": 0.5,
     "timeout_seconds": 15,
@@ -57,6 +60,8 @@
       "id": "ntou-gym",
       "name": "海大體育館",
       "kind": "city_bus",
+      "_also_comment": "1579 是首都客運的國道客運，資料不在基隆市公車那個端點裡 —— 不多問一次 InterCity 的話它永遠不會出現，而畫面上看起來只是「這站沒有這條路線」。多問不會多打請求：所有站的國道客運查詢會跟基隆轉運站那次合併成同一個。",
+      "also": ["intercity_bus"],
       "city": "Keelung",
       "match_names": [],
       "note": "基隆市公車 103、104、108 等；首都客運 1579 從圓山轉運站直達也停這裡"
@@ -65,6 +70,7 @@
       "id": "ntou-binhai-gate",
       "name": "海大濱海校門",
       "kind": "city_bus",
+      "also": ["intercity_bus"],
       "city": "Keelung",
       "match_names": []
     },
@@ -72,6 +78,7 @@
       "id": "ntou-xiangfeng-gate",
       "name": "海大祥豐校門",
       "kind": "city_bus",
+      "also": ["intercity_bus"],
       "city": "Keelung",
       "match_names": []
     },

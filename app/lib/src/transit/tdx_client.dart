@@ -96,7 +96,12 @@ class TdxClient {
   static Duration? _timeoutOf(TransitConfig c) =>
       c.timeout > Duration.zero ? c.timeout : null;
 
-  bool get isConfigured => _clientId.isNotEmpty && _clientSecret.isNotEmpty;
+  /// 這一頁到底能不能用。
+  ///
+  /// **走中繼的時候不需要金鑰** —— 那正是中繼存在的理由：公開發布的版本
+  /// 裡沒有金鑰，也不該有。金鑰只在中繼服務那一端。
+  bool get isConfigured =>
+      config.usesRelay || (_clientId.isNotEmpty && _clientSecret.isNotEmpty);
 
   /// 排隊，確保兩個請求之間至少隔 [TransitConfig.minInterval]。
   ///
@@ -186,16 +191,20 @@ class TdxClient {
     Map<String, String> query = const {},
   }) async {
     if (path.isEmpty) throw const TransitUnavailable('這項資料尚未設定');
-    final token = await _accessToken();
+
+    // 走中繼的話這裡不換 token —— 金鑰在中繼那一端，App 這邊根本沒有。
+    final token = config.usesRelay ? '' : await _accessToken();
     await _throttle();
 
     late final Response<dynamic> res;
     try {
       res = await _dio.get<dynamic>(
-        '${config.baseUrl}$path',
+        '${config.usesRelay ? config.relayBaseUrl : config.baseUrl}$path',
         queryParameters: {'\$format': 'JSON', ...query},
         options: Options(
-          headers: {'authorization': 'Bearer $token'},
+          headers: {
+            if (!config.usesRelay) 'authorization': 'Bearer $token',
+          },
           responseType: ResponseType.json,
         ),
       );
@@ -204,8 +213,10 @@ class TdxClient {
       throw const TransitUnavailable('連不上交通資料服務');
     }
 
-    if (res.statusCode == 401) {
-      // token 被提早作廢了（換過金鑰、對方重啟）。丟掉重來一次就好。
+    if (res.statusCode == 401 || res.statusCode == 503) {
+      // 401：token 被提早作廢了（換過金鑰、對方重啟）。丟掉重來一次就好。
+      // 503：走中繼時代表那一端忘了設金鑰。兩種都不是使用者能處理的事，
+      //      但重新整理一次是對的第一步。
       _token = null;
       _tokenExpiry = null;
       throw const TransitUnavailable('交通資料認證過期，請重新整理');

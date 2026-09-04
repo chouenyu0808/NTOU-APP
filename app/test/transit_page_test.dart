@@ -6,7 +6,7 @@ import 'package:ntou_app/src/transit/transit_config.dart';
 import 'package:ntou_app/src/transit/transit_models.dart';
 import 'package:ntou_app/src/transit/transit_repository.dart';
 import 'package:ntou_app/src/ui/theme.dart';
-import 'package:ntou_app/src/storage/favorite_route_store.dart';
+import 'package:ntou_app/src/storage/transit_prefs_store.dart';
 import 'package:ntou_app/src/ui/route_page.dart';
 import 'package:ntou_app/src/ui/transit_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -181,6 +181,91 @@ void main() {
       await _teardown(tester);
     });
 
+    /// **使用者回報的那個問題的畫面驗收。**
+    ///
+    /// 同一條路線在一張卡片上出現兩次 = 馬路兩邊。終點站是一樣的
+    /// （103 是環狀線都往八斗子車站），所以兩列要靠下一站分方向，
+    /// 否則畫面上看起來一模一樣。
+    testWidgets('同路線出現兩次時，用下一站標出是哪一邊', (tester) async {
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [
+              BusArrival(
+                routeName: '103',
+                destination: '八斗子車站',
+                nextStop: '海大濱海校門',
+                estimateSeconds: 300,
+              ),
+              BusArrival(
+                routeName: '103',
+                destination: '八斗子車站',
+                nextStop: '北寧路(九八八餐廳)',
+                estimateSeconds: 900,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pump();
+
+      expect(find.text('往 八斗子車站（經 海大濱海校門）'), findsOneWidget);
+      expect(find.text('往 八斗子車站（經 北寧路(九八八餐廳)）'), findsOneWidget);
+      // 兩列一樣的那個寫法不該出現。
+      expect(find.text('往 八斗子車站'), findsNothing);
+      await _teardown(tester);
+    });
+
+    /// 只有一列的時候不用加註 —— 那是多餘的字，會把主要資訊擠掉。
+    testWidgets('路線只出現一次就只寫終點，不囉唆', (tester) async {
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [
+              BusArrival(
+                routeName: '104',
+                destination: '新豐街',
+                nextStop: '海大濱海校門',
+                estimateSeconds: 300,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pump();
+
+      expect(find.text('往 新豐街'), findsOneWidget);
+      expect(find.textContaining('經'), findsNothing);
+      await _teardown(tester);
+    });
+
+    /// 終點查不到的時候，下一站是唯一的線索 —— 拿它當方向講，總比空白好。
+    testWidgets('查不到終點時改用下一站講方向', (tester) async {
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [
+              BusArrival(
+                routeName: '103',
+                nextStop: '北寧路(九八八餐廳)',
+                estimateSeconds: 300,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pump();
+
+      expect(find.text('往 北寧路(九八八餐廳) 方向'), findsOneWidget);
+      await _teardown(tester);
+    });
+
     testWidgets('火車那張卡顯示車次與誤點', (tester) async {
       await _pump(
         tester,
@@ -254,7 +339,7 @@ void main() {
     /// 伺服器 —— 一天下來是上千個沒有人會看到的請求。
     testWidgets('按愛心會釘起來，而且存得住', (tester) async {
       SharedPreferences.setMockInitialValues({});
-      final store = FavoriteRouteStore();
+      final store = TransitPrefsStore();
       await _pump(
         tester,
         _FakeRepo([
@@ -263,7 +348,7 @@ void main() {
             buses: const [BusArrival(routeName: '103', estimateSeconds: 300)],
           ),
         ]),
-        favorites: store,
+        prefs: store,
       );
       await tester.pump();
 
@@ -273,7 +358,7 @@ void main() {
 
       expect(find.byIcon(Icons.favorite), findsOneWidget);
       // 真的寫進去了，不是只有畫面上變色。
-      expect(await store.read(), {'103'});
+      expect(await store.readFavorites(), {'103'});
       await _teardown(tester);
     });
 
@@ -294,7 +379,7 @@ void main() {
             ],
           ),
         ]),
-        favorites: FavoriteRouteStore(),
+        prefs: TransitPrefsStore(),
       );
       // 最愛是非同步讀進來的 —— 多 pump 一次讓它到位。
       await tester.pump();
@@ -322,7 +407,7 @@ void main() {
             buses: const [BusArrival(routeName: '103', estimateSeconds: 60)],
           ),
         ]),
-        favorites: _BrokenFavorites(),
+        prefs: _BrokenPrefs(),
       );
       await tester.pump();
 
@@ -369,7 +454,7 @@ void main() {
             ],
           ),
         ]),
-        favorites: FavoriteRouteStore(),
+        prefs: TransitPrefsStore(),
       );
       await tester.pump();
 
@@ -378,6 +463,130 @@ void main() {
 
       expect(find.byType(RoutePage), findsNothing);
       expect(find.byIcon(Icons.favorite), findsOneWidget);
+      await _teardown(tester);
+    });
+
+    /// 五張卡片攤開來要捲很久，而大部分人只固定看其中一兩站。
+    testWidgets('點標題可以把站牌收起來，內容消失', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [
+              BusArrival(routeName: '103', estimateSeconds: 300),
+            ],
+          ),
+        ]),
+        prefs: TransitPrefsStore(),
+      );
+      await tester.pump();
+
+      expect(find.text('103'), findsOneWidget);
+
+      await tester.tap(find.text('海大體育館'));
+      await tester.pumpAndSettle();
+
+      // 標題還在，車不見了。
+      expect(find.text('海大體育館'), findsOneWidget);
+      expect(find.text('103'), findsNothing);
+      await _teardown(tester);
+    });
+
+    /// **收合最怕的是藏起來之後看不出「還要不要展開」。**
+    /// 所以收起來的時候標題底下要留一句最少但足夠的摘要。
+    testWidgets('收起來之後還看得出這站現在有沒有車', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'transit.collapsed': ['ntou-gym'],
+      });
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [
+              BusArrival(routeName: '103', estimateSeconds: 90),
+              BusArrival(routeName: '104', estimateSeconds: 600),
+              BusArrival(routeName: '108', stopStatus: 1),
+            ],
+          ),
+        ]),
+        prefs: TransitPrefsStore(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('2 班在路上 · 最快 103 將到站'), findsOneWidget);
+      expect(find.text('104'), findsNothing);
+      await _teardown(tester);
+    });
+
+    testWidgets('收起來時沒有車也要說出來', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'transit.collapsed': ['ntou-gym'],
+      });
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [BusArrival(routeName: '103', stopStatus: 1)],
+          ),
+        ]),
+        prefs: TransitPrefsStore(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('目前沒有車在路上'), findsOneWidget);
+      await _teardown(tester);
+    });
+
+    /// 收起來的狀態要記住 —— 不然每次開 App 又全部展開，等於沒做。
+    testWidgets('收合狀態存得住', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final store = TransitPrefsStore();
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [BusArrival(routeName: '103', estimateSeconds: 300)],
+          ),
+        ]),
+        prefs: store,
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('海大體育館'));
+      await tester.pumpAndSettle();
+
+      expect(await store.readCollapsed(), {'ntou-gym'});
+      await _teardown(tester);
+    });
+
+    /// 存的是 `transit.json` 的 id，不是站名 —— 站名哪天被改掉的話，
+    /// 收合狀態不該跟著錯亂（使用者收起來的站自己跳回來，而且沒有理由）。
+    testWidgets('收合記的是站牌 id，不是站名', (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'transit.collapsed': ['海大體育館'],
+      });
+      await _pump(
+        tester,
+        _FakeRepo([
+          StopBoard(
+            stop: _gym,
+            buses: const [BusArrival(routeName: '103', estimateSeconds: 300)],
+          ),
+        ]),
+        prefs: TransitPrefsStore(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // 存的是站名，對不上 id，所以不該被收起來。
+      expect(find.text('103'), findsOneWidget);
       await _teardown(tester);
     });
 
@@ -448,13 +657,13 @@ Future<void> _pump(
   _FakeRepo repo, {
   bool isActive = true,
   Duration autoRefresh = _long,
-  FavoriteRouteStore? favorites,
+  TransitPrefsStore? prefs,
 }) async {
   await tester.pumpWidget(MaterialApp(
     theme: NtouTheme.of(Brightness.light),
     home: TransitPage(
       repository: repo,
-      favorites: favorites,
+      prefs: prefs,
       isActive: isActive,
       autoRefresh: autoRefresh,
     ),
@@ -472,10 +681,10 @@ Future<void> _teardown(WidgetTester tester) async {
 
 /// 回預先準備好的看板，順便數被問了幾次。
 class _FakeRepo extends TransitRepository {
-  _FakeRepo(this.boards, {this.configured = true})
+  _FakeRepo(this.prepared, {this.configured = true})
       : super(config: _config, client: _client(configured));
 
-  final List<StopBoard> boards;
+  final List<StopBoard> prepared;
   final bool configured;
   int calls = 0;
 
@@ -485,11 +694,17 @@ class _FakeRepo extends TransitRepository {
   @override
   Future<StopBoard> board(TransitStop stop) async {
     calls++;
-    return boards.firstWhere(
+    return prepared.firstWhere(
       (b) => b.stop.id == stop.id,
       orElse: () => StopBoard(stop: stop),
     );
   }
+
+  /// 畫面現在走的是整批那條路徑。逐站那個保留著，因為它是 [boards] 的
+  /// 退路，也還有測試在用。
+  @override
+  Future<List<StopBoard>> boards(List<TransitStop> stops) async =>
+      Future.wait([for (final s in stops) board(s)]);
 
   static TdxClient _client(bool configured) => TdxClient(
         config: _config,
@@ -509,14 +724,22 @@ final TransitConfig _config = TransitConfig.fromJson({
   ],
 });
 
-/// 永遠讀不到的最愛儲存。真機上這會是 SharedPreferences 出問題，
+/// 永遠讀不到的本機偏好。真機上這會是 SharedPreferences 出問題，
 /// 而那不該讓交通頁看不到公車。
-class _BrokenFavorites implements FavoriteRouteStore {
+class _BrokenPrefs implements TransitPrefsStore {
   @override
-  Future<Set<String>> read() async => throw StateError('讀不到');
+  Future<Set<String>> readFavorites() async => throw StateError('讀不到');
 
   @override
-  Future<Set<String>> toggle(String route) async => throw StateError('存不進去');
+  Future<Set<String>> readCollapsed() async => throw StateError('讀不到');
+
+  @override
+  Future<Set<String>> toggleFavorite(String route) async =>
+      throw StateError('存不進去');
+
+  @override
+  Future<Set<String>> toggleCollapsed(String stopId) async =>
+      throw StateError('存不進去');
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

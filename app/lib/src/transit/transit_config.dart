@@ -18,6 +18,7 @@ class TransitConfig {
     required this.tokenUrl,
     required this.renewMargin,
     required this.baseUrl,
+    required this.relayBaseUrl,
     required this.minInterval,
     required this.timeout,
     required this.endpoints,
@@ -38,6 +39,16 @@ class TransitConfig {
 
   final String baseUrl;
 
+  /// 中繼服務的網址。空字串代表直接打 TDX。
+  ///
+  /// 填了之後 App **不需要金鑰**，也不會撞到 429 —— 中繼那邊有快取，
+  /// 而那五個站的資料對所有使用者都是同一份。公開發布走這條，
+  /// 自己 build 來用可以留空直接打。服務本身在 `relay/`。
+  final String relayBaseUrl;
+
+  /// 現在是不是走中繼。
+  bool get usesRelay => relayBaseUrl.isNotEmpty;
+
   /// 兩次請求之間至少隔多久。跟 AIS 那邊同樣的理由 —— 不要把對方打爛。
   /// TDX 的上限是每個 IP 每秒 50 次，離我們用的量很遠，但五個站點一次
   /// 重新整理就是五個請求，還是排隊送。
@@ -54,6 +65,16 @@ class TransitConfig {
   final List<TransitStop> stops;
 
   static const String assetPath = 'assets/transit.json';
+
+  /// 補上結尾的斜線。
+  ///
+  /// 設定檔是人寫的，少一條斜線的話網址會變成
+  /// `https://relay.example.comv2/Bus/...` —— 那個錯誤在畫面上是
+  /// 「連不上交通資料服務」，完全看不出是少了一個字元。
+  static String _slashed(String url) {
+    if (url.isEmpty) return '';
+    return url.endsWith('/') ? url : '$url/';
+  }
 
   static Future<TransitConfig> loadFromAsset() async {
     final raw = await rootBundle.loadString(assetPath);
@@ -85,6 +106,12 @@ class TransitConfig {
       ),
       baseUrl:
           api['base_url'] as String? ?? 'https://tdx.transportdata.tw/api/basic/',
+      // build 時可以蓋過設定檔，方便指到測試用的中繼服務。
+      relayBaseUrl: _slashed(
+        const String.fromEnvironment('TDX_RELAY_URL').isNotEmpty
+            ? const String.fromEnvironment('TDX_RELAY_URL')
+            : (api['relay_base_url'] as String? ?? ''),
+      ),
       minInterval: Duration(
         milliseconds:
             (((api['min_interval_seconds'] as num?) ?? 0.5) * 1000).round(),

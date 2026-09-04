@@ -16,10 +16,14 @@ tdx.py — 對交通部 TDX 打一次真實請求，把回應的**實際形狀**
 
 1. 到 https://tdx.transportdata.tw/ 註冊會員（免費）。帳號審核**最多三個工作日**。
 2. 會員中心 → 「資料服務」→ 取得 Client Id 與 Client Secret。
-3. 放進環境變數再跑這支腳本 —— **不要寫進任何檔案**：
+3. 複製 `tdx.local.json.example` 成 `tdx.local.json`（repo 根目錄）並填進去。
+   那個檔案在 `.gitignore` 裡，不會進版控，而且 `flutter build` 的
+   `--dart-define-from-file` 讀的是同一份 —— 設一次，兩邊都有。
 
-    $env:TDX_CLIENT_ID = "你的 client id"
-    $env:TDX_CLIENT_SECRET = "你的 client secret"
+臨時想換一把金鑰跑的話，環境變數會蓋過檔案：
+
+    $env:TDX_CLIENT_ID = "..."
+    $env:TDX_CLIENT_SECRET = "..."
 
 ## 用法
 
@@ -45,6 +49,10 @@ HERE = Path(__file__).parent
 CONFIG = HERE.parent / "app" / "assets" / "transit.json"
 FIXTURES = HERE / "fixtures" / "tdx"
 
+# 金鑰檔。**不進版控**（見 .gitignore）。跟 flutter build 的
+# --dart-define-from-file 讀的是同一份，所以只要維護一份。
+KEY_FILE = HERE.parent / "tdx.local.json"
+
 TIMEOUT = 20
 HTTP_OK = 200
 
@@ -52,17 +60,50 @@ HTTP_OK = 200
 # --------------------------------------------------------------- 認證
 
 
+def read_keys() -> tuple[str, str]:
+    """拿金鑰：環境變數優先，其次是 tdx.local.json。
+
+    **環境變數優先是刻意的** —— 臨時想用另一把金鑰跑一次的時候，
+    在那個視窗設一下就好，不用去動檔案再改回來。
+
+    檔案那條路是為了「每次重開機都要重設一次環境變數」這件事。它跟
+    flutter build 的 --dart-define-from-file 讀的是同一份，所以只要維護一份。
+    """
+    env_id = os.environ.get("TDX_CLIENT_ID", "")
+    env_secret = os.environ.get("TDX_CLIENT_SECRET", "")
+    if env_id and env_secret:
+        return env_id, env_secret
+
+    if not KEY_FILE.exists():
+        return env_id, env_secret
+    try:
+        data = json.loads(KEY_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        print(f"[!] {KEY_FILE.name} 讀不到或格式不對，先當成沒有金鑰。")
+        return env_id, env_secret
+
+    # 檔案裡的 _comment 那些是寫給人看的，不是金鑰。
+    return (
+        env_id or str(data.get("TDX_CLIENT_ID", "")),
+        env_secret or str(data.get("TDX_CLIENT_SECRET", "")),
+    )
+
+
 def get_token(config: dict[str, Any]) -> str:
     """換一張 access token。
 
     token 端點**每個 IP 每分鐘只准打 20 次**，所以不要把這支腳本寫進迴圈裡。
     """
-    client_id = os.environ.get("TDX_CLIENT_ID", "")
-    client_secret = os.environ.get("TDX_CLIENT_SECRET", "")
+    client_id, client_secret = read_keys()
     if not client_id or not client_secret:
-        print("找不到金鑰。先設好環境變數：")
-        print('    $env:TDX_CLIENT_ID = "..."')
-        print('    $env:TDX_CLIENT_SECRET = "..."')
+        print("找不到金鑰。兩種擺法擇一：")
+        print()
+        print(f"  1. 複製 {KEY_FILE.name}.example 成 {KEY_FILE.name} 並填進去")
+        print("     （設一次就好，重開機也還在，flutter build 也讀同一份）")
+        print()
+        print("  2. 環境變數（這個視窗關掉就沒了）：")
+        print('     $env:TDX_CLIENT_ID = "..."')
+        print('     $env:TDX_CLIENT_SECRET = "..."')
         sys.exit(1)
 
     res = requests.post(

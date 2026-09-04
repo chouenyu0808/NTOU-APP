@@ -46,8 +46,9 @@ app/            Flutter 專案（幾乎所有工作都在這）
   lib/src/ui/       畫面
   lib/src/config/   selectors.json —— 所有會因學校改版而爛掉的字串都在這裡
   lib/src/transit/  交通（TDX）—— 跟 AIS 無關，不用登入也能看
-  test/             571 個測試
+  test/             600 個測試
 spike/          Python 探索腳本（有進版控）與真實擷取頁面（fixtures/*.html 不進）
+relay/          TDX 中繼服務（Cloudflare Worker）—— 公開發布時金鑰放這裡，不放 APK
 ```
 
 ## 不進版控的東西
@@ -80,12 +81,18 @@ cd app && flutter test             # 475 個測試
 裝到手機（Android，release 目前借用 debug key 簽章）：
 
 ```bash
-cd app && flutter build apk --release --target-platform android-arm64 --dart-define=TDX_CLIENT_ID=<client id> --dart-define=TDX_CLIENT_SECRET=<client secret>
+cd app && flutter build apk --release --target-platform android-arm64 --dart-define-from-file=../tdx.local.json
 C:\dev\android-sdk\platform-tools\adb.exe install -r app/build/app/outputs/flutter-apk/app-release.apk
 ```
 
-**漏掉那兩個 `--dart-define` 不會有任何錯誤**，交通分頁會安靜地變成
-「交通資訊還沒開通」。金鑰哪裡來、為什麼用這個方式帶，見「交通資料」那節。
+`tdx.local.json` 在 repo 根目錄，**不進版控**（複製 `tdx.local.json.example`
+去填）。本來是用環境變數帶的，但那個每次重開機就沒了 —— 這個檔案設一次
+就一直在，而且 `spike/tdx.py` 讀的是同一份。
+
+**漏掉金鑰不會有任何錯誤**，交通分頁會安靜地變成「交通資訊還沒開通」。
+
+走中繼服務的話**連金鑰都不用**（見 `relay/`），build 指令就是單純的
+`flutter build apk --release --target-platform android-arm64`。
 
 **不要用 `flutter install`。** 它會先 `Uninstalling old version...`，而移除會把
 App 私有儲存整個清掉 —— 預排課表（`PlanStore`，存在 SharedPreferences）、
@@ -103,17 +110,27 @@ App 私有儲存整個清掉 —— 預排課表（`PlanStore`，存在 SharedPr
 政府的公車資料裡。台鐵、基隆市公車、國道客運現在都走 TDX 同一組 API，
 註冊一次全通。
 
-金鑰用 `--dart-define` 在 build 時注入，**不進版控**：
-
-```powershell
-$env:TDX_CLIENT_ID = "..."
-$env:TDX_CLIENT_SECRET = "..."
-```
+金鑰放在根目錄的 `tdx.local.json`（**不進版控**，見 `.gitignore`），
+`flutter build` 用 `--dart-define-from-file` 帶進去，`spike/tdx.py` 也讀同一份。
+環境變數會蓋過檔案，臨時換一把金鑰跑的時候方便。
 
 這不是把 secret 藏起來 —— `--dart-define` 的值會編進 APK，反編譯挖得到。
 TDX 免費金鑰最壞的下場是配額被別人用掉，這個代價收得起；真正該藏的東西
 （學校密碼）走的是 Keystore，不是這條路。值得這樣做的理由只有一個：
 金鑰不會進 git，不會跟著原始碼被推上去。
+
+### 公開發布要走中繼服務（`relay/`）
+
+**問題不是保密，是配額。** TDX 的速率限制綁在金鑰上，不是綁在使用者上 ——
+五百個學生共用同一把金鑰，加起來每秒幾十個請求打在同一把上，不用等到有人
+反編譯，第一天就全部 429。
+
+`relay/` 是一個 Cloudflare Worker：金鑰只在它那一端，App 打它。關鍵是
+**那五個站的資料對所有使用者都是同一份**，所以它快取一份就夠了 ——
+打到 TDX 的請求量跟使用者數量完全無關。
+
+把網址填進 `transit.json` 的 `relay_base_url` 就會走中繼，那時候
+**App 端完全不需要金鑰**。留空就照舊直接打 TDX。兩條路都有測試守著。
 
 `app/assets/transit.json` 跟 `selectors.json` 同樣的用意 —— 端點路徑、
 站牌名、狀態碼對照全在裡面，Dart 裡一個都不寫死。**TDX 的公開 swagger 在
@@ -183,6 +200,58 @@ StopID `309639` 在八條路線上的位置完全一致），而且**認不得�
 **沒有去猜的一件事**：深夜四台車都停在各自路線的最後一站、`A2EventType`
 都是離站 —— 看起來是跑完收班停在場站。但沒有可靠欄位能分辨「停著」和
 「正在營運」（`DutyStatus`、`BusStatus` 全是 0），所以就照實顯示位置，不猜。
+
+### 一個站名 = 兩個站牌，一條路線 = 好幾條子路線
+
+使用者回報「一站海大體育館出現了好多 103」。查詢方式沒錯（`StopName/Zh_tw
+eq '海大體育館'`），是 TDX 回答的顆粒度比「這站有哪些公車」細兩層：
+
+- **按子路線拆**：103 是環狀線，`KEE035501` 和 `KEE035601` 各報一次
+- **一個站名對到兩個實體站牌**：`KEE306429` 和 `KEE306430`，馬路兩邊
+
+2 × 2 = 一條路線四筆。所以到站資料一定要去重，**鍵是（路線名, StopUID）**，
+同一個鍵留最快到的那一筆。海大體育館 15 筆 → 8 筆。
+
+**站牌一定要放進鍵裡。** 那兩個站牌是真的不同方向的兩班車（`KEE306429`
+下一站是海大濱海校門往市區、`KEE306430` 下一站是北寧路往八斗子），
+併掉就等於叫使用者站錯邊，而畫面上完全看不出來。
+
+去重之後同一條路線還是兩列，而且**終點站一樣**（環狀線兩頭都是八斗子車站），
+所以「往哪裡」那欄分不出方向 —— 靠**下一站**才分得出來，畫面上是
+「往 八斗子車站（經 海大濱海校門）」。下一站要另外查站序資料，
+所以**只有同一張卡片上重複出現的路線才去查**（兩邊各 4 條），查過就快取。
+
+### 請求數：三個海大站牌合併成一個請求
+
+那三個站牌打的是同一個端點（`EstimatedTimeOfArrival/City/Keelung`），
+只有站名不同。分開問就是白白多打兩個請求 —— 而這一頁每 30 秒重整一次，
+TDX 會回 429，畫面上五張卡片全變「服務忙碌中」。
+
+現在每次重整是 **3 個請求**（基隆市公車一次、國道客運一次、台鐵一次）。
+合併回來的資料靠站名拆回各自的看板；**只問一個站的時候不拆**，因為
+真要靠站名比對才分得回去的話，哪天 `StopName` 換了形狀，整批資料會
+一筆不剩地消失，而畫面上只是「這幾站都沒有車」。
+
+### 一個站牌可能有兩種來源
+
+海大體育館同時有基隆市公車（103/104/108）和國道客運（首都客運 1579 從圓山
+轉運站直達），而**那是兩個不同的端點**。只設 `kind: city_bus` 的話 1579 永遠
+查不到，畫面上看起來只是「這站沒有這條路線」。所以 `transit.json` 的站可以帶
+`"also": ["intercity_bus"]`。
+
+多問一種來源**不會多打請求** —— 所有站的國道客運查詢會合併成同一個，
+只是 filter 裡多幾個站名。
+
+### 補充資料失敗一定要退避
+
+「往哪裡」和方向標記都是額外查來的。**這兩種查詢失敗時如果不留記錄，
+一次 429 會變成永久的 429**：下一次重整又整輪重問，每 30 秒、每個公車站
+各一次，重試本身把請求量撐在高點，讓 TDX 一直擋，畫面上五張卡片就一直是
+「服務忙碌中」。
+
+它們純粹是錦上添花，到站時間不靠它們 —— 所以失敗就退開五分鐘，
+讓真正重要的那幾個請求有機會過去。使用者手動下拉重整會解除退避，
+那是他明確在說「現在再試一次」。
 
 ### 刷新頻率不要再調快
 

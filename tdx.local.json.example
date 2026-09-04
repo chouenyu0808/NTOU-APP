@@ -1,0 +1,14 @@
+{
+  "_comment": "把這個檔案複製成 tdx.local.json（去掉 .example）並填上你的 TDX 金鑰。tdx.local.json 在 .gitignore 裡，不會進版控。",
+
+  "_why": "本來是用環境變數帶的，但那個每次重開機就沒了，得再去會員中心翻一次金鑰、重設一次、才能 build。這個檔案設一次就一直在。",
+
+  "_who_reads_this": "兩邊都讀它：flutter build 用 --dart-define-from-file 帶進去；spike/tdx.py 在環境變數沒設的時候會退回來讀這裡。所以只要維護這一份。",
+
+  "_build": "cd app; flutter build apk --release --target-platform android-arm64 --dart-define-from-file=../tdx.local.json",
+
+  "_after_relay": "中繼服務上線之後 App 端就不需要金鑰了，build 指令會變回單純的 flutter build apk --release。這個檔案到那時只剩 spike/tdx.py 在用。",
+
+  "TDX_CLIENT_ID": "",
+  "TDX_CLIENT_SECRET": ""
+}

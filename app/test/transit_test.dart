@@ -329,11 +329,13 @@ void main() {
             e as Map<String, dynamic>,
         ];
 
-    test('海大體育館：15 筆裡只有一班真的有車', () async {
+    test('海大體育館：去重之後 8 筆，只有一班真的有車', () async {
       final repo = _repoReturning(rowsOf('ntou-gym.json'));
       final board = await repo.board(_cityBusStop);
 
-      expect(board.buses, hasLength(15));
+      // 原始回應是 15 筆，但那是 TDX 按子路線拆出來的 —— 去重之後
+      // 是 4 條路線 × 馬路兩邊 2 個站牌 = 8 筆。
+      expect(board.buses, hasLength(8));
       final running = board.buses.where((b) => b.estimateSeconds != null);
       expect(running, hasLength(1));
       expect(running.single.routeName, '104');
@@ -387,7 +389,7 @@ void main() {
       final board = await repo.board(_cityBusStop);
 
       final idle = board.buses.where((b) => !b.isRunning);
-      expect(idle, hasLength(14));
+      expect(idle, hasLength(7));
       for (final b in idle) {
         expect(b.stopsAway, 0);
       }
@@ -396,9 +398,9 @@ void main() {
     /// **`IsLastBus` 不是「還會來的末班車」。**
     ///
     /// 它標的是「這個班次是今天最後一班」，跟車還在不在路上無關 ——
-    /// 這份深夜的 fixture 裡 15 筆有 11 筆帶著 true，其中 10 筆是已經
+    /// 這份深夜的 fixture 去重後 8 筆裡有 6 筆帶著 true，其中 5 筆是已經
     /// 開走的（末班已過）。畫面上沒有用 isRunning 擋的話，那張卡片會有
-    /// 十一行同時喊「末班車」。
+    /// 六行同時喊「末班車」。
     ///
     /// 這個測試存在的理由是：那個數字看起來太像 bug，很容易有人「順手
     /// 修好它」，把顯示條件放寬。
@@ -406,7 +408,7 @@ void main() {
       final repo = _repoReturning(rowsOf('ntou-gym.json'));
       final board = await repo.board(_cityBusStop);
 
-      expect(board.buses.where((b) => b.isLastBus), hasLength(11));
+      expect(board.buses.where((b) => b.isLastBus), hasLength(6));
       // 真正該讓使用者看到的只有這一筆：最後一班，而且還沒走。
       final worthShowing =
           board.buses.where((b) => b.isLastBus && b.isRunning);
@@ -434,7 +436,8 @@ void main() {
         kind: TransitStopKind.interCityBus,
       ));
 
-      expect(board.buses, hasLength(53));
+      // 53 筆是按子路線拆的，去重之後 21 筆。
+      expect(board.buses, hasLength(21));
       expect(board.buses.first.estimateSeconds, 1979);
       expect(board.buses.first.routeName, '1813');
     }, skip: skip);
@@ -498,6 +501,221 @@ void main() {
       final board = await repo.board(_trainStop);
       expect(board.trains.single.destination, '樹林');
     });
+
+    /// **使用者實際回報的問題：「一站海大體育館出現了好多 103」。**
+    ///
+    /// TDX 是按子路線拆的：103 是環狀線，有 KEE035501 和 KEE035601 兩條，
+    /// 兩條都經過海大體育館 —— 而「海大體育館」這個站名又對到馬路兩邊
+    /// 兩個實體站牌（KEE306429、KEE306430）。2 × 2 = 同一條路線四筆。
+    test('同一條路線不會在同一個站牌上重複出現', () async {
+      final repo = _repoReturning(rowsOf('ntou-gym.json'));
+      final board = await repo.board(_cityBusStop);
+
+      final seen = <String>{};
+      for (final b in board.buses) {
+        // 同一條路線最多出現兩次（馬路兩邊各一次），但不會四次。
+        seen.add(b.routeName);
+      }
+      expect(seen, {'103', '104', '108', '8021'});
+      final counts = <String, int>{};
+      for (final b in board.buses) {
+        counts[b.routeName] = (counts[b.routeName] ?? 0) + 1;
+      }
+      expect(counts.values, everyElement(lessThanOrEqualTo(2)));
+      expect(counts['103'], 2);
+    }, skip: skip);
+
+    /// **馬路兩邊那兩個站牌不能併掉。**
+    ///
+    /// KEE306429 的下一站是海大濱海校門（往市區），KEE306430 的下一站是
+    /// 北寧路（往八斗子）—— 那是真的不同方向的兩班車。併成一筆就等於
+    /// 叫使用者站錯邊，而畫面上完全看不出來。
+    test('去重的鍵含站牌，不會把馬路兩邊併成一筆', () async {
+      final repo = _repoReturning([
+        {
+          'RouteName': '103',
+          'StopUID': 'KEE306429',
+          'StopName': {'Zh_tw': '海大體育館'},
+          'EstimateTime': 300,
+        },
+        {
+          'RouteName': '103',
+          'StopUID': 'KEE306430',
+          'StopName': {'Zh_tw': '海大體育館'},
+          'EstimateTime': 900,
+        },
+      ]);
+      final board = await repo.board(_cityBusStop);
+
+      expect(board.buses, hasLength(2));
+      expect(board.buses.map((b) => b.estimateSeconds), [300, 900]);
+    });
+
+    /// 同一個站牌同一條路線有好幾筆時，留最快到的那一筆 ——
+    /// 使用者問的是「下一班什麼時候」。
+    test('同站牌同路線留最快到的那一筆', () async {
+      final repo = _repoReturning([
+        {
+          'RouteName': '104',
+          'StopUID': 'KEE306430',
+          'StopName': {'Zh_tw': '海大體育館'},
+          'SubRouteUID': '慢的',
+          'EstimateTime': 900,
+        },
+        {
+          'RouteName': '104',
+          'StopUID': 'KEE306430',
+          'StopName': {'Zh_tw': '海大體育館'},
+          'SubRouteUID': '快的',
+          'EstimateTime': 120,
+        },
+        {
+          'RouteName': '104',
+          'StopUID': 'KEE306430',
+          'StopName': {'Zh_tw': '海大體育館'},
+          'SubRouteUID': '沒車的',
+          'StopStatus': 3,
+        },
+      ]);
+      final board = await repo.board(_cityBusStop);
+
+      expect(board.buses, hasLength(1));
+      expect(board.buses.single.estimateSeconds, 120);
+    });
+
+    /// 三個海大站牌打的是同一個端點，只有站名不同 ——
+    /// 分成三次問就是白白多打兩個請求，而那正是畫面上一直冒
+    /// 「服務忙碌中」的原因（TDX 回 429）。
+    test('同一個城市的市區公車合併成一個請求', () async {
+      final spy = _RecordingAdapter();
+      final repo = _repoWith(spy);
+
+      await repo.boards(const [
+        TransitStop(id: 'a', name: '海大體育館', kind: TransitStopKind.cityBus),
+        TransitStop(id: 'b', name: '海大濱海校門', kind: TransitStopKind.cityBus),
+        TransitStop(id: 'c', name: '海大祥豐校門', kind: TransitStopKind.cityBus),
+      ]);
+
+      expect(spy.dataRequests, 1);
+      final filter = spy.lastDataRequest!.queryParameters[r'$filter'] as String;
+      expect(filter, contains('海大體育館'));
+      expect(filter, contains('海大濱海校門'));
+      expect(filter, contains('海大祥豐校門'));
+    });
+
+    /// 合併回來的資料要照站名分回各自的看板，不能三張卡片都放全部。
+    test('合併的回應會照站名拆回各自的看板', () async {
+      final repo = _repoReturning([
+        {
+          'RouteName': '103',
+          'StopUID': 'A',
+          'StopName': {'Zh_tw': '海大體育館'},
+          'EstimateTime': 60,
+        },
+        {
+          'RouteName': '104',
+          'StopUID': 'B',
+          'StopName': {'Zh_tw': '海大濱海校門'},
+          'EstimateTime': 120,
+        },
+      ]);
+
+      final boards = await repo.boards(const [
+        TransitStop(id: 'a', name: '海大體育館', kind: TransitStopKind.cityBus),
+        TransitStop(id: 'b', name: '海大濱海校門', kind: TransitStopKind.cityBus),
+      ]);
+
+      expect(boards[0].buses.single.routeName, '103');
+      expect(boards[1].buses.single.routeName, '104');
+    });
+
+    /// **這是使用者那個問題的完整解法。**
+    ///
+    /// 「海大體育館」對到馬路兩邊兩個站牌，103 在兩邊都停。去重之後還是
+    /// 兩列，而且**終點站都是八斗子車站**（環狀線），所以光看終點分不出
+    /// 誰往哪。分得出來的是下一站：
+    ///
+    ///   KEE306429 → 海大濱海校門（往市區）
+    ///   KEE306430 → 北寧路(九八八餐廳)（往八斗子）
+    ///
+    /// 這兩個名字是拿真實的站序資料（route-103-stops.json）算出來的，
+    /// 不是寫死的。
+    test('馬路兩邊的 103 靠下一站分得出方向', () async {
+      final dio = Dio()
+        ..httpClientAdapter = _CannedAdapter(
+          rows: rowsOf('ntou-gym.json'),
+          stopsOfRoute: rowsOf('route-103-stops.json'),
+        );
+      final repo = TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: dio,
+        ),
+      );
+      final board = await repo.board(_cityBusStop);
+
+      final r103 = board.buses.where((b) => b.routeName == '103').toList();
+      expect(r103, hasLength(2));
+      expect(
+        r103.map((b) => b.nextStop).toSet(),
+        {'海大濱海校門', '北寧路(九八八餐廳)'},
+      );
+    }, skip: skip);
+
+    /// 站序的回應很大（103 兩條子路線就 132 個站牌），所以**只有需要分辨
+    /// 方向的路線才去查**，而且查過就快取。
+    test('站序只查需要分辨方向的路線，而且只查一次', () async {
+      final spy = _CannedAdapter(
+        rows: rowsOf('ntou-gym.json'),
+        stopsOfRoute: rowsOf('route-103-stops.json'),
+      );
+      final repo = TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: Dio()..httpClientAdapter = spy,
+        ),
+      );
+
+      await repo.board(_cityBusStop);
+      await repo.board(_cityBusStop);
+      await repo.board(_cityBusStop);
+
+      // 四條路線都需要分辨方向，但它們是**一個請求**問完的，而且只問一次。
+      expect(spy.stopsOfRouteCalls, 1);
+    }, skip: skip);
+
+    /// 站序抓不到就只是少了方向標記 —— 到站時間還在。
+    /// 而且**不能每次重整都再問一遍**，一次 429 會變成每半分鐘再撞一次。
+    test('站序抓不到時，到站時間照常，而且不會一直重問', () async {
+      final spy = _CannedAdapter(
+        rows: rowsOf('ntou-gym.json'),
+        stopsOfRoute: const [],
+      );
+      final repo = TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: Dio()..httpClientAdapter = spy,
+        ),
+      );
+
+      final board = await repo.board(_cityBusStop);
+      await repo.board(_cityBusStop);
+      await repo.board(_cityBusStop);
+
+      expect(board.error, isNull);
+      expect(board.buses.where((b) => b.isRunning).single.estimateSeconds, 725);
+      expect(board.buses.every((b) => b.nextStop.isEmpty), isTrue);
+      expect(spy.stopsOfRouteCalls, 1);
+    }, skip: skip);
 
     /// 查不到路線資料時終點留白，**絕不把 StopID 當站名顯示**。
     ///
@@ -1049,6 +1267,303 @@ void main() {
     });
   });
 
+  group('走中繼服務', () {
+    /// 公開發布的版本走中繼：金鑰只在中繼那一端，App 裡沒有也不該有。
+    ///
+    /// 中繼會快取 —— 那五個站的資料對所有使用者都是同一份，所以打到 TDX 的
+    /// 請求量跟使用者數量無關。這是它存在的理由，不是順便的最佳化。
+    final relay = TransitConfig.fromJson({
+      'auth': {'token_url': 'https://example.invalid/token'},
+      'api': {
+        'base_url': 'https://tdx.transportdata.tw/api/basic/',
+        'relay_base_url': 'https://relay.example.invalid/',
+        'min_interval_seconds': 0,
+        'timeout_seconds': 0,
+        'city_bus_arrivals': 'v2/Bus/EstimatedTimeOfArrival/City/{city}',
+        'city_bus_filter': "StopName/Zh_tw eq '{name}'",
+      },
+      'stops': const [],
+    });
+
+    TdxClient clientWith(HttpClientAdapter adapter, {TransitConfig? config}) =>
+        TdxClient(
+          config: config ?? relay,
+          // **故意不給金鑰。** 這就是公開版本的樣子。
+          clientId: '',
+          clientSecret: '',
+          dio: Dio()..httpClientAdapter = adapter,
+        );
+
+    test('設定了中繼就算「已開通」，不需要金鑰', () {
+      expect(clientWith(_RecordingAdapter()).isConfigured, isTrue);
+      // 沒有中繼又沒有金鑰才是真的沒開通。
+      expect(clientWith(_RecordingAdapter(), config: _config).isConfigured,
+          isFalse);
+    });
+
+    test('請求打到中繼，不是直接打 TDX', () async {
+      final spy = _RecordingAdapter();
+      await clientWith(spy).get(
+        relay.endpoint('city_bus_arrivals', city: 'Keelung'),
+      );
+
+      final uri = spy.lastDataRequest!.uri;
+      expect(uri.host, 'relay.example.invalid');
+      expect(uri.path, contains('v2/Bus/EstimatedTimeOfArrival/City/Keelung'));
+    });
+
+    /// **走中繼時完全不碰 token 端點。** App 裡沒有金鑰，換不到也不該換 ——
+    /// 真的去打的話只會拿到 400，而畫面上會變成「金鑰被拒絕」，
+    /// 把一個設定正確的 App 講成壞掉的。
+    test('不去換 token，也不帶 authorization', () async {
+      final spy = _RecordingAdapter();
+      await clientWith(spy).get(
+        relay.endpoint('city_bus_arrivals', city: 'Keelung'),
+      );
+
+      expect(spy.tokenRequests, 0);
+      expect(spy.lastDataRequest!.headers.containsKey('authorization'), isFalse);
+    });
+
+    test('OData 參數照樣送出去，中繼是透明的', () async {
+      final spy = _RecordingAdapter();
+      await clientWith(spy).get(
+        relay.endpoint('city_bus_arrivals', city: 'Keelung'),
+        query: {r'$filter': "StopName/Zh_tw eq '海大體育館'", r'$top': '80'},
+      );
+
+      final q = spy.lastDataRequest!.queryParameters;
+      expect(q[r'$filter'], contains('海大體育館'));
+      expect(q[r'$top'], '80');
+      expect(q[r'$format'], 'JSON');
+    });
+
+    /// 設定檔是人寫的，少一條斜線的話網址會黏成
+    /// `https://relay.example.invalidv2/Bus/...` —— 畫面上是
+    /// 「連不上交通資料服務」，完全看不出是少了一個字元。
+    test('中繼網址少了結尾斜線也接得對', () {
+      final c = TransitConfig.fromJson({
+        'api': {'relay_base_url': 'https://relay.example.invalid'},
+      });
+      expect(c.relayBaseUrl, 'https://relay.example.invalid/');
+      expect(c.usesRelay, isTrue);
+    });
+
+    test('沒填中繼就是直接打 TDX，行為跟以前一樣', () {
+      expect(_config.usesRelay, isFalse);
+      expect(_config.relayBaseUrl, isEmpty);
+    });
+
+    /// 中繼回 503 代表那一端忘了設金鑰。這不是使用者能處理的事，
+    /// 但重新整理是對的第一步，而且訊息裡不能出現任何內部細節。
+    test('中繼沒設金鑰時給的話裡沒有網址也沒有內部訊息', () async {
+      final spy = _RecordingAdapter(status: 503);
+      Object? caught;
+      try {
+        await clientWith(spy)
+            .get(relay.endpoint('city_bus_arrivals', city: 'Keelung'));
+      } catch (e) {
+        caught = e;
+      }
+
+      expect(caught, isA<TransitUnavailable>());
+      expect(caught.toString(), isNot(contains('relay.example.invalid')));
+    });
+  });
+
+  group('一個站問兩個來源', () {
+    /// **使用者回報 1579 沒出現在海大體育館。**
+    ///
+    /// 那不是 bug 是設定：1579 是首都客運的國道客運，資料在
+    /// `EstimatedTimeOfArrival/InterCity`，而海大體育館原本只被設定成
+    /// 「基隆市公車」—— 只問前者的話 1579 永遠查不到，而畫面上看起來
+    /// 只是「這站沒有這條路線」，看不出是設定漏了。
+    const gym = TransitStop(
+      id: 'ntou-gym',
+      name: '海大體育館',
+      kind: TransitStopKind.cityBus,
+      extraKinds: [TransitStopKind.interCityBus],
+    );
+
+    TransitRepository repoWith(_CannedAdapter adapter) => TransitRepository(
+          config: _config,
+          client: TdxClient(
+            config: _config,
+            clientId: 'id',
+            clientSecret: 'secret',
+            dio: Dio()..httpClientAdapter = adapter,
+          ),
+        );
+
+    test('市區公車和國道客運的車會合在同一張看板上', () async {
+      final spy = _CannedAdapter(
+        rows: const [
+          {
+            'RouteName': '103',
+            'StopUID': 'A',
+            'StopName': {'Zh_tw': '海大體育館'},
+            'EstimateTime': 600,
+          },
+        ],
+      )..intercityRows = const [
+          {
+            'RouteName': '1579',
+            'StopUID': 'B',
+            'StopName': {'Zh_tw': '海大體育館'},
+            'EstimateTime': 120,
+          },
+        ];
+
+      final boards = await repoWith(spy).boards(const [gym]);
+
+      expect(boards.single.buses.map((b) => b.routeName), ['1579', '103']);
+      // 兩個來源各一個請求，而且都真的打了。
+      expect(spy.intercityCalls, 1);
+    });
+
+    test('只有一個來源有車也照樣顯示，不會變成錯誤卡片', () async {
+      final spy = _CannedAdapter(rows: const [])
+        ..intercityRows = const [
+          {
+            'RouteName': '1579',
+            'StopUID': 'B',
+            'StopName': {'Zh_tw': '海大體育館'},
+            'EstimateTime': 120,
+          },
+        ];
+
+      final boards = await repoWith(spy).boards(const [gym]);
+
+      expect(boards.single.error, isNull);
+      expect(boards.single.buses.single.routeName, '1579');
+    });
+
+    /// 三個海大站牌的國道客運查詢會跟基隆轉運站那次合併 ——
+    /// **多問一種來源不該多打請求**，那是這個設計成立的前提。
+    test('多個站的國道客運查詢合併成一個請求', () async {
+      final spy = _CannedAdapter(rows: const []);
+      await repoWith(spy).boards(const [
+        gym,
+        TransitStop(
+          id: 'b',
+          name: '海大濱海校門',
+          kind: TransitStopKind.cityBus,
+          extraKinds: [TransitStopKind.interCityBus],
+        ),
+        TransitStop(
+          id: 'c',
+          name: '基隆轉運站',
+          kind: TransitStopKind.interCityBus,
+        ),
+      ]);
+
+      // 市區公車一個、國道客運一個，總共兩個 —— 不是三個站各一個。
+      expect(spy.intercityCalls, 1);
+      expect(spy.dataCalls, 2);
+    });
+  });
+
+  group('補充資料失敗要退避', () {
+    /// **這是把一次 429 拖成永久 429 的那個洞。**
+    ///
+    /// 「往哪裡」和方向標記都是額外查來的。原本失敗就直接放棄、不留記錄，
+    /// 所以下一次重整又整輪重問 —— 每 30 秒、每個公車站各一次。TDX 一旦
+    /// 開始擋，重試本身就把請求量撐在高點，讓它停不下來，畫面上五張卡片
+    /// 就一直是「服務忙碌中」。
+    ///
+    /// 這兩份資料純粹是錦上添花，到站時間不靠它們，所以失敗就退開幾分鐘。
+    test('路線查詢失敗之後不會每次重整都再撞一次', () async {
+      final spy = _CannedAdapter(
+        rows: const [
+          {
+            'RouteName': '103',
+            'RouteUID': 'KEE0355',
+            'StopUID': 'A',
+            'StopName': {'Zh_tw': '海大體育館'},
+            'EstimateTime': 600,
+          },
+        ],
+      )..routeStatus = 429;
+
+      final repo = TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: Dio()..httpClientAdapter = spy,
+        ),
+      );
+
+      await repo.board(_cityBusStop);
+      await repo.board(_cityBusStop);
+      await repo.board(_cityBusStop);
+
+      expect(spy.routeCalls, 1, reason: '失敗之後還在重問，429 會停不下來');
+    });
+
+    /// 到站時間才是使用者要看的東西 —— 補充資料掛掉不能連累它。
+    test('補充資料失敗時，到站時間照常顯示', () async {
+      final spy = _CannedAdapter(
+        rows: const [
+          {
+            'RouteName': '103',
+            'RouteUID': 'KEE0355',
+            'StopUID': 'A',
+            'StopName': {'Zh_tw': '海大體育館'},
+            'EstimateTime': 600,
+          },
+        ],
+      )..routeStatus = 429;
+
+      final repo = TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: Dio()..httpClientAdapter = spy,
+        ),
+      );
+      final board = await repo.board(_cityBusStop);
+
+      expect(board.error, isNull);
+      expect(board.buses.single.estimateSeconds, 600);
+      expect(board.buses.single.destination, isEmpty);
+    });
+
+    /// 使用者自己下拉重整是明確在說「現在再試一次」，那就該解除退避。
+    test('手動重整會解除退避', () async {
+      final spy = _CannedAdapter(
+        rows: const [
+          {
+            'RouteName': '103',
+            'RouteUID': 'KEE0355',
+            'StopUID': 'A',
+            'StopName': {'Zh_tw': '海大體育館'},
+            'EstimateTime': 600,
+          },
+        ],
+      )..routeStatus = 429;
+
+      final repo = TransitRepository(
+        config: _config,
+        client: TdxClient(
+          config: _config,
+          clientId: 'id',
+          clientSecret: 'secret',
+          dio: Dio()..httpClientAdapter = spy,
+        ),
+      );
+
+      await repo.board(_cityBusStop);
+      repo.retryExtrasNow();
+      await repo.board(_cityBusStop);
+
+      expect(spy.routeCalls, 2);
+    });
+  });
+
   group('金鑰不外洩', () {
     test('沒設定金鑰時是 TdxNotConfigured，畫面才分得出要顯示引導', () async {
       final client = TdxClient(
@@ -1189,9 +1704,24 @@ class _CannedAdapter implements HttpClientAdapter {
   final List<Map<String, dynamic>> stopsOfRoute;
   final List<Map<String, dynamic>> realtime;
 
+  /// 國道客運的到站資料。
+  ///
+  /// **沒設定的話退回用 [rows]** —— 大部分測試只關心「到站端點回什麼」，
+  /// 不在乎是市區還是國道。要驗「一個站同時問兩個來源、兩邊的車有沒有
+  /// 合起來」的時候才需要把兩邊分開。
+  List<Map<String, dynamic>>? intercityRows;
+
+  /// 路線端點要回的狀態碼。用 429 來驗退避。
+  int routeStatus = 200;
+
+  int intercityCalls = 0;
+
   /// 這兩個端點各被打了幾次。站序有快取、車的位置沒有，看這個分辨。
   int stopsOfRouteCalls = 0;
   int realtimeCalls = 0;
+
+  /// 資料端點總共被打了幾次（token 不算）。合併有沒有生效看這個。
+  int dataCalls = 0;
 
   /// 路線資料（起訖站）。「往哪裡」是從這裡補上的。
   final List<Map<String, dynamic>> routes;
@@ -1206,6 +1736,7 @@ class _CannedAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     String body;
+    if (!options.path.contains('token')) dataCalls++;
     if (options.path.contains('token')) {
       body = jsonEncode({
         'access_token': 'fake-token',
@@ -1218,8 +1749,20 @@ class _CannedAdapter implements HttpClientAdapter {
     } else if (options.path.contains('RealTimeNearStop')) {
       realtimeCalls++;
       body = jsonEncode(realtime);
+    } else if (options.path.contains('EstimatedTimeOfArrival/InterCity')) {
+      intercityCalls++;
+      body = jsonEncode(intercityRows ?? rows);
     } else if (options.path.contains('Bus/Route')) {
       routeCalls++;
+      if (routeStatus != 200) {
+        return ResponseBody.fromString(
+          jsonEncode(const []),
+          routeStatus,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      }
       body = jsonEncode(routes);
     } else if (options.path.contains('TRA/Station') &&
         !options.path.contains('LiveBoard')) {
@@ -1301,7 +1844,18 @@ class _TimingAdapter implements HttpClientAdapter {
 ///
 /// token 那次不算 —— 我們要看的是資料端點帶了什麼查詢參數。
 class _RecordingAdapter implements HttpClientAdapter {
+  _RecordingAdapter({this.status = 200});
+
+  /// 資料端點要回什麼狀態碼。
+  final int status;
+
   RequestOptions? lastDataRequest;
+
+  /// 資料端點被打了幾次（token 那次不算）。合併有沒有生效看這個。
+  int dataRequests = 0;
+
+  /// token 端點被打了幾次。走中繼的時候這個必須是 0。
+  int tokenRequests = 0;
 
   @override
   Future<ResponseBody> fetch(
@@ -1310,12 +1864,17 @@ class _RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     final isToken = options.path.contains('token');
-    if (!isToken) lastDataRequest = options;
+    if (isToken) {
+      tokenRequests++;
+    } else {
+      dataRequests++;
+      lastDataRequest = options;
+    }
     return ResponseBody.fromString(
       isToken
           ? jsonEncode({'access_token': 'fake-token', 'expires_in': 86400})
           : jsonEncode(const []),
-      200,
+      isToken ? 200 : status,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },

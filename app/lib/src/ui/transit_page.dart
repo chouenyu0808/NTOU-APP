@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../transit/tdx_client.dart';
 import '../transit/transit_config.dart';
 import '../transit/transit_models.dart';
-import '../storage/favorite_route_store.dart';
+import '../storage/transit_prefs_store.dart';
 import '../transit/transit_repository.dart';
 import 'route_page.dart';
 import 'theme.dart';
@@ -22,7 +22,7 @@ class TransitPage extends StatefulWidget {
   const TransitPage({
     super.key,
     this.repository,
-    this.favorites,
+    this.prefs,
     this.isActive = true,
     this.autoRefresh = const Duration(seconds: 30),
   });
@@ -30,8 +30,9 @@ class TransitPage extends StatefulWidget {
   /// 測試會注入一個假的。正式執行時是 null，開頁的時候自己建。
   final TransitRepository? repository;
 
-  /// 最愛路線存哪裡。測試注入一個吃假 SharedPreferences 的。
-  final FavoriteRouteStore? favorites;
+  /// 本機偏好（最愛路線、收起來的站牌）存哪裡。
+  /// 測試注入一個吃假 SharedPreferences 的。
+  final TransitPrefsStore? prefs;
 
   /// 使用者現在是不是正在看這一頁。
   ///
@@ -49,9 +50,14 @@ class TransitPage extends StatefulWidget {
 
 class _TransitPageState extends State<TransitPage> {
   TransitRepository? _repo;
-  late final FavoriteRouteStore _favStore =
-      widget.favorites ?? FavoriteRouteStore();
+  late final TransitPrefsStore _prefs = widget.prefs ?? TransitPrefsStore();
   Set<String> _favorites = const {};
+
+  /// 被收起來的站牌 id。
+  ///
+  /// 五張卡片攤開來要捲很久，而大部分人只固定看其中一兩站 ——
+  /// 收起來之後那些站只剩一行標題，需要的時候再點開。
+  Set<String> _collapsed = const {};
   List<StopBoard> _boards = const [];
   bool _loading = true;
   bool _configured = true;
@@ -114,7 +120,7 @@ class _TransitPageState extends State<TransitPage> {
     // 它是本機的東西，跟公車時間毫無關係 —— 讀它讀得慢或讀不到的時候，
     // 使用者要看的到站時間不該跟著一起等。所以這裡不 await，
     // 讀到了再把愛心補上去就好。
-    unawaited(_loadFavorites());
+    unawaited(_loadPrefs());
 
     try {
       var repo = widget.repository;
@@ -147,13 +153,17 @@ class _TransitPageState extends State<TransitPage> {
     }
   }
 
-  Future<void> _loadFavorites() async {
+  Future<void> _loadPrefs() async {
     try {
-      final favs = await _favStore.read();
-      if (!mounted || favs.isEmpty) return;
-      setState(() => _favorites = favs);
+      final favs = await _prefs.readFavorites();
+      final collapsed = await _prefs.readCollapsed();
+      if (!mounted || (favs.isEmpty && collapsed.isEmpty)) return;
+      setState(() {
+        _favorites = favs;
+        _collapsed = collapsed;
+      });
     } catch (_) {
-      // 讀不到就當作沒有釘過任何路線。這一頁照常能用。
+      // 讀不到就當作沒有釘過、也沒有收過。這一頁照常能用。
     }
   }
 
@@ -177,7 +187,7 @@ class _TransitPageState extends State<TransitPage> {
   Future<void> _toggleFavorite(String route) async {
     if (route.isEmpty) return;
     try {
-      final next = await _favStore.toggle(route);
+      final next = await _prefs.toggleFavorite(route);
       if (!mounted) return;
       setState(() => _favorites = next);
     } catch (_) {
@@ -185,15 +195,32 @@ class _TransitPageState extends State<TransitPage> {
     }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _toggleCollapsed(String stopId) async {
+    // 先動畫面再寫檔 —— 收合是即時的動作，等儲存回來才收會卡一下。
+    setState(() {
+      final next = {..._collapsed};
+      if (!next.remove(stopId)) next.add(stopId);
+      _collapsed = next;
+    });
+    try {
+      await _prefs.toggleCollapsed(stopId);
+    } catch (_) {
+      // 存不進去就只是下次開 App 又展開，不值得跳錯誤訊息。
+    }
+  }
+
+  /// [manual] 是使用者自己按的（下拉或按重新整理鈕），不是計時器。
+  ///
+  /// 手動的時候要把補充資料的退避解除 —— 那是他明確在說「現在再試一次」。
+  Future<void> _refresh({bool manual = false}) async {
     final repo = _repo;
     if (repo == null || !_configured) return;
+    if (manual) repo.retryExtrasNow();
 
-    // 五個站同時發，不要一個等一個 —— 排隊是 TdxClient 內部在管的，
-    // 這裡串起來只會讓使用者多等四倍。
-    final boards = await Future.wait([
-      for (final stop in repo.config.stops) repo.board(stop),
-    ]);
+    // 整批交給 repository —— 同一個城市的市區公車會被合併成一個請求。
+    // 海大那三個站牌打的是同一個端點，分開問等於白白多打兩個請求，
+    // 而那正是畫面上一直冒「服務忙碌中」的原因。
+    final boards = await repo.boards(repo.config.stops);
     if (!mounted) return;
     setState(() {
       _boards = boards;
@@ -211,7 +238,7 @@ class _TransitPageState extends State<TransitPage> {
             IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: '重新整理',
-              onPressed: _refresh,
+              onPressed: () => _refresh(manual: true),
             ),
         ],
       ),
@@ -228,7 +255,7 @@ class _TransitPageState extends State<TransitPage> {
     if (!_configured) return const _SetupGuide();
 
     return RefreshIndicator(
-      onRefresh: _refresh,
+      onRefresh: () => _refresh(manual: true),
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         physics: const AlwaysScrollableScrollPhysics(),
@@ -241,6 +268,9 @@ class _TransitPageState extends State<TransitPage> {
                 board: _boards[i - 1],
                 config: _repo!.config,
                 favorites: _favorites,
+                isCollapsed: _collapsed.contains(_boards[i - 1].stop.id),
+                onToggleCollapsed: () =>
+                    _toggleCollapsed(_boards[i - 1].stop.id),
                 onToggleFavorite: _toggleFavorite,
                 onOpenRoute: (route) => _openRoute(_boards[i - 1], route),
               ),
@@ -255,6 +285,8 @@ class _StopCard extends StatelessWidget {
     required this.board,
     required this.config,
     this.favorites = const {},
+    this.isCollapsed = false,
+    this.onToggleCollapsed,
     this.onToggleFavorite,
     this.onOpenRoute,
   });
@@ -262,6 +294,10 @@ class _StopCard extends StatelessWidget {
   final StopBoard board;
   final TransitConfig config;
   final Set<String> favorites;
+
+  /// 這張卡片收起來了 —— 只留標題那一行。
+  final bool isCollapsed;
+  final VoidCallback? onToggleCollapsed;
   final void Function(String route)? onToggleFavorite;
   final void Function(String route)? onOpenRoute;
 
@@ -273,37 +309,95 @@ class _StopCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Row(
-              children: [
-                Icon(_icon, size: 20, color: scheme.primary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        board.stop.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      if (note != null)
+          // 整個標題列都可以點來收合 —— 觸控目標愈大愈好，
+          // 不要逼使用者去戳右邊那個小箭頭。
+          InkWell(
+            onTap: onToggleCollapsed,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+              child: Row(
+                children: [
+                  Icon(_icon, size: 20, color: scheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          note,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: scheme.onSurfaceVariant),
+                          board.stop.name,
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                    ],
+                        // 收起來的時候備註也一起收 —— 那一行是兩行字，
+                        // 留著的話「收合」省不到多少高度。
+                        if (note != null && !isCollapsed)
+                          Text(
+                            note,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        // 收起來之後看不到內容，所以標題底下補一句摘要，
+                        // 讓人不用展開就知道這站現在有沒有車。
+                        if (isCollapsed)
+                          Text(
+                            _summary,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  if (onToggleCollapsed != null)
+                    Icon(
+                      isCollapsed ? Icons.expand_more : Icons.expand_less,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                ],
+              ),
             ),
           ),
-          const Divider(height: 1),
-          _content(context, scheme),
+          if (!isCollapsed) ...[
+            const Divider(height: 1),
+            _content(context, scheme),
+          ],
         ],
       ),
     );
+  }
+
+  /// 收起來的時候標題底下那一句。
+  ///
+  /// **收合最怕的是把資訊藏掉之後就看不出「還要不要展開」。** 所以這裡講的
+  /// 是最少但足夠的一件事：現在有沒有車、最快的那班還有多久。
+  String get _summary {
+    final error = board.error;
+    if (error != null) return error;
+
+    final trains = board.trains;
+    if (trains.isNotEmpty) return '${trains.length} 班列車';
+
+    final running = board.buses.where((b) => b.isRunning).toList();
+    if (running.isEmpty) {
+      return board.buses.isEmpty ? '目前沒有班次資訊' : '目前沒有車在路上';
+    }
+    final soonest = running.first;
+    final label = ArrivalLabel.of(
+      soonest.estimateSeconds,
+      soonest.stopStatus,
+      config.stopStatus,
+    );
+    return '${running.length} 班在路上 · 最快 ${soonest.routeName} ${label.text}';
+  }
+
+  /// 每條路線在這張卡片上出現幾次。
+  ///
+  /// 出現不只一次 = 馬路兩邊的兩個站牌都停這條路線。那兩列的終點站是一樣的
+  /// （103 是環狀線），所以得額外標出方向，否則看起來一模一樣。
+  Map<String, int> get _routeCounts {
+    final counts = <String, int>{};
+    for (final b in board.buses) {
+      counts[b.routeName] = (counts[b.routeName] ?? 0) + 1;
+    }
+    return counts;
   }
 
   /// 釘起來的路線排最前面，其餘照到站時間。
@@ -349,6 +443,7 @@ class _StopCard extends StatelessWidget {
           _BusRow(
             arrival: b,
             config: config,
+            needsDirection: (_routeCounts[b.routeName] ?? 0) > 1,
             isFavorite: favorites.contains(b.routeName),
             onToggleFavorite: onToggleFavorite,
             onOpenRoute: onOpenRoute,
@@ -373,6 +468,7 @@ class _BusRow extends StatelessWidget {
   const _BusRow({
     required this.arrival,
     required this.config,
+    this.needsDirection = false,
     this.isFavorite = false,
     this.onToggleFavorite,
     this.onOpenRoute,
@@ -380,9 +476,28 @@ class _BusRow extends StatelessWidget {
 
   final BusArrival arrival;
   final TransitConfig config;
+
+  /// 這條路線在同一張卡片上出現不只一次，得標出方向才分得開。
+  final bool needsDirection;
   final bool isFavorite;
   final void Function(String route)? onToggleFavorite;
   final void Function(String route)? onOpenRoute;
+
+  /// 「往哪裡」那一行。
+  ///
+  /// 平常就是終點站。**但同一條路線在這張卡片上出現兩次的時候，終點站分不出
+  /// 方向** —— 103 是環狀線，馬路兩邊的車終點都是八斗子車站。那時候補上
+  /// 下一站：一邊「經 海大濱海校門」（往市區），一邊「經 北寧路」
+  /// （往八斗子），使用者才知道要站哪一邊。
+  ///
+  /// 連終點都查不到時，下一站就是唯一的線索，直接拿它當方向講。
+  String get _towards {
+    final to = arrival.destination;
+    final next = arrival.nextStop;
+    if (to.isEmpty) return next.isEmpty ? '' : '往 $next 方向';
+    if (needsDirection && next.isNotEmpty) return '往 $to（經 $next）';
+    return '往 $to';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -427,9 +542,9 @@ class _BusRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (arrival.destination.isNotEmpty)
+                  if (_towards.isNotEmpty)
                     Text(
-                      '往 ${arrival.destination}',
+                      _towards,
                       style: Theme.of(context).textTheme.bodyMedium,
                       overflow: TextOverflow.ellipsis,
                     ),

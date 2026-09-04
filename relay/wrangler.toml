@@ -1,0 +1,15 @@
+name = "ntou-tdx-relay"
+main = "worker.js"
+compatibility_date = "2026-09-04"
+
+# 金鑰**不寫在這裡**。這個檔案進版控，secret 用指令放：
+#
+#     npx wrangler secret put TDX_CLIENT_ID
+#     npx wrangler secret put TDX_CLIENT_SECRET
+#
+# 它們會存在 Cloudflare 那邊，以 env.TDX_CLIENT_ID / env.TDX_CLIENT_SECRET
+# 的形式進到 worker 裡，不會出現在原始碼、也不會出現在 App 裡。
+# 這才是跟 --dart-define 真正的差別 —— 那個會編進 APK，這個不會。
+
+[observability]
+enabled = true
