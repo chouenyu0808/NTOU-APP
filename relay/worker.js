@@ -54,17 +54,25 @@ const ALLOWED_PREFIXES = [
 /**
  * 快取多久（秒）。
  *
- * 30 秒不是隨便訂的：台鐵的回應外層自己帶著 `UpdateInterval: 30`、
- * `SrcUpdateInterval: 60` —— **資料在 TDX 端每 30 秒才換一次**。快取短於
- * 這個只會把同一份資料重抓幾次，畫面上的數字一個都不會提早變。
+ * **這張表的數字是被 TDX 的速率限制決定的，不是被資料新鮮度決定的。**
+ * 見下面 [UPSTREAM_PER_MINUTE]：免費金鑰每分鐘只准 5 個請求。
+ *
+ * 原本到站類全部設 30 秒，理由是台鐵回應外層帶著 `UpdateInterval: 30`
+ * —— 資料在 TDX 端每 30 秒才換一次，快取短於這個只是重抓同一份。那個
+ * 推論本身沒錯，錯在只算了「會不會抓到舊資料」，沒算「一分鐘會打幾次」：
+ * App 每 30 秒問三個到站端點，30 秒的快取等於每次都沒中，穩定 6 次／分鐘
+ * —— **光是把交通分頁開著就一定會超過，每分鐘至少一個請求被回 429。**
+ *
+ * 所以到站類改成 60 秒（3 次／分鐘），台鐵看板 120 秒。看板現在只拿來
+ * 補誤點分鐘數（班次本身走時刻表），誤點兩分鐘更新一次綽綽有餘。
  *
  * 站序和路線資料一天才變一次，可以放很久。它們也是回應最大的（103 兩條
  * 子路線就 132 個站牌），快取久一點省最多。
  */
 const TTL = [
-  [/EstimatedTimeOfArrival/, 30],
-  [/RealTimeNearStop/, 30],
-  [/StationLiveBoard/, 30],
+  [/EstimatedTimeOfArrival/, 60],
+  [/RealTimeNearStop/, 60],
+  [/StationLiveBoard/, 120],
   [/StopOfRoute/, 21600], // 6 小時
   [/Bus\/Route/, 21600],
   [/Bus\/Stop/, 21600],
@@ -81,6 +89,33 @@ const DEFAULT_TTL = 60;
  * 太舊的資料比沒有資料更危險。
  */
 const STALE_TTL = 600;
+
+/**
+ * 一分鐘可以打幾個請求到 TDX。
+ *
+ * **這是量出來的，不是估的。** 2026-09-05 打 `v2/Bus/StopOfRoute/InterCity`
+ * 回應的 header：`X-RateLimit-Limit-Minute = 5`、`RateLimit-Reset = 48`。
+ * 免費金鑰是**每分鐘 5 個**，不是常見的每秒幾十個 —— 這個數字小到會改變
+ * 整個設計，快取 TTL（見 [TTL]）就是照它訂的。
+ *
+ * 額度用完的時候寧可給備胎也不要打過去。這不只是省一次失敗的請求，
+ * 更重要的是**把額度留給沒有備胎可給的請求**：每 30 秒重整一次的到站資料
+ * 手上一定有舊的一份，而使用者第一次點進一條路線時，那條路線的站序
+ * 是真的一份都沒有 —— 打不到就是一整頁空白。
+ *
+ * 但書：這個計數在 isolate 的記憶體裡，Cloudflare 有好幾個 isolate 就會
+ * 各算各的。它是一層減壓閥，不是一個保證 —— 真的超過還有 STALE 那條路。
+ */
+const UPSTREAM_PER_MINUTE = 5;
+
+/** 最近一分鐘打出去的時間點。see [UPSTREAM_PER_MINUTE]。 */
+const upstreamAt = [];
+
+function upstreamBudgetLeft() {
+  const now = Date.now();
+  while (upstreamAt.length && now - upstreamAt[0] > 60_000) upstreamAt.shift();
+  return UPSTREAM_PER_MINUTE - upstreamAt.length;
+}
 
 /** 只讓這幾個查詢參數通過。其餘一律丟掉。 */
 const ALLOWED_PARAMS = new Set(['$filter', '$top', '$format', '$select', '$orderby']);
@@ -168,8 +203,12 @@ export default {
  * ## 這不會增加打到 TDX 的量
  *
  * 每一份還是走 [serveOne]、用**同一組快取鍵** —— 所以 batch 和單獨查詢是
- * 共用快取的，打到 TDX 的請求量完全不變（還是每 30 秒 3 個）。
- * 這裡省的是 Worker 自己的請求數，不是 TDX 的。
+ * 共用快取的，打到 TDX 的請求量完全不變。這裡省的是 Worker 自己的請求數
+ * （Cloudflare 每天十萬那個額度），不是 TDX 的。
+ *
+ * **反過來說它也不會替 TDX 省。** 這裡是 `Promise.all`，一批三個就是
+ * 平行三個 [serveOne] —— 在 [UPSTREAM_PER_MINUTE] 眼裡一次吃掉三個額度，
+ * 是這個服務單次最大的消費者。
  *
  * ## 格式
  *
@@ -242,8 +281,20 @@ async function serveOne(path, searchParams, env, ctx) {
     return { status: 200, body: await hit.text(), maxAge: ttlFor(path), cache: 'HIT' };
   }
 
+  // 要打 TDX 了 —— 先看這一分鐘的額度還剩不剩。沒了就給備胎，
+  // 把額度留給手上什麼都沒有的那種請求（見 UPSTREAM_PER_MINUTE）。
+  if (upstreamBudgetLeft() <= 0) {
+    const stale = await cache.match(staleKey);
+    if (stale) {
+      return { status: 200, body: await stale.text(), maxAge: 30, cache: 'STALE' };
+    }
+    // 連備胎都沒有就還是打過去。額度用完打過去頂多被回 429，
+    // 跟現在就放棄一樣壞；而這個計數是 isolate 各算各的，有可能其實還有。
+  }
+
   let res = null;
   try {
+    upstreamAt.push(Date.now());
     res = await fetchFromTdx(upstream, env);
   } catch (e) {
     res = null;

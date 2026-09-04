@@ -219,6 +219,39 @@ void main() {
 
       expect(find.text('查不到這條路線的站序'), findsOneWidget);
     });
+
+    /// **使用者回報：點進 1551 是一整片空白加一句「服務忙碌中」。**
+    ///
+    /// TDX 免費金鑰每分鐘只准 5 個請求（量出來的，見 relay/README.md），
+    /// 額度用完的那一次就整頁沒東西。額度是每分鐘重算的 —— 隔一下再試
+    /// 幾乎都會成功，所以這一頁一定要有一個看得見、按得到的出路。
+    /// 只在右上角放一個小圖示的話，畫面看起來就是死的。
+    testWidgets('抓失敗時給一個重試按鈕，按了會重抓', (tester) async {
+      final repo = _QueueRepo([
+        const RouteDetail(
+          routeName: '1551',
+          error: '交通資料服務忙碌中，等一下再試',
+        ),
+        _detail([_variant('A', ['第一站', '第二站'])]),
+      ]);
+      await tester.pumpWidget(MaterialApp(
+        theme: NtouTheme.of(Brightness.light),
+        home: RoutePage(
+          routeName: '1551',
+          repository: repo,
+          city: 'Keelung',
+          intercity: true,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('交通資料服務忙碌中，等一下再試'), findsOneWidget);
+
+      await tester.tap(find.text('重試'));
+      await tester.pumpAndSettle();
+
+      expect(repo.calls, 2);
+      expect(find.text('第一站'), findsOneWidget);
+    });
   });
 
   /// **使用者回報：八個分頁很難找往基隆和往台北的。**
@@ -428,6 +461,24 @@ class _FakeRepo extends TransitRepository {
     clientSecret: 'secret',
     dio: Dio(),
   );
+}
+
+/// 每次問給一個不同的答案 —— 重試那個測試要的是「第二次不一樣」。
+class _QueueRepo extends TransitRepository {
+  _QueueRepo(this._answers) : super(config: _config, client: _FakeRepo._client);
+
+  final List<RouteDetail> _answers;
+  int calls = 0;
+
+  @override
+  Future<RouteDetail> routeDetail(
+    String routeName, {
+    required String city,
+    required bool intercity,
+  }) async {
+    calls++;
+    return _answers[calls <= _answers.length ? calls - 1 : _answers.length - 1];
+  }
 }
 
 /// `timeout` 和 `min_interval` 都是 0 —— 兩者都會排計時器，

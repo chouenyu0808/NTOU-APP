@@ -135,6 +135,7 @@ class _RoutePageState extends State<RoutePage> {
   }
 
   Future<void> _load() async {
+    if (!_loading) setState(() => _loading = true);
     final detail = await widget.repository.routeDetail(
       widget.routeName,
       city: widget.city,
@@ -189,7 +190,10 @@ class _RoutePageState extends State<RoutePage> {
   Widget _body(RouteDetail? detail, List<List<RouteVariant>> groups) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     final error = detail?.error;
-    if (error != null) return _Centered(text: error);
+    // **錯誤的那一頁一定要有出路。** 這裡最常見的錯誤是「服務忙碌中」，
+    // 而 TDX 的額度是每分鐘重算的（見 relay/README.md）—— 隔一下再按
+    // 幾乎都會成功。只在右上角放一個小圖示的話，畫面看起來就是死的。
+    if (error != null) return _Centered(text: error, onRetry: _load);
     if (groups.isEmpty) return const _Centered(text: '這條路線沒有站序資料');
 
     return TabBarView(
@@ -557,14 +561,24 @@ class _Rail extends StatelessWidget {
 }
 
 class _Centered extends StatelessWidget {
-  const _Centered({required this.text});
+  const _Centered({required this.text, this.onRetry});
   final String text;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) => Center(
     child: Padding(
       padding: const EdgeInsets.all(32),
-      child: Text(text, textAlign: TextAlign.center),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(text, textAlign: TextAlign.center),
+          if (onRetry != null) ...[
+            const SizedBox(height: 16),
+            FilledButton.tonal(onPressed: onRetry, child: const Text('重試')),
+          ],
+        ],
+      ),
     ),
   );
 }
