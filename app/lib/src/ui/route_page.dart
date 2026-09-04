@@ -195,7 +195,11 @@ class _RoutePageState extends State<RoutePage> {
     return TabBarView(
       children: [
         for (final g in groups)
-          _DirectionView(group: g, highlightStops: widget.highlightStops),
+          _DirectionView(
+            group: g,
+            highlightStops: widget.highlightStops,
+            stopStatus: widget.repository.config.stopStatus,
+          ),
       ],
     );
   }
@@ -206,10 +210,17 @@ class _RoutePageState extends State<RoutePage> {
 /// 晶片只在這個方向有超過一條子路線的時候才出現 —— 只有一條的時候
 /// 那排東西是純粹的雜訊。
 class _DirectionView extends StatefulWidget {
-  const _DirectionView({required this.group, required this.highlightStops});
+  const _DirectionView({
+    required this.group,
+    required this.highlightStops,
+    required this.stopStatus,
+  });
 
   final List<RouteVariant> group;
   final Set<String> highlightStops;
+
+  /// `transit.json` 的 StopStatus 對照表，沒有預估時間時用它解釋為什麼。
+  final Map<String, String> stopStatus;
 
   @override
   State<_DirectionView> createState() => _DirectionViewState();
@@ -249,6 +260,7 @@ class _DirectionViewState extends State<_DirectionView> {
           child: _StopTimeline(
             variant: widget.group[index],
             highlightStops: widget.highlightStops,
+            stopStatus: widget.stopStatus,
           ),
         ),
       ],
@@ -258,10 +270,15 @@ class _DirectionViewState extends State<_DirectionView> {
 
 /// 一條子路線的站序，車畫在上面。
 class _StopTimeline extends StatelessWidget {
-  const _StopTimeline({required this.variant, required this.highlightStops});
+  const _StopTimeline({
+    required this.variant,
+    required this.highlightStops,
+    required this.stopStatus,
+  });
 
   final RouteVariant variant;
   final Set<String> highlightStops;
+  final Map<String, String> stopStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -282,6 +299,7 @@ class _StopTimeline extends StatelessWidget {
           isHighlighted: highlightStops.contains(stop.name),
           isFirst: i == 1,
           isLast: i == variant.stops.length,
+          stopStatus: stopStatus,
         );
       },
     );
@@ -310,7 +328,11 @@ class _Summary extends StatelessWidget {
   }
 }
 
-/// 一站一列：左邊是那條線和車，右邊是站名。
+/// 一站一列：**左邊是還有多久、中間是站名、右邊是那條線和車。**
+///
+/// 這個順序是照 Bus+ 排的，而且有道理：使用者在這一頁的動作是「由上往下掃，
+/// 找一個夠小的數字」，所以時間要在最左邊、對齊成一欄。車的位置是次要的
+/// （「喔原來車在那裡」），放右邊那條線上。
 class _StopTile extends StatelessWidget {
   const _StopTile({
     required this.stop,
@@ -318,6 +340,7 @@ class _StopTile extends StatelessWidget {
     required this.isHighlighted,
     required this.isFirst,
     required this.isLast,
+    required this.stopStatus,
   });
 
   final RouteStop stop;
@@ -325,52 +348,116 @@ class _StopTile extends StatelessWidget {
   final bool isHighlighted;
   final bool isFirst;
   final bool isLast;
+  final Map<String, String> stopStatus;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final hasBus = buses.isNotEmpty;
 
     return Container(
       color: isHighlighted
           ? scheme.primaryContainer.withValues(alpha: 0.35)
           : null,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.only(left: 12),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Rail(hasBus: hasBus, isFirst: isFirst, isLast: isLast),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: _EtaPill(
+                label: ArrivalLabel.of(
+                  stop.estimateSeconds,
+                  stop.stopStatus,
+                  stopStatus,
+                ),
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Text(
+                  stop.name,
+                  style: TextStyle(
+                    fontWeight: isHighlighted
+                        ? FontWeight.w700
+                        : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+            // 車牌貼在右邊那條線旁邊 —— 它是「車在這裡」的註解，
+            // 不是這一列的主角。
+            if (buses.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      stop.name,
-                      style: TextStyle(
-                        fontWeight: isHighlighted
-                            ? FontWeight.w700
-                            : FontWeight.w400,
-                      ),
-                    ),
                     for (final b in buses)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          // 離站代表它正往下一站移動 —— 講「在這一站」
-                          // 會讓使用者以為還追得上。
-                          b.leaving ? '${b.plate} 已離站' : '${b.plate} 在站上',
-                          style: TextStyle(fontSize: 12, color: scheme.primary),
+                      Text(
+                        // 離站代表它正往下一站移動 —— 講「在這一站」
+                        // 會讓使用者以為還追得上。
+                        b.leaving ? '${b.plate} 已離站' : b.plate,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                   ],
                 ),
               ),
-            ),
+            const SizedBox(width: 8),
+            _Rail(hasBus: buses.isNotEmpty, isFirst: isFirst, isLast: isLast),
+            const SizedBox(width: 12),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 左邊那顆到站時間。
+///
+/// **這一頁的視覺焦點。** 用外框而不是填色，因為一條路線有二三十列，
+/// 全部填色會變成一面牆；有車快到的那幾列才用顏色跳出來。
+class _EtaPill extends StatelessWidget {
+  const _EtaPill({required this.label});
+
+  final ArrivalLabel label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = switch (label.tone) {
+      ArrivalTone.now => scheme.error,
+      ArrivalTone.soon => scheme.primary,
+      ArrivalTone.normal => scheme.onSurface,
+      ArrivalTone.idle => scheme.outline,
+    };
+
+    return Container(
+      width: 74,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label.text,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: color,
+          // 數字要對齊 —— 這一欄是拿來上下掃的。
+          fontFeatures: const [FontFeature.tabularFigures()],
         ),
       ),
     );

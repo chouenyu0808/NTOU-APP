@@ -24,13 +24,24 @@ import 'tdx_client.dart';
 /// - **公車（市區 + 國道）：對完了。** 拿真實金鑰跑過 `spike/tdx.py --save`，
 ///   四個站的回應存在 `spike/fixtures/tdx/`，[_busFrom] 已經收斂成確定的
 ///   欄位名，不再是候選。
-/// - **台鐵：對完了。** 第一次跑被 429 擋掉，補跑之後 [_trainFrom] 也收斂了。
-///   回應是 v3 的形狀（包在 `StationLiveBoards` 底下），`unwrap` 吃得下。
+/// - **台鐵：對完了，但後來換了資料來源。** 欄位是靠 `StationLiveBoard`
+///   對出來的（表定時間是 `ScheduleDepartureTime`，少一個 d），不過那個
+///   端點在端點站只回進站的車 —— 基隆是縱貫線北端終點，實測 15:11 那六筆
+///   全是「往 基隆」。所以班次改用 `DailyStationTimetable` 拿，看板只留著
+///   補誤點（時刻表沒有誤點）。
 class TransitRepository {
-  TransitRepository({required this.config, required this.client});
+  TransitRepository({
+    required this.config,
+    required this.client,
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final TransitConfig config;
   final TdxClient client;
+
+  /// 現在幾點。台鐵時刻表要靠它濾掉已經開走的班次 —— 測試注入固定時間，
+  /// 否則那組測試會在不同時段給出不同結果。
+  final DateTime Function() _now;
 
   bool get isConfigured => client.isConfigured;
 
@@ -522,6 +533,12 @@ class TransitRepository {
         city: city,
         intercity: intercity,
       );
+      // 每一站還有多久 —— 跟看板同一個端點，只是 filter 從站名換成路線名。
+      final etas = await _routeArrivals(
+        routeName,
+        city: city,
+        intercity: intercity,
+      );
 
       // 車按子路線分堆。**配對用 SubRouteUID，不是方向** —— 環狀線的
       // 兩條站序方向相同，只看方向會把車畫到錯的那一條上。
@@ -529,7 +546,7 @@ class TransitRepository {
         routeName: routeName,
         variants: [
           for (final v in variants)
-            v.withBuses([
+            v.withStops(_withEta(v, etas)).withBuses([
               for (final b in buses)
                 if (b.subRouteUid == v.subRouteUid) b,
             ]),
@@ -609,6 +626,64 @@ class TransitRepository {
     return stops;
   }
 
+  /// 一條路線每一站的到站時間。
+  ///
+  /// 鍵是**（子路線, 第幾站）**。不能只用站序 —— 環狀線同一個站牌在一條
+  /// 子路線上會出現兩次（103 的海大體育館在第 16 站和第 59 站），而且
+  /// 不同子路線的第 N 站是完全不同的地方。
+  Future<Map<String, RouteStop>> _routeArrivals(
+    String routeName, {
+    required String city,
+    required bool intercity,
+  }) async {
+    final path = intercity
+        ? config.endpoint('intercity_arrivals')
+        : config.endpoint('city_bus_arrivals', city: city);
+    final template = config.endpoints['route_name_filter'] ?? '';
+    if (path.isEmpty || template.isEmpty) return const {};
+
+    try {
+      final rows = await client.get(
+        path,
+        query: {
+          '\$filter': _nameFilter(template, [routeName]),
+          // 一條路線可能有八條子路線 × 三十站。給夠。
+          '\$top': '600',
+        },
+      );
+      return {
+        for (final r in rows)
+          '${_text(r['SubRouteUID'])}\u0000${_int(r['StopSequence']) ?? 0}':
+              RouteStop(
+                stopUid: _text(r['StopUID']),
+                name: _text(r['StopName']),
+                sequence: _int(r['StopSequence']) ?? 0,
+                estimateSeconds: _int(r['EstimateTime']),
+                stopStatus: _int(r['StopStatus']) ?? 0,
+              ),
+      };
+    } on TransitUnavailable {
+      // 沒有到站時間就只是每一站左邊空著，站序和車的位置還在。
+      return const {};
+    }
+  }
+
+  /// 把到站時間貼回站序上。查不到的站維持沒有時間。
+  static List<RouteStop> _withEta(RouteVariant v, Map<String, RouteStop> etas) =>
+      [
+        for (final s in v.stops)
+          if (etas['${v.subRouteUid}\u0000${s.sequence}'] case final hit?)
+            RouteStop(
+              stopUid: s.stopUid,
+              name: s.name,
+              sequence: s.sequence,
+              estimateSeconds: hit.estimateSeconds,
+              stopStatus: hit.stopStatus,
+            )
+          else
+            s,
+      ];
+
   Future<List<BusPosition>> _busPositions(
     String routeName, {
     required String city,
@@ -652,21 +727,92 @@ class TransitRepository {
         ? stop.stationId
         : await _lookUpStationId(stop);
 
-    final template = config.endpoints['train_liveboard_filter'] ?? '';
-    final rows = await client.get(
-      config.endpoint('train_liveboard'),
-      query: {
-        if (template.isNotEmpty)
-          '\$filter': template.replaceAll('{station}', stationId),
-        '\$top': '30',
-      },
-    );
+    // **端點站要看時刻表，不是即時看板。**
+    //
+    // 基隆是縱貫線的北端終點，`StationLiveBoard` 在那裡只回**進站**的列車
+    // —— 實測 15:11 那六筆全部是「往 基隆」。學生要問的是「幾點有車開往
+    // 七堵／台北」，那個答案在 `DailyStationTimetable` 裡（Direction 1
+    // 那半邊，往苗栗、新竹、嘉義…）。
+    //
+    // 看板還是有用：它帶著誤點分鐘數，而時刻表沒有。所以兩個都抓，
+    // 用車次號把誤點貼回去。看板抓不到就只是少了誤點，班次還在。
+    final timetable = await _timetable(stationId);
+    final delays = await _delays(stationId);
 
-    // 以本站為終點的列車照實回報，[TrainDeparture.endsHere] 標著 ——
-    // 要不要畫是畫面的事，見 _busBoards 上面那段。
-    final trains = [for (final r in rows) _trainFrom(r, stationId)];
+    final trains = [
+      for (final r in timetable)
+        _trainFromTimetable(r, stationId, delays[_text(r['TrainNo'])] ?? 0),
+    ];
     return StopBoard(stop: stop, trains: trains, updatedAt: DateTime.now());
   }
+
+  /// 今天這一站的時刻表，只留**還沒開走的**班次。
+  ///
+  /// 回應的形狀是兩層：外層 `StationTimetables` 一個方向一筆，每筆底下
+  /// 才是 `TimeTables` 的班次陣列。基隆的 Direction 0 是進站（終點都是
+  /// 基隆自己）、1 是出站（往苗栗、新竹、嘉義…）。
+  Future<List<Map<String, dynamic>>> _timetable(String stationId) async {
+    final path = config.endpoint('train_timetable', station: stationId);
+    if (path.isEmpty) return const [];
+
+    final blocks = await client.get(path, query: const {'\$top': '400'});
+    final all = [
+      for (final b in blocks)
+        for (final e in (b['TimeTables'] as List?) ?? const [])
+          if (e is Map<String, dynamic>) e,
+    ];
+
+    // 已經開走的班次沒有意義。**用字串比就好** —— 時間是 `HH:mm`，
+    // 字典序跟時間序一致。
+    final now = _hhmm(_now());
+    final upcoming = [
+      for (final e in all)
+        if (_text(e['DepartureTime']).compareTo(now) >= 0) e,
+    ]..sort(
+        (a, b) =>
+            _text(a['DepartureTime']).compareTo(_text(b['DepartureTime'])),
+      );
+    return upcoming;
+  }
+
+  /// 車次號 → 誤點幾分。抓不到就是空的（少了誤點，班次還在）。
+  Future<Map<String, int>> _delays(String stationId) async {
+    final template = config.endpoints['train_liveboard_filter'] ?? '';
+    try {
+      final rows = await client.get(
+        config.endpoint('train_liveboard'),
+        query: {
+          if (template.isNotEmpty)
+            '\$filter': template.replaceAll('{station}', stationId),
+          '\$top': '30',
+        },
+      );
+      return {
+        for (final r in rows)
+          if (_text(r['TrainNo']).isNotEmpty)
+            _text(r['TrainNo']): _int(r['DelayTime']) ?? 0,
+      };
+    } on TransitUnavailable {
+      return const {};
+    }
+  }
+
+  static String _hhmm(DateTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  static TrainDeparture _trainFromTimetable(
+    Map<String, dynamic> r,
+    String stationId,
+    int delayMinutes,
+  ) => TrainDeparture(
+    trainNo: _text(r['TrainNo']),
+    trainType: _text(r['TrainTypeName']),
+    destination: _text(r['DestinationStationName']),
+    scheduledTime: _clock(_text(r['DepartureTime'])),
+    delayMinutes: delayMinutes,
+    // 終點就是這一站 = 進站的車，到了就收班，搭不了。
+    endsHere: _text(r['DestinationStationID']) == stationId,
+  );
 
   /// 台鐵車站代碼查一次就記著。
   ///
@@ -700,46 +846,6 @@ class TransitRepository {
       if (id.isNotEmpty) return _cachedStationId = id;
     }
     throw const TransitUnavailable('查不到這個車站');
-  }
-
-  /// 台鐵的欄位**已經對過真實回應了**（2026-09-04，`spike/fixtures/tdx/
-  /// tra-keelung.json`），所以下面也不再是候選清單。
-  ///
-  /// 對出來一個原本會安靜壞掉的地方：**表定時間的欄位是 `ScheduleXxxTime`，
-  /// 不是 `ScheduledXxxTime`** —— 少一個 d。原本三個候選全部沒命中，
-  /// 解析出空字串，而那一欄是列車那一列右邊的主角。畫面上不會有錯誤，
-  /// 只會有一片空白，看起來像「這班車沒有時間」。
-  ///
-  /// [stationId] 是這個看板屬於哪一站，拿來判斷「終點就是本站」。
-  static TrainDeparture _trainFrom(Map<String, dynamic> r, String stationId) {
-    // 到站和發車時間在端點站是同一個值（`23:18:00` / `23:18:00`）。
-    // 先看發車 —— 對中途站來說「幾點開」才是要等的那個時間。
-    final time = _pick(r, const [
-      'ScheduleDepartureTime',
-      'ScheduleArrivalTime',
-    ]);
-
-    return TrainDeparture(
-      trainNo: _text(r['TrainNo']),
-      trainType: _text(r['TrainTypeName']),
-      destination: _destinationOf(r, stationId),
-      endsHere: _text(r['EndingStationID']) == stationId,
-      scheduledTime: _clock(_text(time)),
-      delayMinutes: _int(r['DelayTime']) ?? 0,
-      platform: _text(r['Platform']),
-    );
-  }
-
-  /// 列車要開去哪。**終點就是本站的時候不要說「往 基隆」。**
-  ///
-  /// 基隆是端點站，深夜抓到的三班車 `EndingStationID` 全都是 `0900`，
-  /// 也就是基隆自己。照著印會變成站在基隆站看到「往 基隆」—— 那句話
-  /// 沒有告訴使用者任何事情。這種車是進站後就收班的，講「本站為終點」
-  /// 才是使用者要知道的事。
-  static String _destinationOf(Map<String, dynamic> r, String stationId) {
-    final endId = _text(r['EndingStationID']);
-    if (endId.isNotEmpty && endId == stationId) return '本站為終點';
-    return _text(r['EndingStationName']);
   }
 
   // ------------------------------------------------------------ 小工具

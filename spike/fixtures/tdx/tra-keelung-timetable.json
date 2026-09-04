@@ -1,0 +1,2328 @@
+{
+  "UpdateTime": "2026-08-26T06:41:18+08:00",
+  "UpdateInterval": 14400,
+  "SrcUpdateTime": "2026-08-25T14:08:40+08:00",
+  "SrcUpdateInterval": -1,
+  "TrainDate": "2026-09-04",
+  "StationTimetables": [
+    {
+      "StationID": "0900",
+      "StationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "Direction": 0,
+      "TimeTables": [
+        {
+          "Sequence": 1,
+          "TrainNo": "1288",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "00:30",
+          "DepartureTime": "00:30",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 2,
+          "TrainNo": "1104",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "06:11",
+          "DepartureTime": "06:11",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 3,
+          "TrainNo": "1106",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "06:28",
+          "DepartureTime": "06:28",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 4,
+          "TrainNo": "1108",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "06:57",
+          "DepartureTime": "06:57",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 5,
+          "TrainNo": "1110",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "07:12",
+          "DepartureTime": "07:12",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 6,
+          "TrainNo": "1112",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "07:23",
+          "DepartureTime": "07:23",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 7,
+          "TrainNo": "1120",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "07:44",
+          "DepartureTime": "07:44",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 8,
+          "TrainNo": "1122",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "08:03",
+          "DepartureTime": "08:03",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 9,
+          "TrainNo": "1124",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "08:18",
+          "DepartureTime": "08:18",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 10,
+          "TrainNo": "1128",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "08:27",
+          "DepartureTime": "08:27",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 11,
+          "TrainNo": "1132",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "08:49",
+          "DepartureTime": "08:49",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 12,
+          "TrainNo": "1134",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "09:26",
+          "DepartureTime": "09:26",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 13,
+          "TrainNo": "2114",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "09:36",
+          "DepartureTime": "09:36",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 14,
+          "TrainNo": "2008",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1132",
+          "TrainTypeCode": "10",
+          "TrainTypeName": {
+            "Zh_tw": "區間快",
+            "En": "Fast Local Train"
+          },
+          "ArrivalTime": "09:50",
+          "DepartureTime": "09:50",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 15,
+          "TrainNo": "1138",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "10:12",
+          "DepartureTime": "10:12",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 16,
+          "TrainNo": "1142",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "10:26",
+          "DepartureTime": "10:26",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 17,
+          "TrainNo": "1148",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "10:44",
+          "DepartureTime": "10:44",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 18,
+          "TrainNo": "1152",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "11:12",
+          "DepartureTime": "11:12",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 19,
+          "TrainNo": "2134",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "11:45",
+          "DepartureTime": "11:45",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 20,
+          "TrainNo": "1162",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "11:57",
+          "DepartureTime": "11:57",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 21,
+          "TrainNo": "1168",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "12:24",
+          "DepartureTime": "12:24",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 22,
+          "TrainNo": "112",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1109",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "12:50",
+          "DepartureTime": "12:50",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 23,
+          "TrainNo": "1174",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "13:02",
+          "DepartureTime": "13:02",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 24,
+          "TrainNo": "1172",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "13:11",
+          "DepartureTime": "13:11",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 25,
+          "TrainNo": "1178",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "13:29",
+          "DepartureTime": "13:29",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 26,
+          "TrainNo": "2154",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "13:42",
+          "DepartureTime": "13:42",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 27,
+          "TrainNo": "1182",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "14:10",
+          "DepartureTime": "14:10",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 28,
+          "TrainNo": "1188",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "14:26",
+          "DepartureTime": "14:26",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 29,
+          "TrainNo": "1192",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "15:06",
+          "DepartureTime": "15:06",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 30,
+          "TrainNo": "1198",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "15:25",
+          "DepartureTime": "15:25",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 31,
+          "TrainNo": "1202",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "16:02",
+          "DepartureTime": "16:02",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 32,
+          "TrainNo": "1208",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "16:25",
+          "DepartureTime": "16:25",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 33,
+          "TrainNo": "1214",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "16:50",
+          "DepartureTime": "16:50",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 34,
+          "TrainNo": "1212",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "17:10",
+          "DepartureTime": "17:10",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 35,
+          "TrainNo": "1218",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "17:28",
+          "DepartureTime": "17:28",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 36,
+          "TrainNo": "2194",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "17:47",
+          "DepartureTime": "17:47",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 37,
+          "TrainNo": "122",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1109",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "17:56",
+          "DepartureTime": "17:56",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 38,
+          "TrainNo": "1222",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "18:07",
+          "DepartureTime": "18:07",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 39,
+          "TrainNo": "1228",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "18:22",
+          "DepartureTime": "18:22",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 40,
+          "TrainNo": "1226",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "18:28",
+          "DepartureTime": "18:28",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 41,
+          "TrainNo": "1234",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "18:48",
+          "DepartureTime": "18:48",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 42,
+          "TrainNo": "1232",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "19:11",
+          "DepartureTime": "19:11",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 43,
+          "TrainNo": "128",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1108",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "19:17",
+          "DepartureTime": "19:17",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 44,
+          "TrainNo": "1238",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "19:29",
+          "DepartureTime": "19:29",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 45,
+          "TrainNo": "130",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1108",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "19:43",
+          "DepartureTime": "19:43",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 46,
+          "TrainNo": "2214",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "19:54",
+          "DepartureTime": "19:54",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 47,
+          "TrainNo": "1242",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "20:19",
+          "DepartureTime": "20:19",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 48,
+          "TrainNo": "134",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1108",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "20:28",
+          "DepartureTime": "20:28",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 49,
+          "TrainNo": "1248",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "20:46",
+          "DepartureTime": "20:46",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 50,
+          "TrainNo": "1254",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "20:56",
+          "DepartureTime": "20:56",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 51,
+          "TrainNo": "1252",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "21:03",
+          "DepartureTime": "21:03",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 52,
+          "TrainNo": "1258",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "21:12",
+          "DepartureTime": "21:12",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 53,
+          "TrainNo": "1262",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "21:40",
+          "DepartureTime": "21:40",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 54,
+          "TrainNo": "2234",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "22:08",
+          "DepartureTime": "22:08",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 55,
+          "TrainNo": "1268",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "22:23",
+          "DepartureTime": "22:23",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 56,
+          "TrainNo": "144",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "110M",
+          "TrainTypeCode": "11",
+          "TrainTypeName": {
+            "Zh_tw": "自強(3000)(EMU3000 型電車)",
+            "En": "Tze-Chiang 3000 Express "
+          },
+          "ArrivalTime": "22:30",
+          "DepartureTime": "22:30",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 57,
+          "TrainNo": "1274",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "22:43",
+          "DepartureTime": "22:43",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 58,
+          "TrainNo": "1276",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "23:01",
+          "DepartureTime": "23:01",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 59,
+          "TrainNo": "1272",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "23:18",
+          "DepartureTime": "23:18",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 60,
+          "TrainNo": "1278",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "23:28",
+          "DepartureTime": "23:28",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 61,
+          "TrainNo": "2254",
+          "DestinationStationID": "0900",
+          "DestinationStationName": {
+            "Zh_tw": "基隆",
+            "En": "Keelung"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "23:54",
+          "DepartureTime": "23:54",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        }
+      ]
+    },
+    {
+      "StationID": "0900",
+      "StationName": {
+        "Zh_tw": "基隆",
+        "En": "Keelung"
+      },
+      "Direction": 1,
+      "TimeTables": [
+        {
+          "Sequence": 1,
+          "TrainNo": "2133",
+          "DestinationStationID": "4080",
+          "DestinationStationName": {
+            "Zh_tw": "嘉義",
+            "En": "Chiayi"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "05:00",
+          "DepartureTime": "05:00",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 2,
+          "TrainNo": "1117",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "05:26",
+          "DepartureTime": "05:26",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 3,
+          "TrainNo": "1123",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "05:50",
+          "DepartureTime": "05:50",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 4,
+          "TrainNo": "105",
+          "DestinationStationID": "5050",
+          "DestinationStationName": {
+            "Zh_tw": "潮州",
+            "En": "Chaozhou"
+          },
+          "TrainTypeID": "1108",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "06:12",
+          "DepartureTime": "06:12",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 5,
+          "TrainNo": "1121",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "06:17",
+          "DepartureTime": "06:17",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 6,
+          "TrainNo": "1007",
+          "DestinationStationID": "1070",
+          "DestinationStationName": {
+            "Zh_tw": "鶯歌",
+            "En": "Yingge"
+          },
+          "TrainTypeID": "1132",
+          "TrainTypeCode": "10",
+          "TrainTypeName": {
+            "Zh_tw": "區間快",
+            "En": "Fast Local Train"
+          },
+          "ArrivalTime": "06:25",
+          "DepartureTime": "06:25",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 7,
+          "TrainNo": "2007",
+          "DestinationStationID": "3430",
+          "DestinationStationName": {
+            "Zh_tw": "二水",
+            "En": "Ershui"
+          },
+          "TrainTypeID": "1132",
+          "TrainTypeCode": "10",
+          "TrainTypeName": {
+            "Zh_tw": "區間快",
+            "En": "Fast Local Train"
+          },
+          "ArrivalTime": "06:37",
+          "DepartureTime": "06:37",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 8,
+          "TrainNo": "1129",
+          "DestinationStationID": "1150",
+          "DestinationStationName": {
+            "Zh_tw": "北湖",
+            "En": "Beihu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "06:47",
+          "DepartureTime": "06:47",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 9,
+          "TrainNo": "2153",
+          "DestinationStationID": "4080",
+          "DestinationStationName": {
+            "Zh_tw": "嘉義",
+            "En": "Chiayi"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "06:58",
+          "DepartureTime": "06:58",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 10,
+          "TrainNo": "1131",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "07:13",
+          "DepartureTime": "07:13",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 11,
+          "TrainNo": "1135",
+          "DestinationStationID": "1150",
+          "DestinationStationName": {
+            "Zh_tw": "北湖",
+            "En": "Beihu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "07:24",
+          "DepartureTime": "07:24",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 12,
+          "TrainNo": "109",
+          "DestinationStationID": "5000",
+          "DestinationStationName": {
+            "Zh_tw": "屏東",
+            "En": "Pingtung"
+          },
+          "TrainTypeID": "110A",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且有自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "07:34",
+          "DepartureTime": "07:34",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 13,
+          "TrainNo": "1137",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "07:45",
+          "DepartureTime": "07:45",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 14,
+          "TrainNo": "1143",
+          "DestinationStationID": "1150",
+          "DestinationStationName": {
+            "Zh_tw": "北湖",
+            "En": "Beihu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "07:55",
+          "DepartureTime": "07:55",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 15,
+          "TrainNo": "115",
+          "DestinationStationID": "5000",
+          "DestinationStationName": {
+            "Zh_tw": "屏東",
+            "En": "Pingtung"
+          },
+          "TrainTypeID": "110A",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且有自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "08:09",
+          "DepartureTime": "08:09",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 16,
+          "TrainNo": "1141",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "08:19",
+          "DepartureTime": "08:19",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 17,
+          "TrainNo": "1147",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "08:41",
+          "DepartureTime": "08:41",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 18,
+          "TrainNo": "2173",
+          "DestinationStationID": "4080",
+          "DestinationStationName": {
+            "Zh_tw": "嘉義",
+            "En": "Chiayi"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "08:57",
+          "DepartureTime": "08:57",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 19,
+          "TrainNo": "1151",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "09:19",
+          "DepartureTime": "09:19",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 20,
+          "TrainNo": "117",
+          "DestinationStationID": "5050",
+          "DestinationStationName": {
+            "Zh_tw": "潮州",
+            "En": "Chaozhou"
+          },
+          "TrainTypeID": "110K",
+          "TrainTypeCode": "11",
+          "TrainTypeName": {
+            "Zh_tw": "自強(3000)(EMU3000 型電車)",
+            "En": "Tze-Chiang 3000 Express "
+          },
+          "ArrivalTime": "09:27",
+          "DepartureTime": "09:27",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 21,
+          "TrainNo": "1157",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "09:37",
+          "DepartureTime": "09:37",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 22,
+          "TrainNo": "1163",
+          "DestinationStationID": "1150",
+          "DestinationStationName": {
+            "Zh_tw": "北湖",
+            "En": "Beihu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "09:58",
+          "DepartureTime": "09:58",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 23,
+          "TrainNo": "1161",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "10:18",
+          "DepartureTime": "10:18",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 24,
+          "TrainNo": "1167",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "10:38",
+          "DepartureTime": "10:38",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 25,
+          "TrainNo": "2193",
+          "DestinationStationID": "4080",
+          "DestinationStationName": {
+            "Zh_tw": "嘉義",
+            "En": "Chiayi"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "11:00",
+          "DepartureTime": "11:00",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 26,
+          "TrainNo": "1177",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "11:31",
+          "DepartureTime": "11:31",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 27,
+          "TrainNo": "1181",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "11:55",
+          "DepartureTime": "11:55",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 28,
+          "TrainNo": "1187",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "12:27",
+          "DepartureTime": "12:27",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 29,
+          "TrainNo": "2213",
+          "DestinationStationID": "4080",
+          "DestinationStationName": {
+            "Zh_tw": "嘉義",
+            "En": "Chiayi"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "12:52",
+          "DepartureTime": "12:52",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 30,
+          "TrainNo": "129",
+          "DestinationStationID": "5050",
+          "DestinationStationName": {
+            "Zh_tw": "潮州",
+            "En": "Chaozhou"
+          },
+          "TrainTypeID": "1109",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "13:14",
+          "DepartureTime": "13:14",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 31,
+          "TrainNo": "1191",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "13:19",
+          "DepartureTime": "13:19",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 32,
+          "TrainNo": "1197",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "13:32",
+          "DepartureTime": "13:32",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 33,
+          "TrainNo": "1203",
+          "DestinationStationID": "1150",
+          "DestinationStationName": {
+            "Zh_tw": "北湖",
+            "En": "Beihu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "13:58",
+          "DepartureTime": "13:58",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 34,
+          "TrainNo": "1201",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "14:18",
+          "DepartureTime": "14:18",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 35,
+          "TrainNo": "1207",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "14:39",
+          "DepartureTime": "14:39",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 36,
+          "TrainNo": "2233",
+          "DestinationStationID": "4080",
+          "DestinationStationName": {
+            "Zh_tw": "嘉義",
+            "En": "Chiayi"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "14:54",
+          "DepartureTime": "14:54",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 37,
+          "TrainNo": "1217",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "15:26",
+          "DepartureTime": "15:26",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 38,
+          "TrainNo": "1221",
+          "DestinationStationID": "1150",
+          "DestinationStationName": {
+            "Zh_tw": "北湖",
+            "En": "Beihu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "15:54",
+          "DepartureTime": "15:54",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 39,
+          "TrainNo": "1227",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "16:23",
+          "DepartureTime": "16:23",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 40,
+          "TrainNo": "1231",
+          "DestinationStationID": "1170",
+          "DestinationStationName": {
+            "Zh_tw": "新豐",
+            "En": "Xinfeng"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "16:40",
+          "DepartureTime": "16:40",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 41,
+          "TrainNo": "2253",
+          "DestinationStationID": "4080",
+          "DestinationStationName": {
+            "Zh_tw": "嘉義",
+            "En": "Chiayi"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "17:02",
+          "DepartureTime": "17:02",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 42,
+          "TrainNo": "1235",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "17:29",
+          "DepartureTime": "17:29",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 43,
+          "TrainNo": "1237",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "17:48",
+          "DepartureTime": "17:48",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 44,
+          "TrainNo": "1243",
+          "DestinationStationID": "1150",
+          "DestinationStationName": {
+            "Zh_tw": "北湖",
+            "En": "Beihu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "17:59",
+          "DepartureTime": "17:59",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 45,
+          "TrainNo": "149",
+          "DestinationStationID": "5050",
+          "DestinationStationName": {
+            "Zh_tw": "潮州",
+            "En": "Chaozhou"
+          },
+          "TrainTypeID": "1108",
+          "TrainTypeCode": "3",
+          "TrainTypeName": {
+            "Zh_tw": "自強(推拉式自強號且無自行車車廂)",
+            "En": "Tze-Chiang Express"
+          },
+          "ArrivalTime": "18:13",
+          "DepartureTime": "18:13",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 46,
+          "TrainNo": "1241",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "18:18",
+          "DepartureTime": "18:18",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 47,
+          "TrainNo": "1247",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "18:35",
+          "DepartureTime": "18:35",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 48,
+          "TrainNo": "1251",
+          "DestinationStationID": "1250",
+          "DestinationStationName": {
+            "Zh_tw": "竹南",
+            "En": "Zhunan"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "19:00",
+          "DepartureTime": "19:00",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 49,
+          "TrainNo": "2275",
+          "DestinationStationID": "3360",
+          "DestinationStationName": {
+            "Zh_tw": "彰化",
+            "En": "Changhua"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "19:18",
+          "DepartureTime": "19:18",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 50,
+          "TrainNo": "1257",
+          "DestinationStationID": "3190",
+          "DestinationStationName": {
+            "Zh_tw": "三義",
+            "En": "Sanyi"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "19:30",
+          "DepartureTime": "19:30",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 51,
+          "TrainNo": "1261",
+          "DestinationStationID": "1110",
+          "DestinationStationName": {
+            "Zh_tw": "埔心",
+            "En": "Puxin"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "19:55",
+          "DepartureTime": "19:55",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 52,
+          "TrainNo": "1263",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "20:19",
+          "DepartureTime": "20:19",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 53,
+          "TrainNo": "1267",
+          "DestinationStationID": "3160",
+          "DestinationStationName": {
+            "Zh_tw": "苗栗",
+            "En": "Miaoli"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "20:36",
+          "DepartureTime": "20:36",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 54,
+          "TrainNo": "1273",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "21:01",
+          "DepartureTime": "21:01",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 55,
+          "TrainNo": "1271",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "21:29",
+          "DepartureTime": "21:29",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 56,
+          "TrainNo": "1281",
+          "DestinationStationID": "1210",
+          "DestinationStationName": {
+            "Zh_tw": "新竹",
+            "En": "Hsinchu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "21:52",
+          "DepartureTime": "21:52",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 57,
+          "TrainNo": "1283",
+          "DestinationStationID": "1120",
+          "DestinationStationName": {
+            "Zh_tw": "楊梅",
+            "En": "Yangmei"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "22:18",
+          "DepartureTime": "22:18",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 58,
+          "TrainNo": "1287",
+          "DestinationStationID": "1100",
+          "DestinationStationName": {
+            "Zh_tw": "中壢",
+            "En": "Zhongli_Taoyuan"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "22:44",
+          "DepartureTime": "22:44",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 59,
+          "TrainNo": "1289",
+          "DestinationStationID": "1040",
+          "DestinationStationName": {
+            "Zh_tw": "樹林",
+            "En": "Shulin"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "23:10",
+          "DepartureTime": "23:10",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        },
+        {
+          "Sequence": 60,
+          "TrainNo": "1295",
+          "DestinationStationID": "0930",
+          "DestinationStationName": {
+            "Zh_tw": "七堵",
+            "En": "Qidu"
+          },
+          "TrainTypeID": "1131",
+          "TrainTypeCode": "6",
+          "TrainTypeName": {
+            "Zh_tw": "區間",
+            "En": "Local Train"
+          },
+          "ArrivalTime": "23:26",
+          "DepartureTime": "23:26",
+          "SuspendedFlag": 0,
+          "ServiceType": 1
+        }
+      ]
+    }
+  ]
+}

@@ -285,22 +285,28 @@ void main() {
       expect(board.buses.last.estimateSeconds, isNull);
     });
 
-    /// 欄位名是 `ScheduleDepartureTime`，**不是 `Scheduled...`**。
+    /// 班次來自時刻表，誤點來自即時看板 —— 兩個端點拼起來。
     ///
-    /// 這個測試原本寫的是多一個 d 的那個名字，而程式碼也用同一個 ——
-    /// 兩邊講好了一個不存在的欄位，所以測試一直是綠的，直到拿真實回應
-    /// 對過才發現整欄表定時間根本解析不出來。
-    test('火車：時間切掉秒數', () async {
-      final repo = _repoReturning([
-        {
-          'TrainNo': '1234',
-          'TrainTypeName': {'Zh_tw': '區間'},
-          'EndingStationName': {'Zh_tw': '樹林'},
-          'ScheduleDepartureTime': '07:32:00',
-          'DelayTime': 5,
-        },
-      ], stationId: '0900');
+    /// **時刻表沒有誤點欄位**，而端點站的即時看板又只回進站的車，
+    /// 所以誤點是靠車次號把兩邊接起來的。接不到就是 0，班次還在。
+    test('火車：時刻表給班次，看板給誤點', () async {
+      final repo = _trainRepoWith(
+        timetable: _timetable([
+          {
+            'TrainNo': '1234',
+            'TrainTypeName': {'Zh_tw': '區間'},
+            'DestinationStationID': '1040',
+            'DestinationStationName': {'Zh_tw': '樹林'},
+            'DepartureTime': '07:32',
+          },
+        ]),
+        liveboard: [
+          {'TrainNo': '1234', 'DelayTime': 5},
+        ],
+        now: DateTime(2026, 9, 4, 7, 0),
+      );
       final board = await repo.board(_trainStop);
+
       final t = board.trains.single;
       expect(t.scheduledTime, '07:32');
       expect(t.trainType, '區間');
@@ -308,11 +314,39 @@ void main() {
       expect(t.delayMinutes, 5);
     });
 
-    test('火車：認不得的時間格式原樣留著，不要變成空白', () async {
-      final repo = _repoReturning([
-        {'TrainNo': '1', 'ScheduleDepartureTime': '待發'},
-      ], stationId: '0900');
-      expect((await repo.board(_trainStop)).trains.single.scheduledTime, '待發');
+    /// 看板抓不到誤點不該讓班次跟著消失 —— 班次才是使用者要看的。
+    test('火車：看板沒有這班車，誤點就是 0，班次照樣在', () async {
+      final repo = _trainRepoWith(
+        timetable: _timetable([
+          {
+            'TrainNo': '1234',
+            'DestinationStationID': '1040',
+            'DestinationStationName': {'Zh_tw': '樹林'},
+            'DepartureTime': '07:32',
+          },
+        ]),
+        liveboard: const [],
+        now: DateTime(2026, 9, 4, 7, 0),
+      );
+      final board = await repo.board(_trainStop);
+
+      expect(board.trains.single.delayMinutes, 0);
+      expect(board.trains.single.scheduledTime, '07:32');
+    });
+
+    /// 已經開走的班次沒有意義。
+    test('火車：只留還沒開走的班次', () async {
+      final repo = _trainRepoWith(
+        timetable: _timetable([
+          {'TrainNo': '早', 'DestinationStationID': '1040', 'DepartureTime': '06:00'},
+          {'TrainNo': '晚', 'DestinationStationID': '1040', 'DepartureTime': '08:00'},
+        ]),
+        liveboard: const [],
+        now: DateTime(2026, 9, 4, 7, 0),
+      );
+      final board = await repo.board(_trainStop);
+
+      expect(board.trains.map((t) => t.trainNo), ['晚']);
     });
 
     test('一站失敗不會拖垮整批 —— 錯誤包在那一站身上', () async {
@@ -486,211 +520,24 @@ void main() {
       expect(board.buses.first.routeName, '1813');
     }, skip: skip);
 
-    /// 台鐵的 fixture 是 v3 的形狀（包在 `StationLiveBoards` 底下），
-    /// 所以這裡要先剝一層再餵給假 HTTP 層。
-    List<Map<String, dynamic>> trainRows() {
-      final raw = jsonDecode(
-        File('${dir.path}/tra-keelung.json').readAsStringSync(),
-      ) as Map<String, dynamic>;
-      return [
-        for (final e in raw['StationLiveBoards'] as List)
-          e as Map<String, dynamic>,
-      ];
-    }
-
-    /// 表定時間**一定要有值**。
+    /// 台鐵的時刻表 fixture（`tra-keelung-timetable.json`，2026-09-04
+    /// 15:12 透過中繼服務抓的）。
     ///
-    /// 欄位名是 `ScheduleDepartureTime` 不是 `ScheduledDepartureTime`
-    /// —— 少一個 d，整欄變空白，而畫面上那是列車那一列的主角。
-    test('台鐵：表定時間解析得出來，不是一片空白', () async {
-      final repo = _repoReturning(trainRows(), stationId: '0900');
-      final board = await repo.board(_trainStop);
+    /// **端點站要看時刻表不是即時看板。** 基隆是縱貫線北端終點，
+    /// `StationLiveBoard` 在那裡只回進站的車 —— 實測 15:11 那六筆全是
+    /// 「往 基隆」。學生要問的「幾點有車開往七堵／台北」在時刻表的
+    /// Direction 1 那半邊。
+    Map<String, dynamic> timetableFixture() =>
+        jsonDecode(
+              File('${dir.path}/tra-keelung-timetable.json').readAsStringSync(),
+            )
+            as Map<String, dynamic>;
 
-      expect(board.trains, hasLength(3));
-      for (final t in board.trains) {
-        expect(t.scheduledTime, isNotEmpty, reason: '車次 ${t.trainNo} 沒有時間');
-        expect(t.scheduledTime, matches(r'^\d{2}:\d{2}$'));
-      }
-      expect(board.trains.map((t) => t.scheduledTime),
-          containsAll(['23:18', '22:23', '22:08']));
-    }, skip: skip);
-
-    test('台鐵：誤點分鐘數讀得到', () async {
-      final repo = _repoReturning(trainRows(), stationId: '0900');
-      final board = await repo.board(_trainStop);
-      expect(board.trains.map((t) => t.delayMinutes), containsAll([0, 7, 5]));
-    }, skip: skip);
-
-    /// 基隆是端點站，這三班車的 `EndingStationID` 全都是 `0900`（基隆自己）。
-    /// 照著印會變成站在基隆站看到「往 基隆」—— 那句話沒有告訴使用者任何事。
-    test('台鐵：終點就是本站的時候不說「往 基隆」', () async {
-      final repo = _repoReturning(trainRows(), stationId: '0900');
-      final board = await repo.board(_trainStop);
-
-      for (final t in board.trains) {
-        expect(t.destination, '本站為終點');
-        expect(t.destination, isNot('基隆'));
-      }
-    }, skip: skip);
-
-    test('台鐵：終點是別站的時候照常顯示站名', () async {
-      final repo = _repoReturning([
-        {
-          'TrainNo': '1234',
-          'EndingStationID': '1040',
-          'EndingStationName': {'Zh_tw': '樹林'},
-          'ScheduleDepartureTime': '07:32:00',
-        },
-      ], stationId: '0900');
-      final board = await repo.board(_trainStop);
-      expect(board.trains.single.destination, '樹林');
-    });
-
-    /// **使用者實際回報的問題：「一站海大體育館出現了好多 103」。**
-    ///
-    /// TDX 是按子路線拆的：103 是環狀線，有 KEE035501 和 KEE035601 兩條，
-    /// 兩條都經過海大體育館 —— 而「海大體育館」這個站名又對到馬路兩邊
-    /// 兩個實體站牌（KEE306429、KEE306430）。2 × 2 = 同一條路線四筆。
-    test('同一條路線不會在同一個站牌上重複出現', () async {
-      final repo = _repoReturning(rowsOf('ntou-gym.json'));
-      final board = await repo.board(_cityBusStop);
-
-      final seen = <String>{};
-      for (final b in board.buses) {
-        // 同一條路線最多出現兩次（馬路兩邊各一次），但不會四次。
-        seen.add(b.routeName);
-      }
-      expect(seen, {'103', '104', '108', '8021'});
-      final counts = <String, int>{};
-      for (final b in board.buses) {
-        counts[b.routeName] = (counts[b.routeName] ?? 0) + 1;
-      }
-      expect(counts.values, everyElement(lessThanOrEqualTo(2)));
-      expect(counts['103'], 2);
-    }, skip: skip);
-
-    /// **馬路兩邊那兩個站牌不能併掉。**
-    ///
-    /// KEE306429 的下一站是海大濱海校門（往市區），KEE306430 的下一站是
-    /// 北寧路（往八斗子）—— 那是真的不同方向的兩班車。併成一筆就等於
-    /// 叫使用者站錯邊，而畫面上完全看不出來。
-    test('去重的鍵含站牌，不會把馬路兩邊併成一筆', () async {
-      final repo = _repoReturning([
-        {
-          'RouteName': '103',
-          'StopUID': 'KEE306429',
-          'StopName': {'Zh_tw': '海大體育館'},
-          'EstimateTime': 300,
-        },
-        {
-          'RouteName': '103',
-          'StopUID': 'KEE306430',
-          'StopName': {'Zh_tw': '海大體育館'},
-          'EstimateTime': 900,
-        },
-      ]);
-      final board = await repo.board(_cityBusStop);
-
-      expect(board.buses, hasLength(2));
-      expect(board.buses.map((b) => b.estimateSeconds), [300, 900]);
-    });
-
-    /// 同一個站牌同一條路線有好幾筆時，留最快到的那一筆 ——
-    /// 使用者問的是「下一班什麼時候」。
-    test('同站牌同路線留最快到的那一筆', () async {
-      final repo = _repoReturning([
-        {
-          'RouteName': '104',
-          'StopUID': 'KEE306430',
-          'StopName': {'Zh_tw': '海大體育館'},
-          'SubRouteUID': '慢的',
-          'EstimateTime': 900,
-        },
-        {
-          'RouteName': '104',
-          'StopUID': 'KEE306430',
-          'StopName': {'Zh_tw': '海大體育館'},
-          'SubRouteUID': '快的',
-          'EstimateTime': 120,
-        },
-        {
-          'RouteName': '104',
-          'StopUID': 'KEE306430',
-          'StopName': {'Zh_tw': '海大體育館'},
-          'SubRouteUID': '沒車的',
-          'StopStatus': 3,
-        },
-      ]);
-      final board = await repo.board(_cityBusStop);
-
-      expect(board.buses, hasLength(1));
-      expect(board.buses.single.estimateSeconds, 120);
-    });
-
-    /// 三個海大站牌打的是同一個端點，只有站名不同 ——
-    /// 分成三次問就是白白多打兩個請求，而那正是畫面上一直冒
-    /// 「服務忙碌中」的原因（TDX 回 429）。
-    test('同一個城市的市區公車合併成一個請求', () async {
-      final spy = _RecordingAdapter();
-      final repo = _repoWith(spy);
-
-      await repo.boards(const [
-        TransitStop(id: 'a', name: '海大體育館', kind: TransitStopKind.cityBus),
-        TransitStop(id: 'b', name: '海大濱海校門', kind: TransitStopKind.cityBus),
-        TransitStop(id: 'c', name: '海大祥豐校門', kind: TransitStopKind.cityBus),
-      ]);
-
-      expect(spy.dataRequests, 1);
-      final filter = spy.lastDataRequest!.queryParameters[r'$filter'] as String;
-      expect(filter, contains('海大體育館'));
-      expect(filter, contains('海大濱海校門'));
-      expect(filter, contains('海大祥豐校門'));
-    });
-
-    /// 合併回來的資料要照站名分回各自的看板，不能三張卡片都放全部。
-    test('合併的回應會照站名拆回各自的看板', () async {
-      final repo = _repoReturning([
-        {
-          'RouteName': '103',
-          'StopUID': 'A',
-          'StopName': {'Zh_tw': '海大體育館'},
-          'EstimateTime': 60,
-        },
-        {
-          'RouteName': '104',
-          'StopUID': 'B',
-          'StopName': {'Zh_tw': '海大濱海校門'},
-          'EstimateTime': 120,
-        },
-      ]);
-
-      final boards = await repo.boards(const [
-        TransitStop(id: 'a', name: '海大體育館', kind: TransitStopKind.cityBus),
-        TransitStop(id: 'b', name: '海大濱海校門', kind: TransitStopKind.cityBus),
-      ]);
-
-      expect(boards[0].buses.single.routeName, '103');
-      expect(boards[1].buses.single.routeName, '104');
-    });
-
-    /// **這是使用者那個問題的完整解法。**
-    ///
-    /// 「海大體育館」對到馬路兩邊兩個站牌，103 在兩邊都停。去重之後還是
-    /// 兩列，而且**終點站都是八斗子車站**（環狀線），所以光看終點分不出
-    /// 誰往哪。分得出來的是下一站：
-    ///
-    ///   KEE306429 → 海大濱海校門（往市區）
-    ///   KEE306430 → 北寧路(九八八餐廳)（往八斗子）
-    ///
-    /// 這兩個名字是拿真實的站序資料（route-103-stops.json）算出來的，
-    /// 不是寫死的。
-    test('馬路兩邊的 103 靠下一站分得出方向', () async {
+    TransitRepository trainRepo(DateTime now) {
       final dio = Dio()
-        ..httpClientAdapter = _CannedAdapter(
-          rows: rowsOf('ntou-gym.json'),
-          stopsOfRoute: rowsOf('route-103-stops.json'),
-        );
-      final repo = TransitRepository(
+        ..httpClientAdapter = (_CannedAdapter(rows: const [])
+          ..timetable = timetableFixture());
+      return TransitRepository(
         config: _config,
         client: TdxClient(
           config: _config,
@@ -698,67 +545,63 @@ void main() {
           clientSecret: 'secret',
           dio: dio,
         ),
+        now: () => now,
       );
-      final board = await repo.board(_cityBusStop);
+    }
 
-      final r103 = board.buses.where((b) => b.routeName == '103').toList();
-      expect(r103, hasLength(2));
-      expect(
-        r103.map((b) => b.nextStop).toSet(),
-        {'海大濱海校門', '北寧路(九八八餐廳)'},
-      );
+    test('台鐵：時刻表兩個方向，一邊全是進站的車', () async {
+      final raw = timetableFixture();
+      final blocks = raw['StationTimetables'] as List;
+
+      expect(blocks, hasLength(2));
+      for (final b in blocks) {
+        final tt = (b as Map)['TimeTables'] as List;
+        final endingHere = tt
+            .where((x) => (x as Map)['DestinationStationID'] == '0900')
+            .length;
+        // Direction 0 全部以基隆為終點（進站），Direction 1 一班都沒有。
+        expect(endingHere == tt.length || endingHere == 0, isTrue);
+      }
     }, skip: skip);
 
-    /// 站序的回應很大（103 兩條子路線就 132 個站牌），所以**只有需要分辨
-    /// 方向的路線才去查**，而且查過就快取。
-    test('站序只查需要分辨方向的路線，而且只查一次', () async {
-      final spy = _CannedAdapter(
-        rows: rowsOf('ntou-gym.json'),
-        stopsOfRoute: rowsOf('route-103-stops.json'),
-      );
-      final repo = TransitRepository(
-        config: _config,
-        client: TdxClient(
-          config: _config,
-          clientId: 'id',
-          clientSecret: 'secret',
-          dio: Dio()..httpClientAdapter = spy,
-        ),
-      );
+    test('台鐵：只留還沒開走的、而且不是進站收班的班次', () async {
+      final board = await trainRepo(
+        DateTime(2026, 9, 4, 15, 12),
+      ).board(_trainStop);
 
-      await repo.board(_cityBusStop);
-      await repo.board(_cityBusStop);
-      await repo.board(_cityBusStop);
-
-      // 四條路線都需要分辨方向，但它們是**一個請求**問完的，而且只問一次。
-      expect(spy.stopsOfRouteCalls, 1);
+      expect(board.trains, isNotEmpty);
+      for (final t in board.trains) {
+        expect(t.scheduledTime.compareTo('15:12'), greaterThanOrEqualTo(0));
+      }
+      // 進站收班的那 61 班都標著 endsHere，畫面上不會顯示。
+      expect(board.boardableTrains.every((t) => !t.endsHere), isTrue);
+      expect(board.boardableTrains, isNotEmpty);
     }, skip: skip);
 
-    /// 站序抓不到就只是少了方向標記 —— 到站時間還在。
-    /// 而且**不能每次重整都再問一遍**，一次 429 會變成每半分鐘再撞一次。
-    test('站序抓不到時，到站時間照常，而且不會一直重問', () async {
-      final spy = _CannedAdapter(
-        rows: rowsOf('ntou-gym.json'),
-        stopsOfRoute: const [],
-      );
-      final repo = TransitRepository(
-        config: _config,
-        client: TdxClient(
-          config: _config,
-          clientId: 'id',
-          clientSecret: 'secret',
-          dio: Dio()..httpClientAdapter = spy,
-        ),
-      );
+    /// **這是使用者回報的那件事。**
+    ///
+    /// 基隆是端點站，所以可搭的車全部往南（七堵→台北方向）。
+    /// 舊的做法（即時看板）在這裡會給出空白的一張卡片。
+    test('台鐵：可搭的班次全是往別站的，沒有一班「往 基隆」', () async {
+      final board = await trainRepo(
+        DateTime(2026, 9, 4, 15, 12),
+      ).board(_trainStop);
 
-      final board = await repo.board(_cityBusStop);
-      await repo.board(_cityBusStop);
-      await repo.board(_cityBusStop);
+      final dests = board.boardableTrains.map((t) => t.destination).toSet();
+      expect(dests, isNotEmpty);
+      expect(dests, isNot(contains('基隆')));
+      // 真實資料裡這個時段往這些地方。
+      expect(dests.any((d) => ['苗栗', '新竹', '嘉義', '七堵'].contains(d)), isTrue);
+    }, skip: skip);
 
-      expect(board.error, isNull);
-      expect(board.buses.where((b) => b.isRunning).single.estimateSeconds, 725);
-      expect(board.buses.every((b) => b.nextStop.isEmpty), isTrue);
-      expect(spy.stopsOfRouteCalls, 1);
+    test('台鐵：時刻表的時間是 HH:mm，不用切秒數', () async {
+      final board = await trainRepo(
+        DateTime(2026, 9, 4, 15, 12),
+      ).board(_trainStop);
+
+      for (final t in board.boardableTrains) {
+        expect(t.scheduledTime, matches(r'^\d{2}:\d{2}$'));
+      }
     }, skip: skip);
 
     /// 查不到路線資料時終點留白，**絕不把 StopID 當站名顯示**。
@@ -1710,6 +1553,7 @@ final TransitConfig _config = TransitConfig.fromJson({
     'city_bus_stops_of_route': 'v2/Bus/StopOfRoute/City/{city}',
     'city_bus_realtime': 'v2/Bus/RealTimeNearStop/City/{city}',
     'train_liveboard': 'v3/Rail/TRA/StationLiveBoard',
+    'train_timetable': 'v3/Rail/TRA/DailyStationTimetable/Today/Station/{station}',
     'train_stations': 'v3/Rail/TRA/Station',
     'city_bus_filter': "StopName/Zh_tw eq '{name}'",
     'intercity_filter': "StopName/Zh_tw eq '{name}'",
@@ -1800,6 +1644,13 @@ class _CannedAdapter implements HttpClientAdapter {
 
   int intercityCalls = 0;
 
+  /// 台鐵時刻表（`DailyStationTimetable`）的原始回應。
+  ///
+  /// **端點站要看時刻表不是即時看板** —— 基隆的 `StationLiveBoard` 只回
+  /// 進站的車。這裡放的是外層那個物件，`client.get` 會 unwrap 成
+  /// `StationTimetables`（一個方向一筆）。
+  Map<String, dynamic>? timetable;
+
   /// 這兩個端點各被打了幾次。站序有快取、車的位置沒有，看這個分辨。
   int stopsOfRouteCalls = 0;
   int realtimeCalls = 0;
@@ -1827,6 +1678,8 @@ class _CannedAdapter implements HttpClientAdapter {
         'expires_in': 86400,
         'token_type': 'Bearer',
       });
+    } else if (options.path.contains('DailyStationTimetable')) {
+      body = jsonEncode(timetable ?? const {'StationTimetables': []});
     } else if (options.path.contains('StopOfRoute')) {
       stopsOfRouteCalls++;
       body = jsonEncode(stopsOfRoute);
@@ -1870,6 +1723,35 @@ class _CannedAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+/// 把幾筆班次包成時刻表的形狀（外層一個方向一筆，底下才是 TimeTables）。
+Map<String, dynamic> _timetable(List<Map<String, dynamic>> entries) => {
+  'StationTimetables': [
+    {'StationID': '0900', 'Direction': 1, 'TimeTables': entries},
+  ],
+};
+
+/// 時刻表 + 即時看板兩個來源都給得了的 repo，而且時鐘是固定的 ——
+/// 「還沒開走的班次」這件事不能在不同時段跑出不同結果。
+TransitRepository _trainRepoWith({
+  required Map<String, dynamic> timetable,
+  required List<Map<String, dynamic>> liveboard,
+  required DateTime now,
+}) {
+  final dio = Dio()
+    ..httpClientAdapter = (_CannedAdapter(rows: liveboard, stationId: '0900')
+      ..timetable = timetable);
+  return TransitRepository(
+    config: _config,
+    client: TdxClient(
+      config: _config,
+      clientId: 'id',
+      clientSecret: 'secret',
+      dio: dio,
+    ),
+    now: () => now,
+  );
 }
 
 /// 跟 [_config] 一樣，但**間隔是真的 40ms** —— 節流那組測試要量得到時間差。

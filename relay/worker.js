@@ -73,6 +73,15 @@ const TTL = [
 ];
 const DEFAULT_TTL = 60;
 
+/**
+ * 備胎留多久（秒）。
+ *
+ * 十分鐘是刻意的：足夠撐過 TDX 一陣子的 429 或短暫故障，又不會久到
+ * 讓人看著半小時前的公車時間還以為是即時的。超過這個就寧可報錯 ——
+ * 太舊的資料比沒有資料更危險。
+ */
+const STALE_TTL = 600;
+
 /** 只讓這幾個查詢參數通過。其餘一律丟掉。 */
 const ALLOWED_PARAMS = new Set(['$filter', '$top', '$format', '$select', '$orderby']);
 
@@ -122,21 +131,31 @@ export default {
 
     const upstream = buildUpstreamUrl(path, url.searchParams);
     const cacheKey = new Request(upstream, { method: 'GET' });
+    const staleKey = new Request(`${upstream}&__stale=1`, { method: 'GET' });
     const cache = caches.default;
 
     const hit = await cache.match(cacheKey);
     if (hit) return withHeaders(hit, 'HIT');
 
-    let res;
+    let res = null;
     try {
       res = await fetchFromTdx(upstream, env);
     } catch (e) {
-      return json({ error: '連不上交通資料服務' }, 502);
+      res = null;
     }
 
-    if (!res.ok) {
-      // **不要把 TDX 的回應原文往下傳。** 失敗的回應有可能把送出的參數回吐，
-      // 而換 token 那個請求的 body 就是 client_secret 本人。
+    if (!res || !res.ok) {
+      // **TDX 掛了或擋我們的時候，寧可給舊資料也不要給錯誤。**
+      //
+      // 公車還有幾分鐘這種東西，晚三十秒的版本仍然有用；一個錯誤訊息
+      // 一點用都沒有。而 TDX 是會擋人的 —— 開發過程就撞過好幾次 429。
+      const stale = await cache.match(staleKey);
+      if (stale) return withHeaders(stale, 'STALE');
+
+      // 真的什麼都沒有才報錯。**不要把 TDX 的回應原文往下傳** ——
+      // 失敗的回應有可能把送出的參數回吐，而換 token 那個請求的 body
+      // 就是 client_secret 本人。
+      if (!res) return json({ error: '連不上交通資料服務' }, 502);
       const status = res.status === 429 ? 429 : 502;
       return json({ error: `交通資料服務回應 ${res.status}` }, status);
     }
@@ -152,8 +171,22 @@ export default {
       },
     });
 
+    // 存兩份：一份照正常 TTL（給命中用），一份放久一點當**備胎**。
+    //
+    // 為什麼要第二份：邊緣快取過期之後那筆就不見了，而「過期」跟「沒用」
+    // 是兩回事 —— TDX 擋人的時候，一份三分鐘前的公車時間遠比一個錯誤有用。
+    const backup = new Response(body, {
+      status: 200,
+      headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': `public, max-age=${STALE_TTL}`,
+      },
+    });
+
     // 寫快取不要擋著回應 —— 使用者等的是資料，不是我們的記帳。
-    ctx.waitUntil(cache.put(cacheKey, cached.clone()));
+    ctx.waitUntil(
+      Promise.all([cache.put(cacheKey, cached.clone()), cache.put(staleKey, backup)]),
+    );
     return withHeaders(cached, 'MISS');
   },
 };

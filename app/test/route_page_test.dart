@@ -26,6 +26,50 @@ void main() {
       expect(find.text('海大體育館'), findsOneWidget);
     });
 
+    /// **這一頁的視覺焦點是左邊那一欄。**
+    ///
+    /// 使用者的動作是「由上往下掃，找一個夠小的數字」，所以每一站都要有
+    /// 自己的到站時間 —— 那是另外一個請求換來的（跟看板同一個端點，
+    /// filter 從站名換成路線名）。
+    testWidgets('每一站左邊都有自己的到站時間', (tester) async {
+      await _pump(
+        tester,
+        _detail([
+          RouteVariant(
+            subRouteUid: 'A',
+            subRouteName: '103',
+            direction: 0,
+            stops: const [
+              RouteStop(
+                stopUid: 'a',
+                name: '第一站',
+                sequence: 1,
+                estimateSeconds: 60,
+              ),
+              RouteStop(
+                stopUid: 'b',
+                name: '第二站',
+                sequence: 2,
+                estimateSeconds: 2640,
+              ),
+              // 沒有預估值的那一站，用狀態碼解釋為什麼。
+              RouteStop(
+                stopUid: 'c',
+                name: '第三站',
+                sequence: 3,
+                stopStatus: 1,
+              ),
+            ],
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('將到站'), findsOneWidget);
+      expect(find.text('44 分'), findsOneWidget);
+      expect(find.text('尚未發車'), findsOneWidget);
+    });
+
     testWidgets('有車的那一站畫公車圖示，並標出車牌', (tester) async {
       await _pump(tester, _detail([
         _variant(
@@ -39,7 +83,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.directions_bus), findsOneWidget);
-      expect(find.text('FAC-211 在站上'), findsOneWidget);
+      // 車牌就貼在公車圖示旁邊，位置本身已經說明「車在這一站」了。
+      expect(find.text('FAC-211'), findsOneWidget);
     });
 
     /// 離站代表它正往下一站移動 —— 講「在這一站」會讓使用者以為還追得上。
@@ -61,8 +106,10 @@ void main() {
       ]));
       await tester.pumpAndSettle();
 
+      // 「已離站」要講出來 —— 那台車正往下一站移動，講「在這一站」
+      // 會讓使用者以為還追得上。停在站上的就只印車牌，不囉唆。
       expect(find.text('走了的 已離站'), findsOneWidget);
-      expect(find.text('還在的 在站上'), findsOneWidget);
+      expect(find.text('還在的'), findsOneWidget);
     });
 
     /// 沒有這句的話，一條沒有任何車的路線看起來只是一長串站名，
@@ -357,5 +404,7 @@ final TransitConfig _config = TransitConfig.fromJson({
     'min_interval_seconds': 0,
     'timeout_seconds': 0,
   },
+  // 沒有預估時間的那幾站要靠這個解釋為什麼。
+  'stop_status': {'0': '正常', '1': '尚未發車', '3': '末班已過'},
   'stops': const [],
 });

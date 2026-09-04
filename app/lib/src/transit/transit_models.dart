@@ -334,10 +334,21 @@ class RouteStop {
     required this.stopUid,
     required this.name,
     required this.sequence,
+    this.estimateSeconds,
+    this.stopStatus = 0,
   });
 
   final String stopUid;
   final String name;
+
+  /// 車還有多久到**這一站**。null 代表沒有預估值（原因看 [stopStatus]）。
+  ///
+  /// 跟看板上那個數字是同一種東西，只是那邊問的是「一個站牌的所有路線」，
+  /// 這邊問的是「一條路線的所有站牌」—— 同一個端點，換個 filter。
+  final int? estimateSeconds;
+
+  /// TDX 的 `StopStatus`。沒有預估值時靠它解釋為什麼（末班已過、尚未發車…）。
+  final int stopStatus;
 
   /// 這是這條子路線的第幾站（TDX 的 `StopSequence`，從 1 開始）。
   ///
@@ -393,6 +404,14 @@ class RouteVariant {
   String get destination => stops.isEmpty ? '' : stops.last.name;
 
   RouteVariant withBuses(List<BusPosition> buses) => RouteVariant(
+        subRouteUid: subRouteUid,
+        subRouteName: subRouteName,
+        direction: direction,
+        stops: stops,
+        buses: buses,
+      );
+
+  RouteVariant withStops(List<RouteStop> stops) => RouteVariant(
         subRouteUid: subRouteUid,
         subRouteName: subRouteName,
         direction: direction,
