@@ -289,6 +289,29 @@ void main() {
     });
   });
 
+  group('更新中', () {
+    test('是一個瞬間狀態，不進 JSON', () {
+      // 存下來的話，程序在抓到一半被殺掉之後讀回來會是一個永遠停在
+      // 「更新中」的畫面 —— 而其實根本沒有人在抓。
+      final refreshing =
+          build([StopBoard(stop: gym)]).copyWith(refreshing: true);
+      final back = TransitWidgetPayload.fromJson(
+        jsonDecode(jsonEncode(refreshing.toJson())) as Map<String, dynamic>,
+      );
+
+      expect(refreshing.refreshing, isTrue);
+      expect(back.refreshing, isFalse);
+    });
+
+    test('不動資料時間和內容', () {
+      final original = build([StopBoard(stop: gym)]);
+      final refreshing = original.copyWith(refreshing: true);
+
+      expect(refreshing.updatedAt, original.updatedAt);
+      expect(refreshing.stops, original.stops);
+    });
+  });
+
   group('小組件的尺寸', () {
     test('存下去再讀回來是同一個', () {
       const surface = WidgetSurface(size: Size(320, 180), pixelRatio: 2.75);

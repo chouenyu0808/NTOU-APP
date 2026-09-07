@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 重新整理鈕按下去的水波紋。
+
+     **原本是 `@android:color/transparent`，等於完全沒有回饋。** 而這顆鈕
+     按下去之後要打網路再重畫一張圖，中間有一兩秒畫面上什麼都不會變 ——
+     使用者按了、沒有任何反應、於是再按一次，然後認定它壞了。
+     即使它其實有在動。
+
+     顏色寫死不用 `?android:attr/colorControlHighlight`：這個 layout 是由
+     launcher 那個 process 依它自己的主題 inflate 的，主題屬性解不出來的話
+     **整個小組件會變成「載入小工具時發生問題」**，而不是退回沒有水波紋。
+     半透明灰在深色和淺色底上都看得見。 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#40808080">
+    <item android:id="@android:id/mask">
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFFFF" />
+        </shape>
+    </item>
+</ripple>
