@@ -65,31 +65,39 @@ DEFAULT_UA = (
 )
 
 
-class SystemTrustAdapter(HTTPAdapter):
+class TwcaChainAdapter(HTTPAdapter):
     """
-    讓 requests 改用作業系統的憑證庫，而不是 certifi 打包的那份。
+    關掉 `VERIFY_X509_STRICT`，其餘驗證全部照舊。
 
-    為什麼需要：ais.ntou.edu.tw 的憑證由 TWCA 簽發，用 certifi 的 bundle 建出來的
-    信任鏈裡有一張中介 CA 缺少 Subject Key Identifier 擴充欄位，OpenSSL 3.5 的
-    嚴格檢查（VERIFY_X509_STRICT，Python 3.13+ 預設開啟）會直接拒絕，錯誤訊息是
+    為什麼需要：ais.ntou.edu.tw 的憑證由 TWCA 簽發，信任鏈裡有一張中介 CA 缺少
+    Subject Key Identifier 擴充欄位。**Python 3.13 起 `VERIFY_X509_STRICT` 預設
+    開啟**，那項檢查要求擴充欄位完全符合 RFC 5280，於是握手直接被拒，錯誤是
     `CERTIFICATE_VERIFY_FAILED: Missing Subject Key Identifier`。
 
-    改用 OS 憑證庫後可以建出合規的鏈，驗證就過了。
+    **這跟信任錨的來源無關 —— 換成 OS 憑證庫一樣會被擋。** 實測 Windows 上
+    `load_default_certs()` 載進 64 張根憑證仍然是同一個錯誤：缺的欄位在中介 CA
+    那張憑證裡，換誰當信任錨都補不回來。這個 class 的前身叫「SystemTrustAdapter」，
+    docstring 寫著「改用作業系統的憑證庫」，但實作從頭到尾只有一行
+    `ssl.create_default_context()`（＝預設行為，什麼都沒換）—— Python 3.12 以前
+    strict 沒開，兩邊都能過，所以那個謊一直沒被拆穿，直到有人用 3.13 跑。
 
     注意這跟 verify=False 完全是兩回事：
       - 信任鏈驗證：保持開啟
       - hostname 檢查：保持開啟
-      - VERIFY_X509_STRICT：保持開啟
-    只是換一個信任錨的來源 —— 跟你瀏覽器用的是同一套。
+      - 憑證過期檢查：保持開啟
+    只放寬「擴充欄位的格式必須完全合規」這一項 —— 瀏覽器本來就不做這項檢查，
+    所以這裡的驗證強度跟你用瀏覽器開同一個網站是一樣的。
 
     **絕對不要**因為憑證錯誤就改成 verify=False。這支程式接下來會送學生的密碼，
     關掉驗證等於在校園 Wi-Fi 上對中間人門戶大開。
 
-    移植到 Flutter 時不用管這段：Android / iOS 的 HTTP stack 本來就走 OS 憑證庫。
+    移植到 Flutter 時不用管這段：Android / iOS 的 HTTP stack 不走 OpenSSL 這套
+    嚴格檢查，實機上沒有這個問題。
     """
 
     def init_poolmanager(self, connections, maxsize, block=False, **kw):
         ctx = ssl.create_default_context()
+        ctx.verify_flags &= ~ssl.VERIFY_X509_STRICT
         kw["ssl_context"] = ctx
         self.poolmanager = PoolManager(
             num_pools=connections, maxsize=maxsize, block=block, **kw
@@ -206,7 +214,7 @@ class AisSession:
     _last_request_at: float = 0.0
 
     def __post_init__(self) -> None:
-        self.s.mount("https://", SystemTrustAdapter())
+        self.s.mount("https://", TwcaChainAdapter())
         self.s.headers.update(
             {
                 "User-Agent": DEFAULT_UA,

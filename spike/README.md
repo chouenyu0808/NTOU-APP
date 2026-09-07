@@ -589,14 +589,20 @@ exec spike/.venv/Scripts/python.exe spike/check.py --quiet
 ## 踩過的雷
 
 **TLS：`Missing Subject Key Identifier`**
-`requests` 預設用 certifi 的 CA bundle，建出來的信任鏈裡有張中介 CA 缺少
-Subject Key Identifier，OpenSSL 3.5 的嚴格檢查（Python 3.13+ 預設開啟）直接拒絕。
-`ais.SystemTrustAdapter` 改用 OS 憑證庫解決 —— 跟瀏覽器同一套信任來源。
-信任鏈驗證、hostname 檢查、`VERIFY_X509_STRICT` **全部維持開啟**。
+學校憑證由 TWCA 簽發，信任鏈裡有張中介 CA 缺少 Subject Key Identifier。
+**Python 3.13 起 `VERIFY_X509_STRICT` 預設開啟**，那項檢查要求擴充欄位完全符合
+RFC 5280，握手就被拒。`ais.TwcaChainAdapter` 只關掉那一個旗標，信任鏈驗證、
+hostname 檢查、過期檢查全部維持開啟 —— 驗證強度跟瀏覽器開同一個網站一樣。
+
+**換 OS 憑證庫解決不了**：缺的欄位在中介 CA 那張憑證裡，換信任錨補不回來
+（Windows 上實測載進 64 張根憑證仍是同一個錯誤）。這個 adapter 的前身叫
+`SystemTrustAdapter`，名字和 docstring 都說它走 OS 憑證庫，但實作只有一行
+`ssl.create_default_context()`。Python 3.12 以前 strict 沒開，兩邊都能過，
+所以沒人發現；換到 3.13 的機器上就是一開場 `SSLError` 連不上。
 
 **絕對不要**因為憑證錯誤就改成 `verify=False`：這支程式會送學生的密碼，
 關掉驗證等於在校園 Wi-Fi 上對中間人門戶大開。
-移植到 Flutter 時不用管這段，Android / iOS 本來就走 OS 憑證庫。
+移植到 Flutter 時不用管這段，Android / iOS 不走 OpenSSL 這套嚴格檢查。
 
 **這個系統大量用 JS 導向而不是 HTTP 302**
 排隊關卡是這樣，登入成功也是這樣。`requests` 不跑 JS，兩個地方都會靜默卡住 ——
@@ -665,7 +671,7 @@ Flutter SDK 目前還沒裝。裝好之後對應關係：
 | `getpass` | `flutter_secure_storage`（Keychain / Keystore） |
 | `selectors.json` 讀檔 | Firebase Remote Config / GitHub raw |
 | fixture 測試 | 原封不動搬，`test/` 放同一批 HTML |
-| `SystemTrustAdapter` | 不需要，平台預設就是 OS 憑證庫 |
+| `TwcaChainAdapter` | 不需要，平台的 HTTP stack 不做 OpenSSL 那套嚴格檢查 |
 | `js_redirect_target` | 一樣要 —— 除非你用 WebView，否則 JS 導向還是得自己抓 |
 
 `ais.py` 刻意不用任何 requests 專屬的花招，就是為了讓這層可以一行一行對著搬。
