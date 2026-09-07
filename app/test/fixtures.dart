@@ -21,6 +21,26 @@ bool get fixturesAvailable => fixtureFiles().isNotEmpty;
 String? get skipReason =>
     fixturesAvailable ? null : '沒有 fixture（跑 spike/login.py --save 產生）';
 
+/// 這個測試要用的那幾個 fixture 在不在。
+///
+/// **`skipReason` 的粒度不夠。** 它問的是「資料夾裡有沒有任何一個 .html」，
+/// 但一台機器完全可能只抓過其中幾頁 —— 2026-09-07 就是這樣踩到的：
+/// 為了看成績只抓了 GRD 那四頁，`fixturesAvailable` 立刻變成 true，
+/// 於是所有讀課表 fixture 的測試從「乖乖 skip」變成 18 個
+/// `PathNotFoundException`。那個錯誤訊息看起來像程式壞了，
+/// 而實際上只是「你沒抓過那一頁」。
+///
+/// 每個測試宣告自己真正讀的檔案，缺哪個就只 skip 哪個。
+String? skipUnless(String name) => skipUnlessAll([name]);
+
+String? skipUnlessAll(List<String> names) {
+  final missing = names
+      .where((n) => !File('${fixturesDir.path}/$n').existsSync())
+      .toList();
+  if (missing.isEmpty) return null;
+  return '沒有 ${missing.join('、')}（用 spike/login.py --save --fetch 抓）';
+}
+
 String fixture(String name) =>
     File('${fixturesDir.path}/$name').readAsStringSync();
 

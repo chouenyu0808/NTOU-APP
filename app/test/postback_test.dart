@@ -23,7 +23,7 @@ void main() {
       expect(fields, contains('Q_DEGREE_CODE'));
       expect(fields, contains('Q_TCH_FACULTY_CODE'));
       expect(fields, contains('Q_CLSSRM_BUILD'));
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01.html'));
 
     test('沒有連動的頁面回空的', () {
       final fields = AisSession.autoPostBackFields(

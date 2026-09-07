@@ -33,7 +33,7 @@ void main() {
       expect(buttons['QUERY_BTN3'], '選課課表');
       // 「還原」只是清空表單的前端動作，不是查詢
       expect(buttons.containsKey('QCLEAR_BTN1'), isFalse);
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2240_01.html'));
 
     test('學年下拉帶回真實選項，不是寫死的', () {
       final schema = FunctionSchema.fromDocument(
@@ -46,7 +46,7 @@ void main() {
       expect(year.value, isNotEmpty);
       // 每年都會變的東西不該寫在 App 裡
       expect(year.options.map((o) => o.value), contains('115'));
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2240_01.html'));
 
     test('課程查詢：五組查詢條件的欄位都讀得出來', () {
       final schema = FunctionSchema.fromDocument(
@@ -60,7 +60,7 @@ void main() {
       expect(labels['Q_CH_LESSON'], '中文課名');
       expect(labels['Q_WEEK'], '星期');
       expect(labels['Q_CLSSRM_BUILD'], isNotNull);
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01.html'));
 
     test('沒有選項的下拉標成 needsCascade —— 那種欄位不能送', () {
       // Q_LECTR_TCH_CH 初始 0 個 option，要先選系所觸發連動 postback。
@@ -73,7 +73,7 @@ void main() {
 
       expect(teacher.options, isEmpty);
       expect(teacher.needsCascade, isTrue);
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01.html'));
 
     test('type=button 的列印鈕不收進來', () {
       // PRINT_ALL_BTN1 是 `type="button" onclick="doPrint()"`，不是 submit。
@@ -87,7 +87,7 @@ void main() {
       // 能驅動的那幾顆都在
       expect(schema.queryButtons.map((b) => b.name), contains('QUERY_BTN1'));
       expect(schema.queryButtons.map((b) => b.name), contains('QUERY_BTN5'));
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01.html'));
   });
 
   group('parseDataGrid（真實頁面）', () {
@@ -103,7 +103,7 @@ void main() {
       // 每一列的欄數都跟表頭對得上（分頁列已經濾掉）
       expect(r.rows.every((row) => row.length == r.columns.length), isTrue);
       expect(r.records.first['課號'], isNotEmpty);
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01__QUERY_BTN1_0_0507.html'));
 
     test('查無資料：isEmpty 為真，而不是解析失敗', () {
       // 114-2：使用者那學期還沒在本校選課。
@@ -114,7 +114,7 @@ void main() {
 
       expect(r.isEmpty, isTrue);
       expect(r.rowCount, 0);
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2240_01__QUERY_BTN1_114_2.html'));
 
     test('讀得到分頁狀態', () {
       final r = parseDataGrid(
@@ -127,7 +127,7 @@ void main() {
       // gotoPage('PC_PageNo', 11, ...) 讀出來的，不是從顯示的頁碼猜的。
       expect(r.paging.lastPage, greaterThan(1));
       expect(r.paging.hasMore, isTrue);
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01__QUERY_BTN5_1_03.html'));
   });
 
   group('分頁式的功能頁', () {
@@ -148,7 +148,7 @@ void main() {
         '教室排課查詢',
         '全英語課查詢',
       ]);
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01.html'));
 
     test('欄位跟按鈕分到正確的組', () {
       final g = {for (final g in courseSearch().groups) g.label: g};
@@ -164,7 +164,7 @@ void main() {
       // 開課老師查詢有兩顆：課表跟清單
       expect(g['開課老師查詢']!.buttons.map((b) => b.name),
           containsAll(['QUERY_BTN3', 'QUERY_BTN4']));
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01.html'));
 
     test('index 是 0-based，送出時要放進 hdnSelectedTab', () {
       // tabs_init() 寫進去的是 jQuery UI 的 active 索引，
@@ -172,7 +172,7 @@ void main() {
       final groups = courseSearch().groups;
       expect(groups.first.index, 0);
       expect(groups.map((g) => g.index), [0, 1, 2, 3, 4, 5]);
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2211_01.html'));
 
     test('沒有分頁的頁面只有一組', () {
       final schema = FunctionSchema.fromDocument(
@@ -182,7 +182,7 @@ void main() {
       expect(schema.groups.single.label, isEmpty);
       expect(schema.groups.single.buttons.map((b) => b.name),
           containsAll(['QUERY_BTN1', 'QUERY_BTN3']));
-    }, skip: skipReason);
+    }, skip: skipUnless('Application_TKE_TKE22_TKE2240_01.html'));
   });
 
   group('按鈕標籤', () {

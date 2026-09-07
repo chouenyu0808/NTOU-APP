@@ -31,13 +31,13 @@ void main() {
       expect(html.contains('M_PORTAL_LOGIN_ACNT'), isTrue,
           reason: '成功的回應裡仍然有登入表單 —— 所以不能用表單存在與否判斷');
       expect(jsRedirectTarget(html), 'MainFrame.aspx');
-    }, skip: skipReason);
+    }, skip: skipUnless('login_post.html'));
 
     test('登入失敗的回應沒有前進的導向', () {
       final html = fixture('login_failed.html');
       final target = jsRedirectTarget(html);
       expect(target, anyOf(isNull, isNot('MainFrame.aspx')));
-    }, skip: skipReason);
+    }, skip: skipUnless('login_failed.html'));
 
     test('重複登入被擋：先認 session 衝突，再認登入頁', () {
       // 這一頁**同時**帶著登入表單和衝突訊息。判斷順序反過來的話，
@@ -46,11 +46,11 @@ void main() {
       expect(AisSession.isSessionConflict(page), isTrue);
       expect(page.html.contains('M_PORTAL_LOGIN_ACNT'), isTrue,
           reason: '它也長得像登入頁 —— 所以 checkSession 的順序很重要');
-    }, skip: skipReason);
+    }, skip: skipUnless('session_blocked.html'));
 
     test('排隊頁會導回登入頁', () {
       expect(jsRedirectTarget(fixture('queue.html')), 'Default.aspx');
-    }, skip: skipReason);
+    }, skip: skipUnless('queue.html'));
 
     group('MainFrame 的 frame 握手', () {
       test('挑出四個要載的 frame', () {
@@ -83,7 +83,7 @@ void main() {
           returnsNormally,
         );
       });
-    }, skip: skipReason);
+    }, skip: skipUnless('mainframe.html'));
 
     test('個人課表查詢：115-1 有課，之前的學期是空的', () {
       // 2026-09-03 使用者選課之後重抓。在那之前六個學期全是「查無符合資料」
@@ -145,7 +145,8 @@ void main() {
       // 所以「解不出時段」在這裡是正確行為，不是 bug。
       expect(columns.any((c) => c.contains('時間')), isFalse);
       expect(courses.every((c) => c.slots.isEmpty), isTrue);
-    }, skip: skipReason);
+    }, skip: skipUnless(
+        'Application_TKE_TKE22_TKE2211_01__QUERY_BTN1_0_0507.html'));
   });
 
   group('編碼假設', () {

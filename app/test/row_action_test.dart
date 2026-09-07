@@ -15,7 +15,7 @@ void main() {
     late DataGridResult r;
 
     setUpAll(() {
-      if (fixturesAvailable && _has()) r = parseDataGrid(fixture(_fixture));
+      if (_has()) r = parseDataGrid(fixture(_fixture));
     });
 
     test('前兩欄是動作欄，每一列都有加選和詳', () {
@@ -33,7 +33,7 @@ void main() {
       expect(detail.target, 'DataGrid1\$ctl02\$dolink');
       // 「詳」只是換一頁看內容，不該問使用者要不要送出
       expect(detail.mutating, isFalse);
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('KEY 屬性帶著整筆課程資料，不用再打一次伺服器', () {
       if (!_has()) return;
@@ -46,7 +46,7 @@ void main() {
       expect(a.data['MAX_ST'], '50');
       // SEG 就是上課時間代碼 —— 週一 2、3、4 節
       expect(a.data['SEG'], '102,103,104');
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('學校說不能加的那門認得出來', () {
       if (!_has()) return;
@@ -58,7 +58,7 @@ void main() {
       expect(internship, hasLength(1));
       expect(internship.single.blocked, isTrue);
       expect(internship.single.notice, contains('系辦'));
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('動作跟課號同一列，沒有錯開', () {
       if (!_has()) return;
@@ -72,7 +72,7 @@ void main() {
         if (a == null || a.data['COSID'] == null) continue;
         expect(a.data['COSID'], r.rows[i][codeCol], reason: '第 $i 列');
       }
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
   });
 
   group('一頁兩張表（真實頁面）', () {
@@ -90,13 +90,13 @@ void main() {
       expect(drop, isNotNull);
       expect(drop!.label, '退選');
       expect(drop.mutating, isTrue, reason: '退選會改資料，按之前一定要問');
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('已選上的那張就是使用者這學期的三門課', () {
       if (!_has()) return;
       final grids = parseDataGrids(fixture(_fixture));
       expect(grids[1].rows, hasLength(3));
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('只有一張表的頁面照舊', () {
       final grids = parseDataGrids(

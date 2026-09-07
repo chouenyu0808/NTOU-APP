@@ -17,12 +17,14 @@ void main() {
     late Map<String, GridCourse> grid;
 
     setUpAll(() {
-      if (fixturesAvailable) grid = parseEnrolledGrid(fixture(_fixture));
+      if (skipUnless(_fixture) == null) {
+        grid = parseEnrolledGrid(fixture(_fixture));
+      }
     });
 
     test('三門課都認出來，而且以課號為 key', () {
       expect(grid.keys.toSet(), {'B57011RQ', 'B5701M33', 'B5701V75'});
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('計算機概論：週一第 2、3、4 節，INS105', () {
       final c = grid['B57011RQ']!;
@@ -34,7 +36,7 @@ void main() {
         TimeSlot(0, 3),
         TimeSlot(0, 4),
       ]);
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('程式設計：週三第 7、8、9 節，INS303', () {
       final c = grid['B5701M33']!;
@@ -45,7 +47,7 @@ void main() {
         TimeSlot(2, 8),
         TimeSlot(2, 9),
       ]);
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('離散數學：週四第 2、3、4 節，ECGB107', () {
       final c = grid['B5701V75']!;
@@ -56,13 +58,13 @@ void main() {
         TimeSlot(3, 3),
         TimeSlot(3, 4),
       ]);
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
 
     test('開課單位和班別也讀得出來', () {
       expect(grid['B57011RQ']!.unit, '資訊工程學系');
       // 格子裡是短班別（1A），選課清單裡是「1年A班」—— 所以不能拿來比對
       expect(grid['B57011RQ']!.classLabel, '1A');
-    }, skip: skipReason);
+    }, skip: skipUnless(_fixture));
   });
 
   group('parseEnrolledGrid（合成頁面）', () {
