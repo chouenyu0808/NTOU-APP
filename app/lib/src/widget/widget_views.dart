@@ -308,7 +308,11 @@ class TransitWidgetView extends StatelessWidget {
               badge: null,
               reserveAction: true,
               scheme: scheme,
-              subtitleColor: payload.refreshFailed ? scheme.error : null,
+              subtitleColor: payload.refreshFailed
+                  ? scheme.error
+                  : payload.refreshing
+                      ? scheme.primary
+                      : null,
             ),
           ),
           Expanded(
@@ -329,9 +333,17 @@ class TransitWidgetView extends StatelessWidget {
   /// 那個時間講的是資料多舊，拿失敗的時刻蓋上去等於謊報新鮮度。
   String get _timeLabel {
     final at = payload.updatedAt;
+    final hhmm = at == null
+        ? ''
+        : '${at.hour.toString().padLeft(2, '0')}'
+            ':${at.minute.toString().padLeft(2, '0')}';
+
+    // 正在抓的時候先講這件事。**下面的數字還是舊的那一份**，所以時間
+    // 照樣標出來 —— 不標的話使用者會以為畫面上的「12 分」是剛抓到的。
+    if (payload.refreshing) {
+      return at == null ? '更新中…' : '更新中… · 目前是 $hhmm 的資料';
+    }
     if (at == null) return payload.refreshFailed ? '更新失敗' : '尚未更新';
-    final hhmm = '${at.hour.toString().padLeft(2, '0')}'
-        ':${at.minute.toString().padLeft(2, '0')}';
     return payload.refreshFailed ? '$hhmm 的資料 · 更新失敗' : '資料時間 $hhmm';
   }
 

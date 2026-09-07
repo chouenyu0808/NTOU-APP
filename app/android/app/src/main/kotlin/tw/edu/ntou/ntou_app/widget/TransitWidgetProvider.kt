@@ -3,7 +3,6 @@ package tw.edu.ntou.ntou_app.widget
 import android.content.Context
 import android.content.SharedPreferences
 import android.widget.RemoteViews
-import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import tw.edu.ntou.ntou_app.R
 
 /**
@@ -42,12 +41,15 @@ class TransitWidgetProvider : NtouWidgetProvider() {
         return stale && cooled
     }
 
-    /** 右上角那顆重新整理鈕。圖是不能點的，所以它是疊在上面的真 View。 */
+    /**
+     * 右上角那顆重新整理鈕。圖是不能點的，所以它是疊在上面的真 View。
+     *
+     * 走 [manualIntent]：它帶著 `manual=1`，Dart 會先把手上那份資料重畫成
+     * 「更新中…」再去抓。**整趟要五秒起跳**，中間沒有任何變化的話，
+     * 使用者按了會以為這顆鈕是壞的。
+     */
     override fun decorate(context: Context, views: RemoteViews, surface: Surface) {
-        views.setOnClickPendingIntent(
-            R.id.widget_refresh,
-            HomeWidgetBackgroundIntent.getBroadcast(context, surface.uri(host)),
-        )
+        views.setOnClickPendingIntent(R.id.widget_refresh, manualIntent(context, surface))
     }
 
     private companion object {

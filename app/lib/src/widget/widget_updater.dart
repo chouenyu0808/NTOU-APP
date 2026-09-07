@@ -7,6 +7,7 @@ import 'package:home_widget/home_widget.dart';
 
 import '../storage/timetable_cache.dart';
 import '../storage/transit_prefs_store.dart';
+import '../transit/nearest_stop.dart';
 import '../transit/tdx_client.dart';
 import '../transit/transit_config.dart';
 import '../transit/transit_models.dart';
@@ -132,6 +133,7 @@ class WidgetUpdater {
   Future<void> refreshTransit({
     WidgetSurface? surface,
     Duration? ifOlderThan,
+    bool manual = false,
   }) async {
     final where = surface ?? await _storedSurface(WidgetKeys.transitSurface);
     if (where == null) return;
@@ -151,6 +153,24 @@ class WidgetUpdater {
       WidgetKeys.transitLastAttempt,
       '${now.millisecondsSinceEpoch}',
     );
+
+    // 使用者自己按的：**先把手上那份重畫成「更新中…」**再去抓。
+    //
+    // 整趟抓完要五秒起跳（實測 5.3 秒，冷啟動更久），而這中間畫面上一點
+    // 變化都沒有 —— 他按了、什麼都沒發生、於是認定這顆鈕是壞的。
+    // 這一張是純本機的重畫，不打網路，兩百毫秒就出來。
+    //
+    // 自動更新不畫這一張：沒有人在看，多畫一張只是多耗一次電。
+    if (manual) {
+      final previous = await _storedTransitPayload();
+      if (previous != null) {
+        await _publishTransit(
+          previous.copyWith(refreshing: true, refreshFailed: false),
+          where,
+          remember: false,
+        );
+      }
+    }
 
     final payload = await _fetchTransit(now);
     if (payload == null) return;
@@ -181,16 +201,21 @@ class WidgetUpdater {
         boards: boards,
         config: config,
         favorites: favorites,
+        preferredStopId: await _preferredStopId(config),
         now: now,
       ),
       where,
     );
   }
 
+  /// [remember] = false 代表這只是一張過場的圖（「更新中…」），
+  /// **不要動存起來的 payload 和時間戳** —— 那兩個講的是「手上的資料多舊」，
+  /// 而過場圖並沒有帶來任何新資料。
   Future<void> _publishTransit(
     TransitWidgetPayload payload,
-    WidgetSurface where,
-  ) async {
+    WidgetSurface where, {
+    bool remember = true,
+  }) async {
     final drawn = await _draw(
       light: TransitWidgetView(
         payload: payload,
@@ -215,13 +240,15 @@ class WidgetUpdater {
     );
     if (!drawn) return;
 
-    await HomeWidget.saveWidgetData<String>(
-      WidgetKeys.transitPayload,
-      jsonEncode(payload.toJson()),
-    );
+    if (remember) {
+      await HomeWidget.saveWidgetData<String>(
+        WidgetKeys.transitPayload,
+        jsonEncode(payload.toJson()),
+      );
+    }
     // **失敗的時候不動這個時間。** 它講的是「畫面上的資料有多舊」，
     // 拿失敗的時刻蓋上去等於謊報新鮮度。
-    if (!payload.refreshFailed && payload.updatedAt != null) {
+    if (remember && !payload.refreshFailed && payload.updatedAt != null) {
       await HomeWidget.saveWidgetData<String>(
         WidgetKeys.transitUpdatedAt,
         '${payload.updatedAt!.millisecondsSinceEpoch}',
@@ -237,19 +264,23 @@ class WidgetUpdater {
   ///
   /// 回 null = 連上一次的都沒有，而且這次也失敗 —— 那就不要動畫面，
   /// 讓原本那張圖留著。
-  Future<TransitWidgetPayload?> _fetchTransit(DateTime now) async {
-    TransitWidgetPayload? previous;
+  /// 上一次成功抓到的那一份。讀不到就回 null。
+  Future<TransitWidgetPayload?> _storedTransitPayload() async {
     try {
       final raw =
           await HomeWidget.getWidgetData<String>(WidgetKeys.transitPayload);
-      if (raw != null && raw.isNotEmpty) {
-        previous = TransitWidgetPayload.fromJson(
-          jsonDecode(raw) as Map<String, dynamic>,
-        );
-      }
+      if (raw == null || raw.isEmpty) return null;
+      return TransitWidgetPayload.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
     } catch (_) {
       // 舊格式讀不動就當作沒有。壞掉的快取不該讓小組件停止更新。
+      return null;
     }
+  }
+
+  Future<TransitWidgetPayload?> _fetchTransit(DateTime now) async {
+    final previous = await _storedTransitPayload();
 
     try {
       final repo = _injectedTransit ?? await _buildRepository();
@@ -264,6 +295,7 @@ class WidgetUpdater {
               boards: boards,
               config: repo.config,
               favorites: await _favorites(),
+              preferredStopId: await _preferredStopId(repo.config),
               now: now,
             );
       }
@@ -272,12 +304,31 @@ class WidgetUpdater {
         boards: boards,
         config: repo.config,
         favorites: await _favorites(),
+        preferredStopId: await _preferredStopId(repo.config),
         now: now,
       );
     } catch (_) {
       // **不要把例外訊息畫到小組件上。** dio 的訊息裡有完整 URL 和堆疊，
       // 那是給我們看的，不是給使用者看的。
       return previous?.copyWith(refreshFailed: true);
+    }
+  }
+
+  /// 哪一站要排最前面：使用者釘的，或離他最近的。
+  ///
+  /// **位置是 App 在前景時量的那一份**（見 [LastKnownPlace]）—— 小組件
+  /// 在背景拿不到當下的位置，那需要 Google Play 要人工審查的權限。
+  Future<String?> _preferredStopId(TransitConfig config) async {
+    try {
+      return NearestStop.preferred(
+        config.stops,
+        pinnedId: await _prefs.readPinnedStop(),
+        place: await _prefs.readPlace(),
+      )?.id;
+    } catch (_) {
+      // 讀不到就照設定檔原本的順序。**不要猜一站** —— 猜出來的
+      // 「最近的站」跟真的長得一模一樣。
+      return null;
     }
   }
 

@@ -289,6 +289,92 @@ void main() {
     });
   });
 
+  group('哪一站排最前面', () {
+    List<StopBoard> threeStops() => const [
+          StopBoard(stop: gym),
+          StopBoard(
+            stop: TransitStop(
+              id: 'ntou-binhai-gate',
+              name: '海大濱海校門',
+              kind: TransitStopKind.cityBus,
+            ),
+          ),
+          StopBoard(stop: keelung),
+        ];
+
+    test('指定的那一站排到最前面，其餘維持原順序', () {
+      final p = buildTransitWidgetPayload(
+        boards: threeStops(),
+        config: config,
+        preferredStopId: 'tra-keelung',
+        now: now,
+      );
+
+      expect(
+        p.stops.map((s) => s.name),
+        ['台鐵基隆站', '海大體育館', '海大濱海校門'],
+      );
+    });
+
+    test('**只是換順序，不是只留一站**', () {
+      // 在這裡砍掉的話，使用者把小組件拉大也不會多出東西來 ——
+      // 塞不塞得下是畫的那一層決定的。
+      final p = buildTransitWidgetPayload(
+        boards: threeStops(),
+        config: config,
+        preferredStopId: 'tra-keelung',
+        now: now,
+      );
+
+      expect(p.stops, hasLength(3));
+    });
+
+    test('沒指定就照原本的順序', () {
+      final p = buildTransitWidgetPayload(
+        boards: threeStops(),
+        config: config,
+        now: now,
+      );
+
+      expect(p.stops.first.name, '海大體育館');
+    });
+
+    test('指定的 id 不在清單裡就照原本的順序，不要亂挑一站', () {
+      final p = buildTransitWidgetPayload(
+        boards: threeStops(),
+        config: config,
+        preferredStopId: 'somewhere-else',
+        now: now,
+      );
+
+      expect(p.stops.first.name, '海大體育館');
+      expect(p.stops, hasLength(3));
+    });
+  });
+
+  group('更新中', () {
+    test('是一個瞬間狀態，不進 JSON', () {
+      // 存下來的話，程序在抓到一半被殺掉之後讀回來會是一個永遠停在
+      // 「更新中」的畫面 —— 而其實根本沒有人在抓。
+      final refreshing =
+          build([StopBoard(stop: gym)]).copyWith(refreshing: true);
+      final back = TransitWidgetPayload.fromJson(
+        jsonDecode(jsonEncode(refreshing.toJson())) as Map<String, dynamic>,
+      );
+
+      expect(refreshing.refreshing, isTrue);
+      expect(back.refreshing, isFalse);
+    });
+
+    test('不動資料時間和內容', () {
+      final original = build([StopBoard(stop: gym)]);
+      final refreshing = original.copyWith(refreshing: true);
+
+      expect(refreshing.updatedAt, original.updatedAt);
+      expect(refreshing.stops, original.stops);
+    });
+  });
+
   group('小組件的尺寸', () {
     test('存下去再讀回來是同一個', () {
       const surface = WidgetSurface(size: Size(320, 180), pixelRatio: 2.75);

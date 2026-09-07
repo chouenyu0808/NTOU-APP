@@ -94,6 +94,7 @@ class TransitWidgetPayload {
     required this.stops,
     this.updatedAt,
     this.refreshFailed = false,
+    this.refreshing = false,
   });
 
   final List<TransitWidgetStop> stops;
@@ -111,12 +112,25 @@ class TransitWidgetPayload {
   /// 拿失敗的時刻蓋上去等於謊報新鮮度。
   final bool refreshFailed;
 
+  /// 正在抓新的。畫面上顯示「更新中…」，資料還是舊的那一份。
+  ///
+  /// **這是使用者按下按鈕之後唯一看得到的東西。** 整趟抓完要五秒起跳
+  /// （冷啟動更久），中間畫面上一點變化都沒有的話，他按了會以為壞掉、
+  /// 再按一次，然後放棄。
+  ///
+  /// **不進 JSON**：它是一個瞬間的狀態，不是資料。存下來的話，
+  /// 程序在抓到一半被殺掉之後，下一次讀回來會是一個永遠停在「更新中」
+  /// 的畫面 —— 而其實根本沒有人在抓。
+  final bool refreshing;
+
   bool get isEmpty => stops.every((s) => s.rows.isEmpty);
 
-  TransitWidgetPayload copyWith({bool? refreshFailed}) => TransitWidgetPayload(
+  TransitWidgetPayload copyWith({bool? refreshFailed, bool? refreshing}) =>
+      TransitWidgetPayload(
         stops: stops,
         updatedAt: updatedAt,
         refreshFailed: refreshFailed ?? this.refreshFailed,
+        refreshing: refreshing ?? this.refreshing,
       );
 
   Map<String, dynamic> toJson() => {
@@ -149,11 +163,12 @@ TransitWidgetPayload buildTransitWidgetPayload({
   required List<StopBoard> boards,
   required TransitConfig config,
   Set<String> favorites = const {},
+  String? preferredStopId,
   required DateTime now,
 }) {
   final stops = <TransitWidgetStop>[];
 
-  for (final board in boards) {
+  for (final board in _ordered(boards, preferredStopId)) {
     final counts = ArrivalText.routeCounts(board);
     final rows = <TransitWidgetRow>[];
 
@@ -204,6 +219,19 @@ TransitWidgetPayload buildTransitWidgetPayload({
   }
 
   return TransitWidgetPayload(stops: stops, updatedAt: now);
+}
+
+/// 把使用者要的那一站排到最前面，其餘維持原本的順序。
+///
+/// **只是換順序，不是只留一站。** 小組件由上往下填到滿為止，尺寸大就多看到
+/// 幾站 —— 在這裡砍掉的話，使用者把小組件拉大也不會多出東西來。
+///
+/// 找不到那個 id 就原樣回傳（設定檔改過、站被拿掉）。
+List<StopBoard> _ordered(List<StopBoard> boards, String? preferredStopId) {
+  if (preferredStopId == null || preferredStopId.isEmpty) return boards;
+  final i = boards.indexWhere((b) => b.stop.id == preferredStopId);
+  if (i <= 0) return boards;
+  return [boards[i], ...boards.where((b) => b.stop.id != preferredStopId)];
 }
 
 /// 釘起來的排前面，兩組各自照到站時間。

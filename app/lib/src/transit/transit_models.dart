@@ -34,6 +34,8 @@ class TransitStop {
     this.matchNames = const [],
     this.stationId = '',
     this.stationName = '',
+    this.lat,
+    this.lon,
   });
 
   final String id;
@@ -70,6 +72,20 @@ class TransitStop {
   final String stationId;
   final String stationName;
 
+  /// 這一站在地圖上的位置。用來算「離使用者最近的是哪一站」。
+  ///
+  /// **值是從 TDX 抄來的，不是估的**（見 `transit.json` 的 `_stops_comment`）。
+  /// 海大三個門互相只差 237 到 683 公尺 —— 差個幾百公尺就會挑到隔壁那個門，
+  /// 而畫面上是一個看起來完全合理的站名。
+  ///
+  /// null = 這一站沒有座標，排序時**永遠不會被選成最近的**。少填一個的
+  /// 後果只是它不參與排序，不會變成挑錯站。
+  final double? lat;
+  final double? lon;
+
+  /// 有沒有位置可以拿來比距離。
+  bool get hasPosition => lat != null && lon != null;
+
   factory TransitStop.fromJson(Map<String, dynamic> json) => TransitStop(
         id: json['id'] as String? ?? '',
         name: json['name'] as String? ?? '',
@@ -85,6 +101,8 @@ class TransitStop {
         ],
         stationId: json['station_id'] as String? ?? '',
         stationName: json['station_name'] as String? ?? '',
+        lat: (json['lat'] as num?)?.toDouble(),
+        lon: (json['lon'] as num?)?.toDouble(),
       );
 
   /// 比對用的名字集合。[name] 一定包含在內，不用在 JSON 裡重複寫一次。

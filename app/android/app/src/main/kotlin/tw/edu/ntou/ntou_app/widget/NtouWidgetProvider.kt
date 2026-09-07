@@ -1,5 +1,6 @@
 package tw.edu.ntou.ntou_app.widget
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
@@ -213,6 +214,19 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
         }
     }
 
+    /**
+     * 「使用者按了重新整理」的 PendingIntent。
+     *
+     * 跟 [askDart] 走同一個入口，只差 URI 上多一個 `manual=1` ——
+     * Dart 看到它會**先把手上那份資料重畫成「更新中…」**再去抓。
+     *
+     * 為什麼要分：整趟抓完要五秒起跳（冷啟動更久），而這中間畫面上
+     * 一點變化都沒有 —— 使用者按了、什麼都沒發生、於是認定它壞了。
+     * 自動更新沒人在看，不需要多畫那一張。
+     */
+    protected fun manualIntent(context: Context, surface: Surface): PendingIntent =
+        HomeWidgetBackgroundIntent.getBroadcast(context, surface.uri(host, manual = true))
+
     /** 這個小組件現在多大。 */
     protected fun surfaceOf(
         context: Context,
@@ -276,8 +290,15 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
  */
 data class Surface(val width: Float, val height: Float, val density: Float) {
 
-    fun uri(host: String): Uri =
-        Uri.parse("$SCHEME://$host?w=$width&h=$height&dpr=$density")
+    /**
+     * [manual] = 使用者自己按的重新整理，不是系統排的。
+     * Dart 靠它決定要不要先畫一張「更新中…」。
+     */
+    fun uri(host: String, manual: Boolean = false): Uri =
+        Uri.parse(
+            "$SCHEME://$host?w=$width&h=$height&dpr=$density" +
+                if (manual) "&manual=1" else ""
+        )
 
     /** 存進 widget data 的樣子：`寬|高|密度`。要跟 Dart 的 `WidgetSurface` 一致。 */
     fun encode(): String = "$width|$height|$density"

@@ -28,7 +28,12 @@ Future<void> ntouWidgetBackground(Uri? uri) async {
     case widgetHostTimetable:
       await updater.refreshTimetable(surface: surface);
     case widgetHostTransit:
-      await updater.refreshTransit(surface: surface);
+      // `manual=1` = 使用者自己按了重新整理鈕（原生那邊掛的是不同的
+      // PendingIntent）。那時候要先畫一張「更新中…」給他看。
+      await updater.refreshTransit(
+        surface: surface,
+        manual: uri.queryParameters['manual'] == '1',
+      );
   }
 }
 

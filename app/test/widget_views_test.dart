@@ -196,9 +196,11 @@ void main() {
     TransitWidgetPayload transit({
       DateTime? updatedAt,
       bool refreshFailed = false,
+      bool refreshing = false,
       List<TransitWidgetStop>? stops,
     }) =>
         TransitWidgetPayload(
+          refreshing: refreshing,
           stops: stops ??
               [
                 const TransitWidgetStop(
@@ -260,6 +262,25 @@ void main() {
       );
 
       expect(find.text('10:32 的資料 · 更新失敗'), findsOneWidget);
+    });
+
+    testWidgets('按下重新整理之後馬上看得到「更新中」，而且資料時間照舊', (tester) async {
+      // 整趟抓完要五秒起跳。中間畫面上沒有任何變化的話，使用者按了會以為
+      // 這顆鈕是壞的 —— 那正是他回報的症狀。
+      await draw(
+        tester,
+        TransitWidgetView(
+          payload: transit(refreshing: true),
+          size: const Size(320, 180),
+          brightness: Brightness.light,
+        ),
+      );
+
+      expect(find.textContaining('更新中'), findsOneWidget);
+      // **舊的時間還是要標出來** —— 下面那些數字還是舊的那一份，
+      // 不標的話使用者會以為它們是剛抓到的。
+      expect(find.textContaining('10:32'), findsOneWidget);
+      expect(find.text('12 分'), findsOneWidget);
     });
 
     testWidgets('沒有可搭的車時說的是哪一句', (tester) async {
