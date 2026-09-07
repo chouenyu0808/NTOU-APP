@@ -1,5 +1,10 @@
 [
   {
+    "trail": "教務系統 > 教學評鑑 > 填寫課程問卷",
+    "text": "填寫課程問卷",
+    "href": "Application/CET/CET20/CET2020_.aspx?progcd=CET2020"
+  },
+  {
     "trail": "教務系統 > 學生基本資料維護作業 > 維護新生資料",
     "text": "維護新生資料",
     "href": "Application/ENR/ENR30/ENR3030_.aspx?progcd=ENR3030"
@@ -10,9 +15,9 @@
     "href": "Application/ENR/ENR30/ENR3040_.aspx?progcd=ENR3040"
   },
   {
-    "trail": "教務系統 > 學生基本資料維護作業 > 新生線上註冊",
-    "text": "新生線上註冊",
-    "href": "Application/ENR/ENR30/ENR3090_.aspx?progcd=ENR3090"
+    "trail": "教務系統 > 學生基本資料維護作業 > 在學證明申請列印",
+    "text": "在學證明申請列印",
+    "href": "Application/AUT/MAP/MAP001/MAP0001_.aspx?progcd=STU3160"
   },
   {
     "trail": "教務系統 > 學生基本資料維護作業 > 服役彈性修業/超修申請",
@@ -35,14 +40,149 @@
     "href": "Application/TKE/TKE22/TKE2240_.aspx?progcd=STU1220"
   },
   {
+    "trail": "教務系統 > 選課系統 > 預選電腦抽籤",
+    "text": "預選電腦抽籤",
+    "href": "Application/TKE/TKE20/TKE2020_.aspx?progcd=STU1020"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 預選(通識、體育、外語)志願輸入",
+    "text": "預選(通識、體育、外語)志願輸入",
+    "href": "Application/TKE/TKE20/TKE2030_.aspx?progcd=STU1030"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 人工加選申請",
+    "text": "人工加選申請",
+    "href": "Application/TKE/TKE20/TKE2040_.aspx?progcd=STU1040"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 期中退選申請",
+    "text": "期中退選申請",
+    "href": "Application/TKE/TKE20/TKE2050_.aspx?progcd=STU1050"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 微學分修習查詢",
+    "text": "微學分修習查詢",
+    "href": "Application/AUT/MAP/MAP001/MAP0003_.aspx?progcd=STU3170"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 上課時間衝堂學生名單查詢",
+    "text": "上課時間衝堂學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2070"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 選課學分超過上限學生名單查詢",
+    "text": "選課學分超過上限學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2080"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 選課學分低於下限學生名單查詢",
+    "text": "選課學分低於下限學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2090"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 在學無選課資料學生名單查詢",
+    "text": "在學無選課資料學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2100"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 重複修讀學生名單查詢",
+    "text": "重複修讀學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2110"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 日間部學生選進修推廣課程查詢",
+    "text": "日間部學生選進修推廣課程查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2120"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 同一學期修兩科以上體育學生名單查詢",
+    "text": "同一學期修兩科以上體育學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2130"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 同一學期修兩科以上通識學生名單查詢",
+    "text": "同一學期修兩科以上通識學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2140"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 同一學期修兩科以上第二外語學生名單查詢",
+    "text": "同一學期修兩科以上第二外語學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2150"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 同一學期修兩科以上英語學生名單查詢",
+    "text": "同一學期修兩科以上英語學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2151"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 同一學期修兩科以上軍訓學生名單查詢",
+    "text": "同一學期修兩科以上軍訓學生名單查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2160"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 共同課程領域分類表",
+    "text": "共同課程領域分類表",
+    "href": "Application/TKE/TKE22/TKE2200_.aspx?progcd=STU1180"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 領域課程查詢",
+    "text": "領域課程查詢",
+    "href": "Application/TKE/TKE21/TKE2190_.aspx?progcd=STU1170"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 領域授課時間表查詢列印",
+    "text": "領域授課時間表查詢列印",
+    "href": "Application/TKE/TKE22/TKE2230_.aspx?progcd=STU1210"
+  },
+  {
+    "trail": "教務系統 > 選課系統 > 擋修課程查詢",
+    "text": "擋修課程查詢",
+    "href": "Application/TKE/TKE20/TKE2070_01.aspx?PAGETYPE=TKE2260"
+  },
+  {
     "trail": "教務系統 > 選課系統 > 查詢必修科目表",
     "text": "查詢必修科目表",
     "href": "Application/ENR/ENRA0/ENRA120_.aspx?progcd=STU1101"
   },
   {
+    "trail": "教務系統 > 選課系統 > 授課時間表查詢列印",
+    "text": "授課時間表查詢列印",
+    "href": "Application/TKE/TKE22/TKE2221_.aspx?progcd=STU1200"
+  },
+  {
     "trail": "教務系統 > 選課系統 > 歷年課程課表查詢",
     "text": "歷年課程課表查詢",
     "href": "Application/TKE/TKE22/TKE2210_.aspx?progcd=STU1190"
+  },
+  {
+    "trail": "教務系統 > 成績系統 > 查詢各式成績",
+    "text": "查詢各式成績",
+    "href": "Application/GRD/GRD50/GRD5010_.aspx?progcd=STU2020"
+  },
+  {
+    "trail": "教務系統 > 成績系統 > 查詢當學期成績預警",
+    "text": "查詢當學期成績預警",
+    "href": "Application/GRD/GRD30/GRD3060_.aspx?progcd=STU2010"
+  },
+  {
+    "trail": "教務系統 > 成績系統 > 查詢缺曠課紀錄",
+    "text": "查詢缺曠課紀錄",
+    "href": "Application/GRD/GRD70/GRD7050_.aspx?progcd=STU2030"
+  },
+  {
+    "trail": "教務系統 > 成績系統 > 會考成績查詢",
+    "text": "會考成績查詢",
+    "href": "Application/TKE/TKE22/TKE2250_.aspx?progcd=STU1230"
+  },
+  {
+    "trail": "教務系統 > 成績系統 > 申請/查詢校外會考認證",
+    "text": "申請/查詢校外會考認證",
+    "href": "Application/ENR/ENRA0/ENRA200_.aspx?progcd=ENRA200"
+  },
+  {
+    "trail": "教務系統 > 成績系統 > 外語能力檢定考試補助與獎勵申請系統",
+    "text": "外語能力檢定考試補助與獎勵申請系統",
+    "href": "Application/AUT/MAP/MAP001/MAP0006_.aspx?progcd=STU3180"
   },
   {
     "trail": "教務系統 > 抵免/免修作業 > 申請抵免學分",
@@ -70,9 +210,119 @@
     "href": "Application/ENR/ENRD0/ENRD160_.aspx?progcd=ENRD160"
   },
   {
+    "trail": "教務系統 > 學分學程/次專長作業 > 查詢學分學程/次專長辦法",
+    "text": "查詢學分學程/次專長辦法",
+    "href": "Application/ENR/ENRF0/ENRF010_.aspx?progcd=STU1001"
+  },
+  {
+    "trail": "教務系統 > 學分學程/次專長作業 > 申請學分學程/次專長作業",
+    "text": "申請學分學程/次專長作業",
+    "href": "Application/ENR/ENR80/ENR8040_.aspx?progcd=ENR8040"
+  },
+  {
+    "trail": "教務系統 > 學分學程/次專長作業 > 申請審核學分學/次專長程課程證書",
+    "text": "申請審核學分學/次專長程課程證書",
+    "href": "Application/ENR/ENR80/ENR8060_.aspx?progcd=ENR8060"
+  },
+  {
+    "trail": "教務系統 > 學分學程/次專長作業 > 查詢個人修讀學程/次專長(學生)",
+    "text": "查詢個人修讀學程/次專長(學生)",
+    "href": "Application/ENR/ENRF0/ENRF020_.aspx?progcd=ENRF020"
+  },
+  {
+    "trail": "教務系統 > 畢業作業 > 查詢畢業資格",
+    "text": "查詢畢業資格",
+    "href": "Application/ENR/ENRG0/ENRG010_.aspx?progcd=ENRG010"
+  },
+  {
+    "trail": "教務系統 > 轉系轉所作業 > 申請轉系",
+    "text": "申請轉系",
+    "href": "Application/ENR/ENRD0/ENRD030_.aspx?progcd=ENRD030"
+  },
+  {
+    "trail": "教務系統 > 轉系轉所作業 > 查詢轉系記錄",
+    "text": "查詢轉系記錄",
+    "href": "Application/ENR/ENRD0/ENRD080_.aspx?progcd=ENRD080"
+  },
+  {
+    "trail": "教務系統 > 逕升作業 > 申請學逕升博/碩士先修",
+    "text": "申請學逕升博/碩士先修",
+    "href": "Application/ENR/ENRD0/ENRD180_.aspx?progcd=ENRD180"
+  },
+  {
+    "trail": "教務系統 > 逕升作業 > 查詢學逕升博/碩士先修申請紀錄",
+    "text": "查詢學逕升博/碩士先修申請紀錄",
+    "href": "Application/ENR/ENRD2/ENRD210_.aspx?progcd=ENRD210"
+  },
+  {
+    "trail": "教務系統 > 輔系\\雙主修作業 > 申請輔系/雙主修",
+    "text": "申請輔系/雙主修",
+    "href": "Application/ENR/ENRD0/ENRD100_.aspx?progcd=ENRD100"
+  },
+  {
+    "trail": "教務系統 > 輔系\\雙主修作業 > 查詢輔系/雙主修申請紀錄",
+    "text": "查詢輔系/雙主修申請紀錄",
+    "href": "Application/ENR/ENRD0/ENRD120_.aspx?progcd=ENRD120"
+  },
+  {
+    "trail": "學生證補發作業 > 申請補發學生證",
+    "text": "申請補發學生證",
+    "href": "Application/ENR/ENRC0/ENRC030_.aspx?progcd=ENRC030"
+  },
+  {
+    "trail": "學生證補發作業 > 查詢學生證補發申請記錄",
+    "text": "查詢學生證補發申請記錄",
+    "href": "Application/ENR/ENRC0/ENRC070_.aspx?progcd=ENRC070"
+  },
+  {
+    "trail": "暑修作業 > 本校學生暑修作業 > 登記暑修課程",
+    "text": "登記暑修課程",
+    "href": "Application/SUM/SUM10/SUM1010_.aspx?progcd=SUM1010"
+  },
+  {
+    "trail": "暑修作業 > 本校學生暑修作業 > 查詢審核結果/列印繳費單",
+    "text": "查詢審核結果/列印繳費單",
+    "href": "Application/SUM/SUM10/SUM1020_.aspx?progcd=SUM1020"
+  },
+  {
+    "trail": "暑修作業 > 本校學生暑修作業 > 查詢審核通過及繳費人數",
+    "text": "查詢審核通過及繳費人數",
+    "href": "Application/SUM/SUM10/SUM1050_.aspx?progcd=SUM1050"
+  },
+  {
+    "trail": "暑修作業 > 本校學生暑修作業 > 查詢暑修課程",
+    "text": "查詢暑修課程",
+    "href": "Application/SUM/SUM10/SUM1080_.aspx?progcd=SUM1080"
+  },
+  {
     "trail": "暑修作業 > 本校學生暑修作業 > 簡易繳費查詢",
     "text": "簡易繳費查詢",
     "href": "Application/AUT/MAP/MAP001/MAP0015_.aspx?progcd=STU3260"
+  },
+  {
+    "trail": "職涯發展 > 職涯諮詢 > 預約職涯諮詢(學生用)",
+    "text": "預約職涯諮詢(學生用)",
+    "href": "Application/SCD/SCD11/SCD1170_.aspx?SYSID=SCD"
+  },
+  {
+    "trail": "職涯發展 > 職涯諮詢 > 取消職涯諮詢(學生用)",
+    "text": "取消職涯諮詢(學生用)",
+    "href": "Application/SCD/SCD11/SCD1180_01.aspx?SYSID=SCD"
+  },
+  {
+    "trail": "職涯發展 > 查詢廠商求才資料",
+    "text": "查詢廠商求才資料",
+    "href": "Application/SCD/SCD11/SCD1140_.aspx?progcd=SCDZ001"
+  },
+  {
+    "trail": "職涯發展 > 在校生求職登錄",
+    "text": "在校生求職登錄",
+    "href": "Application/SCD/SCD10/SCD1070_.aspx?progcd=SCD1070"
+  },
+  {
+    "trail": "職涯發展 > 維護個人學習歷程檔案(學生用)",
+    "text": "維護個人學習歷程檔案(學生用)",
+    "href": "Application/SCD/SCD11/SCD1150_01.aspx?progcd=SCD1150"
   },
   {
     "trail": "學生宿舍管理系統 > 申請住宿作業",
@@ -95,9 +345,34 @@
     "href": "Application/SDM/SDM20/SDM2070_.aspx?progcd=SDM2070"
   },
   {
+    "trail": "學生宿舍修繕系統 > 申請修繕",
+    "text": "申請修繕",
+    "href": "Application/SDR/SDR30/SDR3010_.aspx?progcd=SDR3010"
+  },
+  {
+    "trail": "學生宿舍修繕系統 > 查詢修繕處理狀況",
+    "text": "查詢修繕處理狀況",
+    "href": "Application/SDR/SDR30/SDR3020_.aspx?progcd=SDR3020"
+  },
+  {
     "trail": "校外租賃訊息管理 > 租賃查詢作業 > 查詢出租訊息",
     "text": "查詢出租訊息",
     "href": "Application/SDO/SDO40/SDO4010_.aspx?progcd=SDO4010"
+  },
+  {
+    "trail": "導師工作-班級系統 > 查詢導師資料",
+    "text": "查詢導師資料",
+    "href": "Application/SCS/SCS20/SCS2050_.aspx?progcd=SCSZ003"
+  },
+  {
+    "trail": "導師工作-班級系統 > 填寫班會紀錄",
+    "text": "填寫班會紀錄",
+    "href": "Application/SCS/SCS30/SCS3010_.aspx?progcd=SCSZ001"
+  },
+  {
+    "trail": "導師工作-班級系統 > 查詢及列印班會紀錄",
+    "text": "查詢及列印班會紀錄",
+    "href": "Application/SCS/SCS40/SCS4010_.aspx?progcd=SCSZ002"
   },
   {
     "trail": "就學貸款-減免補助 > 減免補助 > 申請減免補助",
@@ -118,6 +393,36 @@
     "trail": "就學貸款-減免補助 > 就學貸款作業 > 查詢就學貸款歷年申請資料",
     "text": "查詢就學貸款歷年申請資料",
     "href": "Application/SAC/SAC50/SAC5010_.aspx?progcd=SAC5010"
+  },
+  {
+    "trail": "學生團體保險 > 學生/導師/系教官 > 申請文件說明與表單下載",
+    "text": "申請文件說明與表單下載",
+    "href": "Application/SIS/SIS40/SIS4010_.aspx?progcd=SIS4010"
+  },
+  {
+    "trail": "學生團體保險 > 學生/導師/系教官 > 申請保險理賠",
+    "text": "申請保險理賠",
+    "href": "Application/SIS/SIS20/SIS2020_.aspx?progcd=SIS2020"
+  },
+  {
+    "trail": "學生團體保險 > 學生/導師/系教官 > 查詢理賠記錄",
+    "text": "查詢理賠記錄",
+    "href": "Application/SIS/SIS30/SIS3010_.aspx?progcd=SIS3010"
+  },
+  {
+    "trail": "獎助學金管理 > 申請獎助學金",
+    "text": "申請獎助學金",
+    "href": "Application/SGM/SGM10/SGM1050_.aspx?progcd=SGM1050"
+  },
+  {
+    "trail": "獎助學金管理 > 查詢個人獎助學金申請資料",
+    "text": "查詢個人獎助學金申請資料",
+    "href": "Application/SGM/SGM10/SGM1080_.aspx?progcd=SGM1080"
+  },
+  {
+    "trail": "學習助學金系統 > 查詢學習助學紀錄(學生)",
+    "text": "查詢學習助學紀錄(學生)",
+    "href": "Application/SPW/SPW20/SPW2065_.aspx?progcd=SPW2065"
   },
   {
     "trail": "學生請假 > 學生請假申請",
@@ -160,9 +465,49 @@
     "href": "Application/SEC/SEC21/SEC2110_.aspx?progcd=SEC2110"
   },
   {
+    "trail": "獎懲-操行管理 > 獎懲作業 > 查詢個人獎懲-操行成績",
+    "text": "查詢個人獎懲-操行成績",
+    "href": "Application/SRP/SRP10/SRP1010_.aspx?progcd=SRP1010"
+  },
+  {
+    "trail": "遺失物-拾獲物管理 > 資料維護作業 > 遺失物-拾獲物登記",
+    "text": "遺失物-拾獲物登記",
+    "href": "Application/LPR/LPR10/LPR1020_.aspx?progcd=LPR1020"
+  },
+  {
+    "trail": "遺失物-拾獲物管理 > 資料維護作業 > 遺失物-拾獲物註銷",
+    "text": "遺失物-拾獲物註銷",
+    "href": "Application/LPR/LPR10/LPR1030_.aspx?progcd=LPR1030"
+  },
+  {
+    "trail": "遺失物-拾獲物管理 > 資料查詢作業 > 遺失物-拾獲物登記查詢",
+    "text": "遺失物-拾獲物登記查詢",
+    "href": "Application/LPR/LPR10/LPR1080_.aspx?progcd=LPR1080"
+  },
+  {
+    "trail": "遺失物-拾獲物管理 > 資料查詢作業 > 遺失物-拾獲物登記清單",
+    "text": "遺失物-拾獲物登記清單",
+    "href": "Application/LPR/LPR10/LPR1090_.aspx?progcd=LPR1090"
+  },
+  {
+    "trail": "問卷調查系統 > 填寫問卷",
+    "text": "填寫問卷",
+    "href": "Application/QUE/QUE20/QUE2010_.ASPX?progcd=QUE2010"
+  },
+  {
     "trail": "學生社團活動資訊系統 > 社團活動資訊系統",
     "text": "社團活動資訊系統",
     "href": "Application/AUT/MAP/MAP001/MAP0008_.aspx?progcd=STU3210"
+  },
+  {
+    "trail": "五育護照 > 申請五育護照資料",
+    "text": "申請五育護照資料",
+    "href": "Application/SIP/SIP10/SIP1010_.aspx?progcd=SIP1010"
+  },
+  {
+    "trail": "五育護照 > 查詢五育護照資料",
+    "text": "查詢五育護照資料",
+    "href": "Application/SIP/SIP10/SIP1020_.aspx?progcd=SIP1020"
   },
   {
     "trail": "學生兵役管理 > 維護兵役資料",
@@ -200,9 +545,59 @@
     "href": "Application/SDG/SDG20/SDG2010_.aspx?progcd=SDG2010"
   },
   {
+    "trail": "教育學程作業 > 申請/審核作業 > 申請教育學程",
+    "text": "申請教育學程",
+    "href": "Application/TED/TED20/TED2040_.aspx?progcd=TED2040"
+  },
+  {
+    "trail": "教育學程作業 > 申請/審核作業 > 查詢申請表審核結果",
+    "text": "查詢申請表審核結果",
+    "href": "Application/TED/TED20/TED2060_.aspx?progcd=TED2060"
+  },
+  {
+    "trail": "教育學程作業 > 試務/放榜作業 > 查詢申請教育學程考試結果",
+    "text": "查詢申請教育學程考試結果",
+    "href": "Application/TED/TED30/TED3060_.aspx?progcd=TED3060"
+  },
+  {
+    "trail": "教育學程作業 > 教育實習申請作業 > 申請教育實習",
+    "text": "申請教育實習",
+    "href": "Application/TED/TED50/TED5030_.aspx?progcd=TED5030"
+  },
+  {
+    "trail": "教育學程作業 > 教育實習申請作業 > 查詢教育實習審核結果",
+    "text": "查詢教育實習審核結果",
+    "href": "Application/TED/TED50/TED5050_.aspx?progcd=TED5050"
+  },
+  {
+    "trail": "教育學程作業 > 修畢證書申請/核發作業 > 維護教育專業課程科目表",
+    "text": "維護教育專業課程科目表",
+    "href": "Application/TED/TED60/TED6040_.aspx?progcd=TED6040"
+  },
+  {
+    "trail": "教育學程作業 > 修畢證書申請/核發作業 > 申請專門科目證書",
+    "text": "申請專門科目證書",
+    "href": "Application/TED/TED60/TED6030_.aspx?progcd=TED6030"
+  },
+  {
+    "trail": "教育學程作業 > 資料維護及查詢作業 > 查詢教育科目修課狀態",
+    "text": "查詢教育科目修課狀態",
+    "href": "Application/TED/TED70/TED7010_.aspx?progcd=TED7010"
+  },
+  {
+    "trail": "網路服務申請 > VPN服務申請",
+    "text": "VPN服務申請",
+    "href": "Application/NDM/NDM20/NDM2010_.aspx?progcd=NDM2010"
+  },
+  {
     "trail": "電子公布欄 > 公告訊息查詢",
     "text": "公告訊息查詢",
     "href": "Application/BBS/BBS30/BBS3010_.aspx?progcd=BBS3010"
+  },
+  {
+    "trail": "連結校內資訊系統 > 教務處-在學證明申請列印",
+    "text": "教務處-在學證明申請列印",
+    "href": "Application/AUT/MAP/MAP001/MAP0001_.aspx?progcd=MAP0001"
   },
   {
     "trail": "連結校內資訊系統 > 教務處-服役彈性修業/超修申請",
@@ -213,6 +608,16 @@
     "trail": "連結校內資訊系統 > 教務處-英檢成績申請抵免/免修課程",
     "text": "教務處-英檢成績申請抵免/免修課程",
     "href": "Application/AUT/MAP/MAP001/MAP0010_.aspx?progcd=MAP0010"
+  },
+  {
+    "trail": "連結校內資訊系統 > 教務處-外語能力檢定考試補助與獎勵申請系統",
+    "text": "教務處-外語能力檢定考試補助與獎勵申請系統",
+    "href": "Application/AUT/MAP/MAP001/MAP0006_.aspx?progcd=MAP0006"
+  },
+  {
+    "trail": "連結校內資訊系統 > 教務處-微學分修習查詢",
+    "text": "教務處-微學分修習查詢",
+    "href": "Application/AUT/MAP/MAP001/MAP0003_.aspx?progcd=MAP0003"
   },
   {
     "trail": "連結校內資訊系統 > 教務處-簡易繳費查詢",

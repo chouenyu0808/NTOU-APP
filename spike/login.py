@@ -170,13 +170,49 @@ MENU_KEYWORDS = ("課表", "成績", "選課", "課程", "學分", "修課", "�
 
 # 會改變資料的頁面。--fetch-all 一律跳過 —— 選課期間誤觸一次，
 # 後果不是「重跑一次」就能解決的。要看這些頁面請用 --fetch 明確指定。
+#
+# **這份必須跟 app 的 menu_catalog.dart `_mutatingCodes` 一致**（那邊是用來在
+# 使用者點下去之前先問一句）。2026-09-07 選單從 50 個長到 131 個，多出來的
+# 82 個裡有 40 幾個是申請／登記／填報類 —— 清單沒跟著長的話，`--fetch-all`
+# 會直接 GET 到「申請轉系」「申請獎助學金」那些頁面。
 MUTATING_PATTERNS = (
-    "TKE2011",   # 線上加退選
+    # 選課 —— 這一組時效最短、後果最不可逆
+    "TKE2011", "STU1010",          # 線上加退選
+    "STU1020", "STU1030",          # 預選電腦抽籤 / 志願輸入
+    "STU1040", "STU1050",          # 人工加選 / 期中退選
+    # 學籍異動
     "ENRD140",   # 申請休退學
-    "SDM2010", "SDM2070",          # 申請住宿 / 換床
-    "SAC3010", "SAC2010",          # 申請減免 / 就學貸款
+    "ENRD160",   # 查詢/撤銷休退學 —— 名字是查詢，但頁上有撤銷
+    "ENRD030",   # 申請轉系
+    "ENRD100",   # 申請輔系/雙主修
+    "ENRD180",   # 申請逕升博/碩士先修
+    "ENR8040", "ENR8060",          # 申請學分學程 / 申請審核學程證書
     "ENR6030",   # 申請抵免學分
-    "SEC6000", "SEC2020", "SEC2030",   # 請假申請 / 取消 / 刪除
+    "STU3190", "MAP0010",          # 英檢成績申請抵免（兩個入口同一頁）
+    "ENRA200",   # 申請/查詢校外會考認證
+    "STU3270", "MAP0021",          # 服役彈性修業/超修申請
+    "ENRC030",   # 申請補發學生證
+    "STU3160", "MAP0001",          # 在學證明申請列印
+    "ENR3030", "ENR3040", "ENR3090",   # 維護新生/舊生資料、線上註冊
+    # 填報類 —— 送出之後改不回來
+    "CET2020", "QUE2010", "SDG2010", "SCSZ001",
+    "SEC6000", "SEC2020", "SEC2030", "SEC2080",   # 請假申請/取消/刪除/補件
+    "SDM2010", "SDM2070", "SDR3010",   # 申請住宿 / 換床 / 修繕
+    "SUM1010",   # 登記暑修課程
+    # 錢
+    "SAC3010", "SAC2010",          # 申請減免 / 就學貸款
+    "SGM1050",   # 申請獎助學金
+    "STU3180", "MAP0006",          # 外語檢定補助與獎勵申請
+    "SIS2020",   # 申請保險理賠
+    "SCD1170", "SCD1180",          # 預約 / 取消職涯諮詢
+    "SCD1070", "SCD1150",          # 求職登錄 / 維護學習歷程檔案
+    # 兵役 —— 檔名 SMM1010、progcd SMM1012，兩個都在 path 裡，留著都不會錯
+    "SMM1010", "SMM1012", "SMM5010",
+    "TED2040", "TED5030", "TED6030", "TED6040",   # 教育學程
+    "SIP1010",   # 申請五育護照
+    "SCM2030",   # 申請運動證
+    "LPR1020", "LPR1030",          # 遺失物登記 / 註銷
+    "NDM2010",   # VPN 服務申請
     "PWD1020",   # 修改密碼
     "LogOut",    # 登出會把 session 作廢，後面全部白跑
 )
@@ -247,14 +283,34 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
             page = sess.check_session(page)
             if submit:
                 shown = ", ".join(f"{k}={v}" for k, v in submit.values.items())
-                # 連動欄位要先各自 postback，後面的選項才存在
-                page = sess.apply_cascading(page, submit.values)
-                print(f"  送出 {submit.button}（{shown or '無額外欄位'}）...")
-                page = sess.check_session(
-                    sess.follow_js_redirect(
-                        sess.submit_form(page, submit.button, submit.values)
+                try:
+                    # 連動欄位要先各自 postback，後面的選項才存在
+                    submitted = sess.apply_cascading(page, submit.values)
+                    print(f"  送出 {submit.button}（{shown or '無額外欄位'}）...")
+                    page = sess.check_session(
+                        sess.follow_js_redirect(
+                            sess.submit_form(
+                                submitted, submit.button, submit.values
+                            )
+                        )
                     )
-                )
+                except SessionExpired:
+                    raise
+                except Exception as e:
+                    # **送不出去不代表這一頁沒用。**`--submit` 是整批共用的，
+                    # 所以一次登入同時抓「要按查詢才有結果的頁」和「GET 回來
+                    # 就有內容的頁」時，後者一定找不到那顆按鈕。
+                    #
+                    # 這裡如果跟著 continue，那一頁就不會存檔 —— 而那份 GET
+                    # 到的內容正是我們要的，丟掉它等於白花一次登入（和一次
+                    # 手打驗證碼）。所以退回 GET 到的那一頁繼續往下走。
+                    print(f"  送不出 {submit.button}"
+                          f"（{type(e).__name__}），保留 GET 到的內容",
+                          file=sys.stderr)
+                    # 檔名裡的 `__QUERY_BTN1_1151` 是在說「這份是那組條件查出來
+                    # 的結果」。沒送成還掛著那個後綴，下次讀 fixture 的人會
+                    # 拿一份查詢前的空表單去驗查詢結果的 parser。
+                    submit = None
         except SessionExpired as e:
             # 這個不能 continue：session 沒了，後面每一頁都會存成登入頁
             print(f"\n  {e}", file=sys.stderr)
