@@ -7,6 +7,7 @@ import 'package:home_widget/home_widget.dart';
 
 import '../storage/timetable_cache.dart';
 import '../storage/transit_prefs_store.dart';
+import '../transit/nearest_stop.dart';
 import '../transit/tdx_client.dart';
 import '../transit/transit_config.dart';
 import '../transit/transit_models.dart';
@@ -200,6 +201,7 @@ class WidgetUpdater {
         boards: boards,
         config: config,
         favorites: favorites,
+        preferredStopId: await _preferredStopId(config),
         now: now,
       ),
       where,
@@ -293,7 +295,8 @@ class WidgetUpdater {
               boards: boards,
               config: repo.config,
               favorites: await _favorites(),
-                    now: now,
+              preferredStopId: await _preferredStopId(repo.config),
+              now: now,
             );
       }
 
@@ -301,12 +304,31 @@ class WidgetUpdater {
         boards: boards,
         config: repo.config,
         favorites: await _favorites(),
+        preferredStopId: await _preferredStopId(repo.config),
         now: now,
       );
     } catch (_) {
       // **不要把例外訊息畫到小組件上。** dio 的訊息裡有完整 URL 和堆疊，
       // 那是給我們看的，不是給使用者看的。
       return previous?.copyWith(refreshFailed: true);
+    }
+  }
+
+  /// 哪一站要排最前面：使用者釘的，或離他最近的。
+  ///
+  /// **位置是 App 在前景時量的那一份**（見 [LastKnownPlace]）—— 小組件
+  /// 在背景拿不到當下的位置，那需要 Google Play 要人工審查的權限。
+  Future<String?> _preferredStopId(TransitConfig config) async {
+    try {
+      return NearestStop.preferred(
+        config.stops,
+        pinnedId: await _prefs.readPinnedStop(),
+        place: await _prefs.readPlace(),
+      )?.id;
+    } catch (_) {
+      // 讀不到就照設定檔原本的順序。**不要猜一站** —— 猜出來的
+      // 「最近的站」跟真的長得一模一樣。
+      return null;
     }
   }
 

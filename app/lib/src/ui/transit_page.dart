@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../transit/arrival_text.dart';
+import '../transit/location_source.dart';
+import '../transit/nearest_stop.dart';
 import '../transit/tdx_client.dart';
 import '../transit/transit_config.dart';
 import '../transit/transit_models.dart';
@@ -28,7 +30,11 @@ class TransitPage extends StatefulWidget {
     this.isActive = true,
     this.autoRefresh = const Duration(seconds: 30),
     this.widgets,
+    this.location = const LocationSource(),
   });
+
+  /// 量位置的東西。測試注入一個假的 —— 不然這一頁的測試會去碰真的 GPS。
+  final LocationSource location;
 
   /// 桌面小組件。抓到資料時順手把桌面上那張圖也更新掉。
   ///
@@ -66,6 +72,13 @@ class _TransitPageState extends State<TransitPage> {
   /// 五張卡片攤開來要捲很久，而大部分人只固定看其中一兩站 ——
   /// 收起來之後那些站只剩一行標題，需要的時候再點開。
   Set<String> _collapsed = const {};
+
+  /// 使用者指定小組件優先顯示哪一站。null = 沒指定，那時候才輪到定位。
+  String? _pinnedStop;
+
+  /// 上次量到的位置。**只在這一頁於前景時量** —— 小組件在背景拿不到位置
+  /// （那要 Google Play 人工審查的權限），所以它用的是這一份。
+  LastKnownPlace? _place;
   List<StopBoard> _boards = const [];
   bool _loading = true;
   bool _configured = true;
@@ -165,15 +178,102 @@ class _TransitPageState extends State<TransitPage> {
     try {
       final favs = await _prefs.readFavorites();
       final collapsed = await _prefs.readCollapsed();
-      if (!mounted || (favs.isEmpty && collapsed.isEmpty)) return;
+      final pinned = await _prefs.readPinnedStop();
+      final place = await _prefs.readPlace();
+      if (!mounted) return;
       setState(() {
         _favorites = favs;
         _collapsed = collapsed;
+        _pinnedStop = pinned;
+        _place = place;
       });
+
+      // 已經給過權限就順手量一次 —— **不會跳對話框**（見
+      // LocationSource.current），沒權限就安靜地回 null。
+      // 使用者第一次要用這個功能是按上面那顆鈕，不是一開頁就被問。
+      if (place != null || pinned == null) await _locate(ask: false);
     } catch (_) {
       // 讀不到就當作沒有釘過、也沒有收過。這一頁照常能用。
     }
   }
+
+  /// 量一次位置並記下來。
+  ///
+  /// [ask] = 使用者主動按了那顆鈕，可以跳權限對話框。false 的時候只在
+  /// 已經有權限時量 —— **開頁就跳定位權限是最快讓人按拒絕的做法**，
+  /// 而一旦按了永久拒絕，之後只能請他自己去系統設定開。
+  Future<void> _locate({required bool ask}) async {
+    if (ask && !await widget.location.ensurePermission()) {
+      if (!mounted) return;
+      final forever = await widget.location.deniedForever;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            forever
+                ? '定位權限被關掉了，要用的話請到系統設定裡開啟'
+                : '沒有定位權限，小組件會照原本的順序顯示',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final place = await widget.location.current();
+    if (!mounted) return;
+    if (place == null) {
+      if (ask) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          // **不要說「定位失敗」就結束** —— 使用者會想知道那接下來會怎樣。
+          const SnackBar(content: Text('這次沒量到位置，小組件會照原本的順序顯示')),
+        );
+      }
+      return;
+    }
+
+    setState(() => _place = place);
+    await _prefs.writePlace(place);
+    await _publishToWidget();
+  }
+
+  /// 釘一站給小組件，或再按一次取消。
+  Future<void> _togglePinned(String stopId) async {
+    final next = await _prefs.togglePinnedStop(stopId);
+    if (!mounted) return;
+    setState(() => _pinnedStop = next);
+    await _publishToWidget();
+  }
+
+  /// 把目前的看板重新發布給小組件（順序可能因為釘選或位置而變了）。
+  Future<void> _publishToWidget() async {
+    final repo = _repo;
+    if (repo == null || _boards.isEmpty) return;
+    await widget.widgets?.publishTransit(
+      boards: _boards,
+      config: repo.config,
+      favorites: _favorites,
+    );
+  }
+
+  /// 上面那顆鈕按下去會發生什麼事，用一句話講完。
+  String get _widgetOrderTooltip {
+    if (_pinnedStop != null) {
+      return '小組件釘著「${_preferred?.name ?? '某一站'}」，點一下取消';
+    }
+    if (_place != null) {
+      return '小組件會把最近的「${_preferred?.name ?? '一站'}」排最前面，點一下重新定位';
+    }
+    return '用定位把最近的站排到小組件最前面';
+  }
+
+  /// 現在小組件會把哪一站排最前面。
+  TransitStop? get _preferred => _repo == null
+      ? null
+      : NearestStop.preferred(
+          _repo!.config.stops,
+          pinnedId: _pinnedStop,
+          place: _place,
+        );
 
   void _openRoute(StopBoard board, BusArrival arrival) {
     final repo = _repo;
@@ -262,12 +362,28 @@ class _TransitPageState extends State<TransitPage> {
       appBar: AppBar(
         title: const Text('交通'),
         actions: [
-          if (_configured && !_loading)
+          if (_configured && !_loading) ...[
+            IconButton(
+              // 只在「沒有釘選」的時候才有意義 —— 釘選優先於定位，
+              // 釘著的時候按它不會改變任何東西，那種鈕比沒有更糟。
+              icon: Icon(
+                _pinnedStop != null
+                    ? Icons.push_pin
+                    : _place != null
+                        ? Icons.my_location
+                        : Icons.location_searching,
+              ),
+              tooltip: _widgetOrderTooltip,
+              onPressed: _pinnedStop != null
+                  ? () => _togglePinned(_pinnedStop!)
+                  : () => _locate(ask: true),
+            ),
             IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: '重新整理',
               onPressed: () => _refresh(manual: true),
             ),
+          ],
         ],
       ),
       body: _body(),
@@ -297,6 +413,8 @@ class _TransitPageState extends State<TransitPage> {
                 config: _repo!.config,
                 favorites: _favorites,
                 isCollapsed: _collapsed.contains(_boards[i - 1].stop.id),
+                isPinned: _pinnedStop == _boards[i - 1].stop.id,
+                onTogglePinned: () => _togglePinned(_boards[i - 1].stop.id),
                 onToggleCollapsed: () =>
                     _toggleCollapsed(_boards[i - 1].stop.id),
                 onToggleFavorite: _toggleFavorite,
@@ -315,6 +433,8 @@ class _StopCard extends StatelessWidget {
     this.favorites = const {},
     this.isCollapsed = false,
     this.onToggleCollapsed,
+    this.isPinned = false,
+    this.onTogglePinned,
     this.onToggleFavorite,
     this.onOpenRoute,
   });
@@ -326,6 +446,10 @@ class _StopCard extends StatelessWidget {
   /// 這張卡片收起來了 —— 只留標題那一行。
   final bool isCollapsed;
   final VoidCallback? onToggleCollapsed;
+
+  /// 這一站被釘在小組件最前面。
+  final bool isPinned;
+  final VoidCallback? onTogglePinned;
   final void Function(String route)? onToggleFavorite;
   final void Function(BusArrival arrival)? onOpenRoute;
 
@@ -365,6 +489,18 @@ class _StopCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (onTogglePinned != null)
+                    IconButton(
+                      icon: Icon(
+                        isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                        size: 20,
+                      ),
+                      color: isPinned ? scheme.primary : scheme.onSurfaceVariant,
+                      tooltip: isPinned
+                          ? '取消：讓小組件照定位決定順序'
+                          : '把這一站釘在桌面小組件最前面',
+                      onPressed: onTogglePinned,
+                    ),
                   if (onToggleCollapsed != null)
                     Icon(
                       isCollapsed ? Icons.expand_more : Icons.expand_less,

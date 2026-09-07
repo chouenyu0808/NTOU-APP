@@ -163,11 +163,12 @@ TransitWidgetPayload buildTransitWidgetPayload({
   required List<StopBoard> boards,
   required TransitConfig config,
   Set<String> favorites = const {},
+  String? preferredStopId,
   required DateTime now,
 }) {
   final stops = <TransitWidgetStop>[];
 
-  for (final board in boards) {
+  for (final board in _ordered(boards, preferredStopId)) {
     final counts = ArrivalText.routeCounts(board);
     final rows = <TransitWidgetRow>[];
 
@@ -218,6 +219,19 @@ TransitWidgetPayload buildTransitWidgetPayload({
   }
 
   return TransitWidgetPayload(stops: stops, updatedAt: now);
+}
+
+/// 把使用者要的那一站排到最前面，其餘維持原本的順序。
+///
+/// **只是換順序，不是只留一站。** 小組件由上往下填到滿為止，尺寸大就多看到
+/// 幾站 —— 在這裡砍掉的話，使用者把小組件拉大也不會多出東西來。
+///
+/// 找不到那個 id 就原樣回傳（設定檔改過、站被拿掉）。
+List<StopBoard> _ordered(List<StopBoard> boards, String? preferredStopId) {
+  if (preferredStopId == null || preferredStopId.isEmpty) return boards;
+  final i = boards.indexWhere((b) => b.stop.id == preferredStopId);
+  if (i <= 0) return boards;
+  return [boards[i], ...boards.where((b) => b.stop.id != preferredStopId)];
 }
 
 /// 釘起來的排前面，兩組各自照到站時間。

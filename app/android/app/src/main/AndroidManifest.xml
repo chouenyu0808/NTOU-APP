@@ -11,6 +11,17 @@
          少了它的話小組件在重開機之後就不會自己更新了，而且完全不會報錯。 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- 定位：只用來決定「離使用者最近的是哪一站」，把它排到小組件最前面。
+         **要精確定位不能只用粗略的** —— 海大三個門互相只差 237 到 683 公尺，
+         而粗略定位（基地台／Wi-Fi）誤差常常上百公尺到一公里，在校內會挑錯門，
+         畫面上卻是一個看起來完全合理的站名。
+
+         **刻意不宣告 ACCESS_BACKGROUND_LOCATION。** 小組件是在背景更新的，
+         但為了把一個站牌排到前面就要一個 Google Play 得人工審查的權限，
+         代價完全不成比例。位置只在 App 於前景時量一次記下來，小組件用那份。 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <!-- 刻意**不**宣告 SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM。
          沒有它們鬧鐘還是會排，只是變成不精確的 —— 系統可能晚幾分鐘才叫醒。
          課表的反白晚幾分鐘移動可以接受（真正要看的時候本來就會開 App），
