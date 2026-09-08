@@ -178,3 +178,66 @@ def test_fn_open_target_ignores_the_function_definition():
 def test_fn_open_target_absent_is_none():
     from login import fn_open_target
     assert fn_open_target("<html>沒有這一行</html>") is None
+
+
+# ---------- 查詢結果 -> 明細頁（成績） ----------
+
+def _grid_page(html: str) -> Page:
+    return Page(
+        url="https://ais.ntou.edu.tw/Application/GRD/GRD50/GRD5010_01.aspx",
+        status=200,
+        html=html,
+    )
+
+
+def test_detail_request_builds_post():
+    """
+    成績不在查詢結果頁上，在「詳」點進去的明細頁。
+
+    照 script/PageScript.js 翻的：doEdit1_2 把 keyStr 依「名稱|值」拆開、
+    配上 Mode=<type 大寫>，交給 sendData —— 那個函式建一個 method="POST"
+    的表單送出去。所以是 POST，不是拼 query string 的 GET。
+    """
+    from login import detail_request
+    html = (
+        "var viewpage = \"GRD5010_02.aspx\";"
+        "doEdit1_2('','STNO|B12345678','Mod');"
+    )
+    url, fields = detail_request(_grid_page(html))
+    assert url == "https://ais.ntou.edu.tw/Application/GRD/GRD50/GRD5010_02.aspx"
+    assert fields == {"Mode": "MOD", "STNO": "B12345678"}
+
+
+def test_detail_request_resolves_relative_to_the_page():
+    """
+    viewpage 是相對於**當前頁面**的，功能頁埋在 Application/GRD/GRD50/。
+    用 base_url 解析會跑到根目錄，POST 過去只會拿到 404。
+    """
+    from login import detail_request
+    html = "var viewpage='X_02.aspx';doEdit1_2('','STNO|B1','Mod');"
+    page = Page(
+        url="https://ais.ntou.edu.tw/Application/ENR/ENRG0/ENRG010_01.aspx",
+        status=200,
+        html=html,
+    )
+    url, _ = detail_request(page)
+    assert url == "https://ais.ntou.edu.tw/Application/ENR/ENRG0/X_02.aspx"
+
+
+def test_detail_request_handles_multiple_key_pairs():
+    """keyStr 是「名稱|值|名稱|值…」，doEdit1_2 就是照這個節奏拆的。"""
+    from login import detail_request
+    html = (
+        "var viewpage='D.aspx';"
+        "doEdit1_2('','STNO|B1|AYEAR|115|SMS|1','Mod');"
+    )
+    _, fields = detail_request(_grid_page(html))
+    assert fields == {"Mode": "MOD", "STNO": "B1", "AYEAR": "115", "SMS": "1"}
+
+
+def test_detail_request_needs_both_halves():
+    """少了任何一半都組不出請求 —— 寧可回 None，不要猜一個路徑送出去。"""
+    from login import detail_request
+    assert detail_request(_grid_page("doEdit1_2('','STNO|B1','Mod');")) is None
+    assert detail_request(_grid_page("var viewpage='D.aspx';")) is None
+    assert detail_request(_grid_page("<html>一般頁面</html>")) is None

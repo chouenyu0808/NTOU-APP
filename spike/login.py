@@ -28,7 +28,7 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -260,7 +260,7 @@ def menu_paths() -> list[str]:
 def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
                 quiet: bool = False, who: Identity = NOBODY,
                 submits: list[FormSubmit] | None = None,
-                follow: bool = True) -> list[Page]:
+                follow: bool = True, detail: bool = False) -> list[Page]:
     """
     在已登入的 session 內依序抓多個頁面。
 
@@ -337,6 +337,38 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
                 name = name.removesuffix(".html") + f"__{submit.slug()}.html"
             save_fixture(page, name, who)
         out.append(page)
+
+        # 「詳」那一列指向的明細頁（成績要這樣才拿得到，見 detail_request）。
+        #
+        # **要明確開啟，不自動跟。** 送出去的是 `Mode=MOD`，對查詢頁只是
+        # 「檢視這一列」，但那個字在別的功能上可能是「進入編輯模式」——
+        # 對每一個抓到的頁面自動 POST 過去，遲早會踩到不該踩的。
+        if not detail:
+            continue
+        target = detail_request(page)
+        if target is None:
+            print("  這一頁沒有可以點進去的明細（沒有 doEdit1_2 / viewpage）")
+            continue
+        url, fields = target
+        shown = ", ".join(f"{k}={v}" for k, v in fields.items())
+        print(f"\n跟著「詳」進明細頁：POST {url}")
+        print(f"    {shown}")
+        try:
+            sub = sess.check_session(sess.follow_js_redirect(
+                sess.post(url, fields)))
+        except Exception as e:
+            print(f"  明細頁失敗：{type(e).__name__}: {e}", file=sys.stderr)
+            continue
+
+        if is_empty_result(sub.html):
+            print("  查無符合資料")
+        elif quiet:
+            print(f"  {len(sub.html)}B  {page_title(sub)}")
+        else:
+            probe.describe(sub)
+        if save:
+            save_fixture(sub, fixture_name(sub.url), who)
+        out.append(sub)
     return out
 
 
@@ -497,6 +529,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--name", help="你的姓名 —— 存 fixture 時一併洗掉")
     ap.add_argument("--no-follow", action="store_true",
                     help="--fetch 時不要跟 JS 導向（直接給內容頁網址時用）")
+    ap.add_argument("--detail", action="store_true",
+                    help="查詢結果那一列的「詳」也跟進去（成績的內容在那裡）")
     ap.add_argument("--no-frames", action="store_true",
                     help="登入後不載入 frame（用來驗證 frame 是不是必要的）")
     ap.add_argument("--no-logout", action="store_true",
@@ -526,6 +560,53 @@ def fn_open_target(html: str) -> str | None:
         return None
     return ("Application/TKE/TKE22/TKE2240_03.aspx"
             f"?PKNO={m.group(1)}&LESSON_TYPE={m.group(2)}")
+
+
+DO_EDIT_RE = re.compile(
+    r"""doEdit1_2\(\s*['"][^'"]*['"]\s*,\s*['"]([^'"]+)['"]\s*,"""
+    r"""\s*['"]([^'"]+)['"]\s*\)"""
+)
+VIEWPAGE_RE = re.compile(r"""\bviewpage\s*=\s*['"]([^'"]+)['"]""")
+
+
+def detail_request(page: Page) -> tuple[str, dict[str, str]] | None:
+    """
+    查詢結果那一列的「詳」要送到哪、送什麼。沒有就回 None。
+
+    **查詢回來的不是結果，是一份清單。** `GRD5010`（查詢各式成績）按下查詢
+    之後拿到的是一列「部別/系所/年級/班級/學號/姓名/在學狀態」——
+    成績在明細頁 `GRD5010_02.aspx`，要點那一列的「詳」才進得去。
+    而「詳」是 `<a href="#this">`，DOM 上看不出任何目標。
+
+    真正的動作在頁尾注入的這一行（只有一筆結果時它會自己執行）：
+
+        var viewpage = "GRD5010_02.aspx";
+        doEdit1_2('', 'STNO|B10900000', 'Mod');
+
+    照 `script/PageScript.js` 的實作翻過來：`doEdit1_2` 把 keyStr 依
+    `名稱|值|名稱|值…` 拆開，配上 `Mode=<type 大寫>`，然後交給 `sendData`
+    —— 那個函式當場建一個 `method="POST"` 的表單送出去。
+
+    所以這是 **POST 不是 GET**，而且**沒有 `__VIEWSTATE`**（表單是 JS 現做的，
+    只有那幾個欄位）。當成 GET 拼 query string 會拿到一頁空表單，而且不報錯。
+
+    **學號一定要從這裡當場取。** fixture 裡那個 `B10900000` 是 scrub 寫進去的
+    佔位值 —— 從檔案讀出來拿去用，得到的是別人的（其實是不存在的）學生。
+    跟 `fn_open_target` 的 PKNO 同一個坑。
+    """
+    key = DO_EDIT_RE.search(page.html)
+    view = VIEWPAGE_RE.search(page.html)
+    if key is None or view is None:
+        return None
+
+    parts = key.group(1).split("|")
+    fields = {"Mode": key.group(2).upper()}
+    for i in range(0, len(parts) - 1, 2):
+        fields[parts[i]] = parts[i + 1]
+
+    # viewpage 是相對於**當前頁面**的（功能頁埋在 Application/GRD/GRD50/），
+    # 用 base_url 解析會跑到根目錄去。
+    return urljoin(page.url, view.group(1)), fields
 
 
 def run_session(sess: AisSession, page: Page, args, who: Identity) -> int:
@@ -563,7 +644,8 @@ def run_session(sess: AisSession, page: Page, args, who: Identity) -> int:
         if len(submits) > 1:
             print(f"\n將掃過 {len(submits)} 組查詢條件（同一次登入）")
     fetched = fetch_pages(sess, targets, save=args.save, quiet=args.quiet,
-                          who=who, submits=submits, follow=not args.no_follow)
+                          who=who, submits=submits, follow=not args.no_follow,
+                          detail=args.detail)
 
     if args.goto:
         # **一定要對著產生這個連結的那一頁送。** 課號連結（`DataGrid$ctl02$COSID`）
