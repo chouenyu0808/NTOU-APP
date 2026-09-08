@@ -576,12 +576,28 @@ commit 前跑這個（個資檢查 → 測試 → lint，一個指令）：
 個資檢查刻意排在第一個：測試紅了、lint 髒了都只是重跑一次的事，
 但明文密碼一旦推上遠端，改密碼也救不回歷史紀錄。
 
-掛成 git hook（`.git/hooks/pre-commit`）：
+hook 已經在版控裡（`.githooks/pre-commit`），但 **git 不會自己去用它** ——
+每台機器 clone 完都要跑一次這行，一次就好：
 
 ```bash
-#!/bin/sh
-exec spike/.venv/Scripts/python.exe spike/check.py --quiet
+git config core.hooksPath .githooks
 ```
+
+**沒跑的機器是完全沒有把關的，而且沒有任何跡象** —— commit 一路暢通，
+你不會知道 spike 那邊早就紅了。2026-09-08 就是這樣：一台 commit 得很順，
+另一台完全 commit 不進去，兩邊都以為問題在對方。
+
+沒跑過的話可以這樣確認：
+
+```bash
+git config core.hooksPath
+```
+
+印出 `.githooks` 就是好的，什麼都沒印就是還沒設。
+
+（以前的做法是把腳本抄進 `.git/hooks/pre-commit`，那個目錄不進版控 ——
+所以每台各抄一份、內容各自漂移，而且新機器一定是空的。舊的那份還寫死了
+`spike/.venv/Scripts/python.exe`，在沒建 venv 的機器上連跑都跑不起來。）
 
 > PowerShell 5.1 沒有 `&&`，指令要分行下。`*.html` 也不會自動展開，
 > 所以用 `(ls fixtures\*.html)` 讓 PowerShell 先展開再傳進去。

@@ -1,0 +1,34 @@
+#!/bin/sh
+# commit 前跑 spike 的三道關卡：個資檢查、pytest、ruff（見 spike/check.py）。
+#
+# **這個檔案在版控裡**，靠 `git config core.hooksPath .githooks` 生效。
+# 原本的做法是各自把腳本抄進 `.git/hooks/pre-commit` —— 那個目錄不進版控，
+# 所以新機器 clone 完是完全沒有把關的，而且**沒有任何跡象**：commit 一路
+# 暢通，你不會知道 spike 那邊的 lint 早就紅了。2026-09-08 就是這樣，
+# 一台機器 commit 得很順，另一台完全 commit 不進去。
+#
+# **不要寫死 python 路徑。** 原本寫的是 `spike/.venv/Scripts/python.exe`，
+# 那只存在於建過 venv 的機器上；另一台用的是全域 python，hook 就算裝了也
+# 跑不起來 —— 而 git 只會說 hook 失敗，不會說是因為找不到直譯器。
+# 跟 Flutter SDK 路徑同一個病，`app/check.ps1` 已經解過一次。
+#
+# check.py 自己用 `sys.executable`，所以用哪一個 python 跑它都對。
+
+if [ -x spike/.venv/Scripts/python.exe ]; then
+    exec spike/.venv/Scripts/python.exe spike/check.py --quiet
+fi
+
+for py in python python3 py; do
+    if command -v "$py" >/dev/null 2>&1; then
+        exec "$py" spike/check.py --quiet
+    fi
+done
+
+# 找不到 python 就放行，但要講清楚。
+#
+# 擋下來（exit 1）看起來比較安全，實際上是把只做 app/ 的人逼去用
+# `--no-verify` —— 那會連個資檢查一起關掉，比現在更糟。
+echo "pre-commit：找不到 python，spike 的檢查跳過了。" >&2
+echo "  個資檢查也在那裡面 —— 動過 spike/fixtures/ 的話請手動跑：" >&2
+echo "      python spike/check.py" >&2
+exit 0

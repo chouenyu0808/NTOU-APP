@@ -60,7 +60,21 @@ relay/          TDX 中繼服務（Cloudflare Worker）—— 公開發布時金
 `spike/` 本身**有進版控** —— 那些 Python 腳本（`login.py`、`scrub.py`、
 `check.py`、`parsers.py` 和它們的 pytest）、`README.md`、`selectors.json`、
 `menu_tree.json` 都在。改了要一起 commit，而且 pre-commit hook 會跑 spike 的
-pytest，那邊紅了就 commit 不進去。
+個資檢查、pytest 和 ruff，那邊紅了就 commit 不進去。
+
+**新機器要先跑這一行，hook 才會生效**（一次就好）：
+
+```bash
+git config core.hooksPath .githooks
+```
+
+hook 本身在版控裡，但 **git 不會自己去用它**。沒設的機器是**完全沒有把關**
+的，而且沒有任何跡象 —— commit 一路暢通，你不會知道 spike 那邊早就紅了。
+2026-09-08 就是這樣：一台 commit 得很順，另一台完全 commit 不進去。
+`git config core.hooksPath` 印出 `.githooks` 才算設好。
+
+hook 要用的 `ruff` 和 `pytest` 也要在（`pip install ruff pytest`）——
+少了它們 `check.py` 那兩項會直接算失敗。
 
 `app/test/` 會直接讀 `../spike/fixtures/` —— 沒有那個資料夾時測試會自己 skip，
 不會失敗。所以程式碼裡指向 `spike/` 的註解不是壞掉的參照，別「順手清掉」。

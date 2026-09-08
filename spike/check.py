@@ -5,15 +5,15 @@ check.py — commit 前跑這一個指令就好。
 「弄錯了就無法挽回」的失敗 —— 明文密碼一旦推上遠端，改密碼也救不回歷史紀錄。
 測試紅了、lint 髒了都只是重跑一次的事。
 
-用法：
-    .venv\\Scripts\\python.exe check.py
-    .venv\\Scripts\\python.exe check.py --quiet     # 只在失敗時輸出
+用法（用哪一個 python 跑都對，下面的 PYTHON 跟著 sys.executable 走）：
+    python check.py
+    python check.py --quiet     # 只在失敗時輸出
 
-掛成 git hook（在 ntou-app 目錄下）：
-    New-Item -ItemType Directory -Force .git\\hooks
-    # .git/hooks/pre-commit 內容：
-    #   #!/bin/sh
-    #   exec spike/.venv/Scripts/python.exe spike/check.py --quiet
+git hook 已經在版控裡（`.githooks/pre-commit`），但 git 不會自己去用它。
+每台機器 clone 完要跑一次：
+    git config core.hooksPath .githooks
+
+沒跑的機器完全沒有把關，而且不會有任何跡象。
 """
 from __future__ import annotations
 
