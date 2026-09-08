@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../config/period_times.dart';
@@ -122,14 +124,40 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   AppController get _c => widget.controller;
 
+  Timer? _ticker;
+
   @override
   void initState() {
     super.initState();
     _c.addListener(_onChanged);
+
+    // **首頁上的「還有 N 分鐘」是 build 當下算的，不會自己跳。**
+    // 首頁只在 controller 有變動時重建，所以那個數字會凍住 —— 開著 App
+    // 放五分鐘，它還寫著「還有 12 分鐘」。一個過期的倒數會害人以為還來得及。
+    //
+    // 「已經上完／下一堂／今天還有」的分堆也是照現在的時間算的，同樣會過期。
+    //
+    // 對齊到整分：先等到下一個整分，再每 60 秒一次。不對齊的話，剛好在
+    // 「還有 1 分鐘」那一秒進來，會晚快一分鐘才跳成 0。
+    //
+    // 注入了固定時間（測試）就不開計時器 —— 那是要釘住一個當下的。
+    if (widget.now == null) {
+      final now = DateTime.now();
+      _ticker = Timer(
+        Duration(seconds: 60 - now.second, milliseconds: -now.millisecond),
+        () {
+          _onChanged();
+          _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+            _onChanged();
+          });
+        },
+      );
+    }
   }
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _c.removeListener(_onChanged);
     super.dispose();
   }

@@ -521,4 +521,22 @@ void main() {
       await unmount(tester);
     });
   });
+
+  group('每分鐘自己重算（不注入時間時）', () {
+    testWidgets('計時器會跑、而且離開頁面時收得乾淨', (tester) async {
+      // 首頁的「還有 N 分鐘」和「已上完／下一堂」的分堆都是照現在的時間算的
+      // —— 不重算就會凍住，一個過期的倒數會害人以為還來得及。
+      //
+      // 這裡不驗「數字變了」（那要能控制時鐘），驗的是計時器的安全：
+      // 跑過幾分鐘不崩、離開頁面後不殘留（殘留的話 testWidgets 會自己判失敗），
+      // unmount 之後不再 setState。這兩個才是計時器真正的風險。
+      final c = await newController();
+      await tester.pumpWidget(wrap(c)); // now 不注入 = 真實時間 + 開計時器
+      await tester.pump(const Duration(minutes: 1));
+      await tester.pump(const Duration(minutes: 1));
+
+      await unmount(tester);
+      await tester.pump(const Duration(minutes: 1));
+    });
+  });
 }
