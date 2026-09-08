@@ -142,10 +142,78 @@ void main() {
       );
     });
 
-    test('顏色一定落在既有的 13 色裡，不會冒出新顏色', () {
+    test('顏色一定落在既有的模組色裡，不會冒出新顏色', () {
       for (final code in ['B5702P98', 'B5711M97', 'B57011RQ', '', '演算法']) {
         expect(NtouTheme.moduleColors, contains(TimetableGrid.colorFor(code)));
       }
+    });
+  });
+
+  group('現在這一格', () {
+    // 上學日掃一眼課表，最想知道的是「我現在該在哪」。標的是今天 × 現在
+    // 這一節的交叉格，畫成一個外框（不是換底色）—— 底色會被課方塊蓋掉，
+    // 外框畫在最上面，有課時框住那堂課、沒課時框住空格。
+    const oneClass = TimetableGrid(
+      today: 0, // 週一
+      courses: [
+        Course(
+          name: '演算法',
+          code: 'B5702P98',
+          slots: [TimeSlot(0, 2), TimeSlot(0, 3), TimeSlot(0, 4)],
+        ),
+      ],
+    );
+
+    // 那個外框：primary 色、寬 2 的 Border。
+    Finder nowBox() => find.byWidgetPredicate((w) {
+          if (w is! DecoratedBox) return false;
+          final d = w.decoration;
+          return d is BoxDecoration &&
+              d.border is Border &&
+              (d.border as Border).top.width == 2;
+        });
+
+    testWidgets('現在正在上課的那一節被框起來', (tester) async {
+      // 第 3 節（在課的範圍 2–4 裡）。
+      await tester.pumpWidget(wrap(TimetableGrid(
+        today: oneClass.today,
+        nowPeriod: 3,
+        courses: oneClass.courses,
+      )));
+      await tester.pumpAndSettle();
+      expect(nowBox(), findsOneWidget);
+    });
+
+    testWidgets('下課時間（nowPeriod = null）不框任何一格', (tester) async {
+      await tester.pumpWidget(wrap(TimetableGrid(
+        today: oneClass.today,
+        nowPeriod: null,
+        courses: oneClass.courses,
+      )));
+      await tester.pumpAndSettle();
+      expect(nowBox(), findsNothing);
+    });
+
+    testWidgets('今天沒被畫出來（假日）就不框', (tester) async {
+      // 課表只畫一到五，今天是週日（today = 6）—— 沒有那一欄可框。
+      await tester.pumpWidget(wrap(TimetableGrid(
+        today: 6,
+        nowPeriod: 3,
+        courses: oneClass.courses,
+      )));
+      await tester.pumpAndSettle();
+      expect(nowBox(), findsNothing);
+    });
+
+    testWidgets('現在這一節不在畫出來的範圍內就不框', (tester) async {
+      // 格子只畫到第 4 節，現在是晚上第 12 節 —— 框出去會落在格子外。
+      await tester.pumpWidget(wrap(TimetableGrid(
+        today: oneClass.today,
+        nowPeriod: 12,
+        courses: oneClass.courses,
+      )));
+      await tester.pumpAndSettle();
+      expect(nowBox(), findsNothing);
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/period_times.dart';
 import '../parsing/models.dart';
 import '../parsing/timetable.dart';
 import 'theme.dart';
@@ -15,12 +16,28 @@ import 'theme.dart';
 /// 三個各自獨立的儲存格、課名重複三次，看起來像三門不同的課。這裡改成
 /// 疊在格線上的方塊，連著的節次合成一塊。
 class TimetableGrid extends StatelessWidget {
-  const TimetableGrid({super.key, required this.courses, this.today});
+  const TimetableGrid({
+    super.key,
+    required this.courses,
+    this.today,
+    this.nowPeriod = _autoNowPeriod,
+  });
 
   final List<Course> courses;
 
   /// 今天是星期幾（0 = 週一）。給測試用；正式執行時預設是今天。
   final int? today;
+
+  /// 現在是第幾節，用來把「現在這一格」標出來。下課時間、或不在上課時段
+  /// （晚上、假日）就是 null，那時候不標任何一格。
+  ///
+  /// 預設值 [_autoNowPeriod] 是一個哨兵，表示「自己照現在的時間算」——
+  /// 不能直接寫 `DateTime.now()`，那會讓 const 建構子失效，而且測試沒辦法
+  /// 釘住一個時間。傳明確的 `int?`（含 null）就照那個走，測試用得上。
+  final int? nowPeriod;
+
+  /// 「自己算」的哨兵。挑一個節次不可能出現的負數。
+  static const int _autoNowPeriod = -999;
 
   /// 一節多高。要放得下兩行課名加一行教室。
   static const double _rowHeight = 56;
@@ -65,6 +82,12 @@ class TimetableGrid extends StatelessWidget {
     final rows = maxPeriod - minPeriod + 1;
     final todayIndex = today ?? (DateTime.now().weekday - 1);
 
+    // 現在第幾節。哨兵表示「自己算」——照當下的時鐘時間查節次表。
+    final now = DateTime.now();
+    final currentPeriod = nowPeriod == _autoNowPeriod
+        ? PeriodTimes.ntou.periodAt(now.hour * 60 + now.minute)
+        : nowPeriod;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12),
       clipBehavior: Clip.antiAlias,
@@ -86,6 +109,7 @@ class TimetableGrid extends StatelessWidget {
               rowHeight: _rowHeight,
               periodWidth: _periodWidth,
               today: todayIndex,
+              nowPeriod: currentPeriod,
               blocks: blocks,
             ),
           );
@@ -152,6 +176,7 @@ class _Grid extends StatelessWidget {
     required this.rowHeight,
     required this.periodWidth,
     required this.today,
+    required this.nowPeriod,
     required this.blocks,
   });
 
@@ -162,6 +187,7 @@ class _Grid extends StatelessWidget {
   final double rowHeight;
   final double periodWidth;
   final int today;
+  final int? nowPeriod;
   final List<_Block> blocks;
 
   @override
@@ -234,8 +260,39 @@ class _Grid extends StatelessWidget {
             height: rowHeight * b.length - 4,
             child: _CourseBlock(block: b),
           ),
+
+        // 「現在這一格」的外框 —— **畫在最上面**，才框得住底下的課方塊。
+        //
+        // 只在今天有顯示、而且現在正在某一節（`periodAt` 不是 null）、
+        // 那一節又落在畫出來的範圍內時才畫。下課時間、晚上、假日都不畫，
+        // 不然會框到一個跟「現在」無關的格子，比不框更誤導。
+        if (_nowCell != null)
+          Positioned(
+            left: periodWidth + dayWidth * today,
+            top: rowHeight * (_nowCell! - minPeriod + 1),
+            width: dayWidth,
+            height: rowHeight,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border.all(color: scheme.primary, width: 2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
       ],
     );
+  }
+
+  /// 要框起來的節次，沒有就 null。把「今天有沒有顯示、現在在不在上課、
+  /// 那一節在不在範圍內」三個條件收在一處，畫的地方就不用再判斷。
+  int? get _nowCell {
+    final p = nowPeriod;
+    if (p == null) return null; // 下課／非上課時段
+    if (today < 0 || today >= days) return null; // 今天沒畫出來（假日）
+    if (p < minPeriod || p >= minPeriod + rows) return null; // 那一節不在範圍內
+    return p;
   }
 }
 
