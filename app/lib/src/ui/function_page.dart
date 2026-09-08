@@ -7,6 +7,7 @@ import '../menu/menu_catalog.dart';
 import '../parsing/data_grid.dart';
 import '../parsing/timetable.dart';
 import 'app_controller.dart';
+import 'graduation_page.dart';
 import 'schema_field_input.dart';
 import 'theme.dart';
 
@@ -570,6 +571,22 @@ class FunctionTile extends StatelessWidget {
     if (controller.phase != AppPhase.ready) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('請先登入')));
+      return;
+    }
+
+    // 少數幾個功能有專屬畫面。通用表單頁也開得起來（它讀學校自己的宣告），
+    // 只是那幾頁的資料值得好好排 —— 畢業資格是一張「要求 vs 實際」的
+    // 巢狀對照表，攤成通用表格的話一整欄都是空白，看不出「還差什麼」。
+    //
+    // 用 `code` 不用標題：學校改一個字（「查詢畢業資格」→「畢業資格查詢」）
+    // 就會安靜地掉回通用頁，而畫面上只是「這一頁怎麼變醜了」。
+    if (function.code.toUpperCase() == 'ENRG010') {
+      if (!context.mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => GraduationPage(controller: controller),
+        ),
+      );
       return;
     }
 

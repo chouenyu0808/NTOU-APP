@@ -573,6 +573,21 @@ class AisRepository {
         ),
       );
 
+  /// 查詢畢業資格（`ENRG010`）。
+  ///
+  /// 跟「必修科目表」的差別：那一份是系上的課程規劃（所有人一樣），
+  /// 這一份是**你自己的進度** —— 同一列上左邊是你修的、右邊是要求。
+  ///
+  /// 路徑寫在這裡而不是 selectors.json，因為它只有這一個用途，
+  /// 而且選單裡就有（`catalog.byCode('ENRG010')`）—— 兩邊都改反而容易漂。
+  Future<FunctionView> openGraduation() => openFunction(
+        const AisFunction(
+          title: '查詢畢業資格',
+          path: 'Application/ENR/ENRG0/ENRG010_.aspx?progcd=ENRG010',
+          trail: ['教務系統', '畢業作業', '查詢畢業資格'],
+        ),
+      );
+
   /// 送出去的欄位，加上**要從基底裡拿掉**的那些。
   ///
   /// 為什麼需要 [omit]：`submitForm` 是先用頁面上的現值當基底，再把這裡的值
