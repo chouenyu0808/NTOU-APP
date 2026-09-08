@@ -65,6 +65,41 @@ void main() {
       ''';
       expect(serverMessage(html), isNull);
     });
+
+    test('**函式裡的 Message.showMessage 也不算**', () {
+      // 這一條是拿真實反例補的。原本的規則是「頁面上有沒有 showMessage」，
+      // 理由是「驗證用的是 alert，不會用這個函式」—— 那個假設在 12 個
+      // fixture 上零誤報，然後在第 13 個（GRD5010_02 成績明細）破了：
+      //
+      // 那是列印鈕的驗證訊息（「你沒勾選任何一列」），跟頁面狀態無關。
+      // 照著顯示的話，使用者一打開成績就看到一句莫名其妙的「必須選擇資料」。
+      const html = '''
+        <script>
+        function doPrint(gridID, checkBoxName, printType) {
+          var checkCount = 0;
+          if (printType == "CHECK") {
+            checkCount = getGridCheckCount(gridID, checkBoxName)
+            if (checkCount == 0) {
+              Message.showMessage("必須選擇資料再進行處理!!");
+              return false;
+            }
+          }
+        }
+        </script>
+      ''';
+      expect(serverMessage(html), isNull);
+    });
+
+    test('頂層的算、同一段裡函式內的不算', () {
+      // 真訊息跟假訊息可以出現在同一段 script 裡 —— 分辨靠的是位置。
+      const html = '''
+        <script>
+        function doPrint() { Message.showMessage("必須選擇資料再進行處理!!"); }
+        var lang='ZH_TW';Message.showMessage('人工加選尚未開放!');;
+        </script>
+      ''';
+      expect(serverMessage(html), '人工加選尚未開放');
+    });
   });
 
   group('真實頁面', () {
@@ -81,6 +116,9 @@ void main() {
         'Application_GRD_GRD50_GRD5010_01.html',
         'Application_GRD_GRD30_GRD3060_01.html',
         'Application_ENR_ENRG0_ENRG010_01.html',
+        // 成績明細 —— 這一份就是打破「showMessage 一定是伺服器說的」
+        // 那個假設的反例，它的 doPrint 裡有一句「必須選擇資料再進行處理」。
+        'Application_GRD_GRD50_GRD5010_02.html',
         'Portal.html',
       ]) {
         if (skipUnless(f) != null) continue;

@@ -11,45 +11,89 @@
 /// <script>location.href='/Portal.aspx';</script>
 /// ...
 /// <script type="text/javascript">
-///   ...Message.showMessage('人工加選尚未開放!');;location.href='/Portal.aspx';;...
+///   //<![CDATA[ var lang='ZH_TW';...
+///   Message.showMessage('人工加選尚未開放!');;location.href='/Portal.aspx';;...
 /// </script>
 /// ```
 ///
 /// 同一句話講兩次（一次 `alert`、一次 `Message.showMessage`），配一個導向。
 library;
 
-/// ASP.NET 從後端注入的訊息。表單驗證不會用這個函式 —— 那邊用的是
-/// `alert` 和 `Form.errAppend`，所以這一條幾乎不會誤中。
+/// 每一段 inline `<script>` 的內容。
+///
+/// 要逐段看而不是對整份 HTML 掃 —— 判斷一句話算不算數，靠的是它在**自己
+/// 那一段 script 裡**的位置（見 `_isTopLevel`）。
+final RegExp _scriptRe = RegExp(
+  r'<script[^>]*>(.*?)</script>',
+  dotAll: true,
+  caseSensitive: false,
+);
+
+/// ASP.NET 從後端注入的訊息。
 final RegExp _showMessageRe = RegExp(
   r'''Message\.showMessage\(\s*(['"])(.*?)\1\s*\)''',
   dotAll: true,
 );
 
-/// **整段就只有一句 alert 的 `<script>`。**
+/// 整段就只有一句 alert 的 `<script>`。
 ///
 /// 「頁面上有 alert」不能當條件 —— 每一頁的表單驗證函式裡都寫著
 /// `alert("學年期不可為空白!")` 這種東西（`GRD5010` 那頁有兩句）。
-/// 那些包在 `function doQuery() {...}` 裡，只有使用者按下查詢才會執行，
-/// 撈出來顯示的話，使用者會在「人工加選」那一頁看到「學期成績-學年期
-/// 不可為空白!」—— 一句完全不相干、但看起來很像真的的訊息。
-///
-/// 伺服器主動注入的那種是自己一個 `<script>`、裡面只有那一句，
-/// 所以用「整段就是它」來認。
+/// 那些包在 `function doQuery() {...}` 裡，只有使用者按下查詢才會執行。
 final RegExp _bareAlertRe = RegExp(
-  r'''<script[^>]*>\s*alert\(\s*(['"])(.*?)\1\s*\)\s*;?\s*</script>''',
+  r'''^\s*alert\(\s*(['"])(.*?)\1\s*\)\s*;?\s*$''',
   dotAll: true,
-  caseSensitive: false,
 );
 
-/// 抓出這一頁上伺服器要說的話，沒有就回 null。
+/// 這個位置是不是在**頂層直接執行**（不在任何 `{}` 裡面）。
 ///
-/// 兩條規則抓到的通常是同一句（學校兩種都送），所以先找哪一條都一樣；
-/// `showMessage` 排前面是因為它誤中的機會更低。
+/// **這一條是這整支檔案的重點。** 一開始的規則是「頁面上有沒有
+/// `Message.showMessage`」，理由是「表單驗證用的是 alert，不會用這個函式」——
+/// 那個假設在 12 個 fixture 上零誤報，然後在第 13 個上破了：
+/// `GRD5010_02`（成績明細）裡有
+///
+///     function doPrint(gridID, checkBoxName, printType) {
+///       ...
+///       if (checkCount == 0) {
+///         Message.showMessage("必須選擇資料再進行處理!!");
+///
+/// 那是列印鈕的驗證訊息（「你沒勾選任何一列」），跟頁面現在的狀態完全無關。
+/// 照著顯示的話，使用者一打開成績就看到一句莫名其妙的「必須選擇資料」。
+///
+/// 真訊息是 ASP.NET 用 `RegisterStartupScript` 注入的，一定在頂層 ——
+/// 實測人工加選那句深度是 0、`doPrint` 那句是 3。
+///
+/// 括號是硬數的，字串和註解裡的 `{}` 也會被算進去。對這個系統的 JS 夠用
+/// （它們是同一套樣板產生的），而且算錯的方向是**安全的**：深度變成非 0
+/// 就是不顯示，回到「跟以前一樣什麼都沒有」，不會顯示錯的東西。
+bool _isTopLevel(String js, int index) {
+  var depth = 0;
+  for (var i = 0; i < index; i++) {
+    final c = js.codeUnitAt(i);
+    if (c == 0x7B) {
+      depth++; // {
+    } else if (c == 0x7D) {
+      depth--; // }
+    }
+  }
+  return depth <= 0;
+}
+
+/// 抓出這一頁上伺服器要說的話，沒有就回 null。
 String? serverMessage(String html) {
-  for (final re in [_showMessageRe, _bareAlertRe]) {
-    final m = re.firstMatch(html);
-    final text = m?.group(2)?.trim();
-    if (text != null && text.isNotEmpty) return _tidy(text);
+  for (final script in _scriptRe.allMatches(html)) {
+    final body = script.group(1) ?? '';
+
+    // 整段就是一句 alert —— 伺服器注入的長這樣，驗證用的包在函式裡。
+    final bare = _bareAlertRe.firstMatch(body);
+    final bareText = bare?.group(2)?.trim();
+    if (bareText != null && bareText.isNotEmpty) return _tidy(bareText);
+
+    for (final m in _showMessageRe.allMatches(body)) {
+      if (!_isTopLevel(body, m.start)) continue;
+      final text = m.group(2)?.trim();
+      if (text != null && text.isNotEmpty) return _tidy(text);
+    }
   }
   return null;
 }
