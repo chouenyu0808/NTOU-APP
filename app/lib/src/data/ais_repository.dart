@@ -77,6 +77,15 @@ class AisRepository {
 
   bool get isLoggedIn => _session != null && _queryPage != null;
 
+  /// 目前登入的學號。**只有學號，密碼不在這裡也不該在這裡。**
+  ///
+  /// 用途是 `openFunction` 自動填 `Q_STNO` —— 理由見那裡。
+  ///
+  /// 由 `AppController` 設定而不是自己從登入流程裡撈：學號的權威來源是
+  /// 那邊（它會從 Keystore 讀回上次的帳號自動登入，那條路不經過
+  /// `completeLogin`）。
+  String? studentId;
+
   /// 登入握手時順便讀到的電子公布欄。沒登入過就是空的。
   List<Announcement> get announcements => _announcements;
   List<Announcement> _announcements = const [];
@@ -309,12 +318,35 @@ class AisRepository {
     session.checkSession(page);
 
     final schema = FunctionSchema.fromPage(page);
+    final values = {for (final f in schema.visibleFields) f.name: f.value};
+
+    // **空的學號欄要自己填上。**
+    //
+    // 這些頁面是教職員的查詢介面，學生帳號也開得起來。有些會帶入本人
+    // （`GRD5010` 成績），有些不會 —— `GRD7050`（缺曠課紀錄）的 `Q_STNO`
+    // 是空的，而**空的送出去，回來的是整批學生**：2026-09-08 實測不填條件
+    // 直接查，拿到 70 個人的學號、姓名和缺曠課節數。
+    //
+    // 使用者從選單點進去、直接按查詢就會撞到那個結果 —— 他只是想看自己
+    // 缺了幾節，卻拿到全班的資料。填上學號之後同一個查詢只回一列。
+    //
+    // 只在**欄位存在而且是空的**時候填：學校已經帶好值的頁面不去動它。
+    // 而且欄位照樣可以編輯，真的要查別的（導師身分）改掉就行。
+    final id = studentId;
+    if (id != null && id.isNotEmpty) {
+      for (final f in schema.visibleFields) {
+        if (f.name.toUpperCase() == 'Q_STNO' && f.value.isEmpty) {
+          values[f.name] = id;
+        }
+      }
+    }
+
     return FunctionView(
       function: fn,
       page: page,
       schema: schema,
       cascadeFields: AisSession.autoPostBackFields(page),
-      values: {for (final f in schema.visibleFields) f.name: f.value},
+      values: values,
       notice: notice,
     );
   }
@@ -659,6 +691,9 @@ class AisRepository {
     _loginPage = null;
     _queryPage = null;
     _announcements = const [];
+    // 學號跟著登出一起忘掉 —— 「登出之後、下一個人登入之前」那段空窗
+    // 留著上一個人的學號，只會等一個機會被誤用。
+    studentId = null;
     if (forgetCache) await cache.clear();
   }
 

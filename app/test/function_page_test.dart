@@ -107,10 +107,18 @@ const _mutatingFn = AisFunction(
   trail: ['教務系統', '選課系統', '線上加退選'],
 );
 
-/// 派發器那一步（兩個功能頁共用同一個判斷）。
+/// 缺曠課紀錄 —— 學號欄是空的那種頁面。
+const _absenceFn = AisFunction(
+  title: '查詢缺曠課紀錄',
+  path: 'Application/GRD/GRD70/GRD7050_.aspx?progcd=STU2030',
+  trail: ['教務系統', '成績系統', '查詢缺曠課紀錄'],
+);
+
+/// 派發器那一步（幾個功能頁共用同一個判斷）。
 bool _isDispatcher(FakeRequest r) =>
     r.page.startsWith('TKE2211_.aspx') ||
     r.page.startsWith('TKE2011_.aspx') ||
+    r.page.startsWith('GRD7050_.aspx') ||
     r.page.startsWith('SEC5010_.aspx');
 
 void main() {
@@ -137,6 +145,11 @@ void main() {
       return _queryPage();
     };
   }
+
+  /// 缺曠課那一頁的派發器導向目標。
+  const absenceDispatcher = r"""<html><body>
+<script>top.mainFrame.location.href='GRD7050_01.aspx';</script>
+</body></html>""";
 
   /// 開好功能頁，停在「表單畫出來、還沒查」的狀態。
   Future<void> open(WidgetTester tester, {AisFunction fn = _fn}) async {
@@ -498,6 +511,53 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('請先選擇查詢條件'), findsNothing);
+      await unmount(tester);
+    });
+  });
+
+  group('空的學號欄自動填本人', () {
+    // **這一條是隱私的，不是方便。**
+    //
+    // 這些頁面是教職員的查詢介面，學生帳號也開得起來。`GRD7050`（缺曠課
+    // 紀錄）的 Q_STNO 是空的，而空的送出去回來的是整批學生 ——
+    // 2026-09-08 實測不填條件直接查，拿到 70 個人的學號、姓名和缺曠節數。
+    //
+    // 使用者只是想看自己缺了幾節，卻會拿到全班的資料。
+
+    String pageWith(String stnoValue) =>
+        '<html><head><title>GRD7050_查詢學生缺曠課記錄</title></head>'
+        '<body><form>'
+        r'<input type="hidden" name="__VIEWSTATE" value="vs">'
+        '<input type="text" name="Q_STNO" cname="學號" value="$stnoValue">'
+        r'<input type="submit" name="QUERY_BTN1" ml="CB_查詢" value="查詢">'
+        '</form></body></html>';
+
+    testWidgets('空的就填上，送出去的是本人的學號', (tester) async {
+      controller.repository.studentId = 'B12345678';
+      ais.reply = (r) =>
+          _isDispatcher(r) ? absenceDispatcher : pageWith('');
+      await open(tester, fn: _absenceFn);
+
+      // 畫面上就看得到 —— 使用者要能知道自己在查誰，而且改得掉。
+      expect(find.text('B12345678'), findsOneWidget);
+
+      await tester.tap(queryButton());
+      await tester.pumpAndSettle();
+      expect(ais.posts.single['Q_STNO'], 'B12345678');
+      await unmount(tester);
+    });
+
+    testWidgets('學校已經帶好值的就不要動它', (tester) async {
+      // `GRD5010`（成績）那一頁自己會帶入本人。覆蓋掉的話，哪天學校帶的
+      // 是別的東西（例如某種內部代號），我們就把它改壞了。
+      controller.repository.studentId = 'B12345678';
+      ais.reply = (r) =>
+          _isDispatcher(r) ? absenceDispatcher : pageWith('B99999999');
+      await open(tester, fn: _absenceFn);
+
+      await tester.tap(queryButton());
+      await tester.pumpAndSettle();
+      expect(ais.posts.single['Q_STNO'], 'B99999999');
       await unmount(tester);
     });
   });

@@ -91,6 +91,9 @@ class AppController extends ChangeNotifier {
 
   Future<void> init() async {
     username = await credentials.readUsername() ?? '';
+    // 有些功能頁的學號欄是空的，而空的送出去會撈回整批學生 ——
+    // repository 拿這個自動填上（見 `openFunction` 的說明）。
+    repository.studentId = username.isEmpty ? null : username;
     hasSavedPassword = (await credentials.readPassword()) != null;
 
     // 先把上次看的課表畫出來。**登入之前就要有東西看** ——
@@ -177,6 +180,7 @@ class AppController extends ChangeNotifier {
       }
 
       username = account;
+      repository.studentId = account;
       await credentials.saveUsername(account);
       if (remember) {
         await credentials.savePassword(password);
