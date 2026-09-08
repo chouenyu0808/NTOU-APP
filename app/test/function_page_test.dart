@@ -429,4 +429,76 @@ void main() {
       await unmount(tester);
     });
   });
+
+  group('學校用 JS 說的話', () {
+    // App 不跑 JS，所以在 serverMessage 之前，這些話在畫面上是**完全消失**的
+    // —— 使用者看到一頁空白，不知道是 App 壞了還是自己來錯時間。
+
+    testWidgets('開頁面就被擋下來：訊息取代「直接看下面的結果」', (tester) async {
+      // 真實長相（人工加選申請，非開放時段）：內容頁講一句話，然後把人
+      // 踢回首頁。話在**導向鏈的中間**那一頁上。
+      ais.reply = (r) {
+        if (_isDispatcher(r)) return _dispatcher;
+        if (r.page.startsWith('TKE2211_01.aspx')) {
+          return "<html><body>"
+              "<script>alert('人工加選尚未開放!');</script>"
+              "<script>location.href='/Portal.aspx';</script>"
+              "</body></html>";
+        }
+        return '<html><body>首頁</body></html>';
+      };
+      await open(tester);
+
+      expect(find.text('人工加選尚未開放'), findsOneWidget);
+      // 那種頁面被踢回首頁，下面什麼都沒有 —— 叫使用者往下看只會讓他
+      // 對著一片空白找不存在的東西。
+      expect(find.textContaining('直接看下面的結果'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('按下查詢之後才說的話也要接住', (tester) async {
+      // 這條路上的訊息會被吞掉的話，畫面上只剩「查無符合資料」——
+      // 使用者會以為是自己真的沒有資料。
+      script(
+        onQuery: '<html><body><form>'
+            r'<input type="hidden" name="__VIEWSTATE" value="vs">'
+            "<script>alert('不在開放查詢時間!');</script>"
+            '</form></body></html>',
+      );
+      await open(tester);
+
+      expect(find.text('不在開放查詢時間'), findsNothing);
+      await tester.tap(queryButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text('不在開放查詢時間'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('查詢成功之後，上一次的話要收掉', (tester) async {
+      // notice 預設是沿用的（開頁面那句「尚未開放」不會因為使用者動了什麼
+      // 就不成立）。但送出查詢是一次新的問答，答案要換成這一次的 ——
+      // 不然查成功了畫面上還掛著上一次的訊息。
+      var first = true;
+      ais.reply = (r) {
+        if (_isDispatcher(r)) return _dispatcher;
+        if (r.pressed('QUERY_BTN')) return _queryPage();
+        if (first) {
+          first = false;
+          // 表單照常畫得出來（查詢鈕要在，等一下要按），只是多了一句話。
+          return "${_queryPage()}"
+              "<script>alert('請先選擇查詢條件!');</script>";
+        }
+        return _queryPage();
+      };
+      await open(tester);
+      expect(find.text('請先選擇查詢條件'), findsOneWidget);
+
+      await tester.tap(queryButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text('請先選擇查詢條件'), findsNothing);
+      await unmount(tester);
+    });
+  });
 }

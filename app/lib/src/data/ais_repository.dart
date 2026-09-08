@@ -12,6 +12,7 @@ import '../menu/menu_catalog.dart';
 import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../parsing/data_grid.dart';
+import '../parsing/server_message.dart';
 import '../parsing/tables.dart';
 import '../parsing/timetable.dart';
 import '../storage/timetable_cache.dart';
@@ -397,6 +398,15 @@ class AisRepository {
       values: merged,
       result: grids.isEmpty ? null : grids.first,
       extraResults: grids.skip(1).toList(),
+      // **按下查詢之後學校說的話。** 沒有這一段的話，「不在開放時間」
+      // 「查詢條件不完整」這類回應會被整句吞掉 —— 畫面上只剩一句
+      // 「查無符合資料」，使用者會以為是自己真的沒有資料。
+      //
+      // 這裡刻意**不**跟 JS 導向：查詢結果頁自己也可能帶著指向
+      // `/Portal.aspx` 的那一行（`TKE2240_03` 踩過），跟下去會把剛拿到的
+      // 結果整份蓋掉。訊息就在這一份回應裡，原地讀就好。
+      notice: serverMessage(page.html),
+      clearNotice: true,
     );
   }
 
@@ -541,6 +551,12 @@ class AisRepository {
       },
       result: grids.isEmpty ? null : grids.first,
       extraResults: grids.skip(1).toList(),
+      // **這一條路上的訊息比查詢那條更要緊。** 這裡跑的是結果表格裡那些
+      // 動作鈕（線上加退選的「加選」「退選」就是），送出去是會改資料的。
+      // 學校回「加選成功」或「這門課已額滿」都是走 JS —— 吞掉的話，
+      // 使用者按完完全不知道到底成功了沒。
+      notice: serverMessage(page.html),
+      clearNotice: true,
     );
   }
 

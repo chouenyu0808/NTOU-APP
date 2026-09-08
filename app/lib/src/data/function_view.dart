@@ -65,6 +65,7 @@ class FunctionView {
     Map<String, String>? values,
     String? notice,
     bool clearResult = false,
+    bool clearNotice = false,
   }) =>
       FunctionView(
         function: function,
@@ -76,8 +77,12 @@ class FunctionView {
             ? const []
             : (extraResults ?? this.extraResults),
         values: values ?? this.values,
-        // 沿用而不是清掉：那句話講的是「這個功能現在不能用」，
-        // 不會因為使用者在頁面上動了什麼就不成立。
-        notice: notice ?? this.notice,
+        // 預設沿用：開頁面時那句「尚未開放」不會因為使用者在頁面上動了
+        // 什麼就不成立。
+        //
+        // 但**送出查詢之後要換成這次的答案** —— 那時候呼叫端會給
+        // `clearNotice: true`，把上一次的話收掉，再放這一次的（可能沒有）。
+        // 不這樣做的話，查詢成功之後畫面上還掛著上一次的訊息。
+        notice: clearNotice ? notice : (notice ?? this.notice),
       );
 }
