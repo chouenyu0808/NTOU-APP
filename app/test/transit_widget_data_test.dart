@@ -316,9 +316,22 @@ void main() {
       );
     });
 
-    test('**只是換順序，不是只留一站**', () {
-      // 在這裡砍掉的話，使用者把小組件拉大也不會多出東西來 ——
-      // 塞不塞得下是畫的那一層決定的。
+    test('釘選的只留那一站 —— 那是一句明確的話', () {
+      final p = buildTransitWidgetPayload(
+        boards: threeStops(),
+        config: config,
+        preferredStopId: 'tra-keelung',
+        onlyPreferred: true,
+        now: now,
+      );
+
+      // 空出來的位置拿去多列那一站的路線，那正是他釘它的理由。
+      expect(p.stops.map((s) => s.name), ['台鐵基隆站']);
+    });
+
+    test('定位挑的只換順序，不砍 —— 它是猜的', () {
+      // 位置可能是幾小時前在別的地方量的。猜錯時只顯示一站等於把使用者
+      // 要的東西整個藏起來，而排最前面最多只是順序不理想。
       final p = buildTransitWidgetPayload(
         boards: threeStops(),
         config: config,
@@ -327,6 +340,32 @@ void main() {
       );
 
       expect(p.stops, hasLength(3));
+      expect(p.stops.first.name, '台鐵基隆站');
+    });
+
+    test('釘的那一站不在清單裡，就照原樣全部顯示', () {
+      // 不要因為找不到就變成空的 —— 那看起來像整個小組件壞了。
+      final p = buildTransitWidgetPayload(
+        boards: threeStops(),
+        config: config,
+        preferredStopId: 'somewhere-else',
+        onlyPreferred: true,
+        now: now,
+      );
+
+      expect(p.stops, hasLength(3));
+    });
+
+    test('釘的剛好就是第一站，也只留那一站', () {
+      final p = buildTransitWidgetPayload(
+        boards: threeStops(),
+        config: config,
+        preferredStopId: 'ntou-gym',
+        onlyPreferred: true,
+        now: now,
+      );
+
+      expect(p.stops.map((s) => s.name), ['海大體育館']);
     });
 
     test('沒指定就照原本的順序', () {

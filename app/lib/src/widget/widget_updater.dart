@@ -196,12 +196,15 @@ class WidgetUpdater {
     // 整批都失敗的時候不要覆蓋桌面上的圖 —— 舊班次比五行「服務忙碌中」有用。
     if (boards.isEmpty || boards.every((b) => b.error != null)) return;
 
+    final preferred = await _preferredStop(config);
+
     await _publishTransit(
       buildTransitWidgetPayload(
         boards: boards,
         config: config,
         favorites: favorites,
-        preferredStopId: await _preferredStopId(config),
+        preferredStopId: preferred.id,
+        onlyPreferred: preferred.pinned,
         now: now,
       ),
       where,
@@ -286,6 +289,8 @@ class WidgetUpdater {
       final repo = _injectedTransit ?? await _buildRepository();
       if (!repo.isConfigured) return previous?.copyWith(refreshFailed: true);
 
+      final preferred = await _preferredStop(repo.config);
+
       final boards = await repo.boards(repo.config.stops);
       // 每一站都失敗 = 整批沒問到（沒網路、429）。**這種時候不要覆蓋** ——
       // 蓋上去的話畫面會變成五行「服務忙碌中」，而舊的班次資訊其實還有用。
@@ -295,7 +300,8 @@ class WidgetUpdater {
               boards: boards,
               config: repo.config,
               favorites: await _favorites(),
-              preferredStopId: await _preferredStopId(repo.config),
+              preferredStopId: preferred.id,
+              onlyPreferred: preferred.pinned,
               now: now,
             );
       }
@@ -304,7 +310,8 @@ class WidgetUpdater {
         boards: boards,
         config: repo.config,
         favorites: await _favorites(),
-        preferredStopId: await _preferredStopId(repo.config),
+        preferredStopId: preferred.id,
+        onlyPreferred: preferred.pinned,
         now: now,
       );
     } catch (_) {
@@ -318,17 +325,18 @@ class WidgetUpdater {
   ///
   /// **位置是 App 在前景時量的那一份**（見 [LastKnownPlace]）—— 小組件
   /// 在背景拿不到當下的位置，那需要 Google Play 要人工審查的權限。
-  Future<String?> _preferredStopId(TransitConfig config) async {
+  Future<({String? id, bool pinned})> _preferredStop(TransitConfig config) async {
     try {
-      return NearestStop.preferred(
+      final p = NearestStop.preferred(
         config.stops,
         pinnedId: await _prefs.readPinnedStop(),
         place: await _prefs.readPlace(),
-      )?.id;
+      );
+      return (id: p.stop?.id, pinned: p.pinned);
     } catch (_) {
       // 讀不到就照設定檔原本的順序。**不要猜一站** —— 猜出來的
       // 「最近的站」跟真的長得一模一樣。
-      return null;
+      return (id: null, pinned: false);
     }
   }
 

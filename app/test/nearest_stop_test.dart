@@ -104,24 +104,29 @@ void main() {
   });
 
   group('小組件要把哪一站排最前面', () {
-    test('釘選優先於定位', () {
+    test('釘選優先於定位，而且標成 pinned', () {
       // 使用者人在體育館，但他釘了轉運站 —— 那是他自己指定的，
-      // 定位不該把它蓋掉。
+      // 定位不該把它蓋掉。pinned 決定小組件是「只顯示它」還是「排最前面」。
       final s = NearestStop.preferred(
         stops,
         pinnedId: terminal.id,
         place: at(25.1506, 121.77996),
       );
-      expect(s?.id, terminal.id);
+      expect(s.stop?.id, terminal.id);
+      expect(s.pinned, isTrue);
     });
 
-    test('沒釘就用定位', () {
+    test('定位挑的不算 pinned —— 它是猜的', () {
       final s = NearestStop.preferred(stops, place: at(25.133, 121.739));
-      expect(s?.id, terminal.id);
+      expect(s.stop?.id, terminal.id);
+      // 猜的東西不該讓小組件把其他站藏起來。
+      expect(s.pinned, isFalse);
     });
 
     test('兩個都沒有就回 null，照設定檔原本的順序', () {
-      expect(NearestStop.preferred(stops), isNull);
+      final s = NearestStop.preferred(stops);
+      expect(s.stop, isNull);
+      expect(s.pinned, isFalse);
     });
 
     test('釘的那一站不見了就回 null，不會偷偷改用定位', () {
@@ -131,7 +136,8 @@ void main() {
         pinnedId: 'this-stop-no-longer-exists',
         place: at(25.133, 121.739),
       );
-      expect(s, isNull);
+      expect(s.stop, isNull);
+      expect(s.pinned, isFalse);
     });
   });
 

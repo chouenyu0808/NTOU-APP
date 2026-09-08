@@ -306,7 +306,10 @@ class TransitWidgetView extends StatelessWidget {
           SizedBox(
             height: headerHeight,
             child: _Header(
-              title: '交通',
+              // 只有一站的時候（使用者釘了它）把站名放在標題列 ——
+              // 底下那一行站名標題就不用畫了，那一行的高度拿去多列一條路線。
+              // 「交通」這兩個字在那時候沒有帶來任何資訊，站名才有。
+              title: _onlyStop?.name ?? '交通',
               subtitle: _timeLabel,
               // 右上角那個位置是重新整理鈕的，所以這裡不放標。
               badge: null,
@@ -328,6 +331,10 @@ class TransitWidgetView extends StatelessWidget {
       ),
     );
   }
+
+  /// 整份只有一站 —— 使用者把它釘起來了。
+  TransitWidgetStop? get _onlyStop =>
+      payload.stops.length == 1 ? payload.stops.single : null;
 
   /// 「資料時間 10:32」。
   ///
@@ -362,21 +369,26 @@ class TransitWidgetView extends StatelessWidget {
     final children = <Widget>[];
     var used = 0.0;
 
+    // 站名已經在標題列上了，這裡不用再寫一次。
+    final heading = _onlyStop == null;
+
     for (final stop in payload.stops) {
       final note = stop.note;
       // **站名底下至少要放得下一樣東西才寫站名。**
       // 只印一個站名、底下什麼都沒有，畫面上就是一個孤兒標題 ——
       // 看起來像資料載入到一半壞掉了，而其實只是空間用完。
       final first = note != null ? stopHeight : rowHeight;
-      if (used + stopHeight + first > body) break;
+      if (used + (heading ? stopHeight : 0) + first > body) break;
 
-      children.add(
-        SizedBox(
-          height: stopHeight,
-          child: _StopHeading(name: stop.name, scheme: scheme),
-        ),
-      );
-      used += stopHeight;
+      if (heading) {
+        children.add(
+          SizedBox(
+            height: stopHeight,
+            child: _StopHeading(name: stop.name, scheme: scheme),
+          ),
+        );
+        used += stopHeight;
+      }
 
       if (note != null) {
         children.add(

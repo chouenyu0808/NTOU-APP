@@ -328,6 +328,22 @@ void main() {
       expect(find.textContaining('收班'), findsOneWidget);
     });
 
+    testWidgets('只有一站時站名放在標題列，底下不再重複一次', (tester) async {
+      // 那一行的高度拿去多列一條路線。「交通」兩個字在這時候沒有帶來
+      // 任何資訊，站名才有。
+      await draw(
+        tester,
+        TransitWidgetView(
+          payload: transit(),
+          size: const Size(320, 180),
+          brightness: Brightness.light,
+        ),
+      );
+
+      expect(find.text('海大體育館'), findsOneWidget);
+      expect(find.text('交通'), findsNothing);
+    });
+
     testWidgets('放不下內容的站，連站名都不要印', (tester) async {
       // 只印一個站名、底下什麼都沒有，看起來像資料載到一半壞掉了 ——
       // 而其實只是空間用完。
