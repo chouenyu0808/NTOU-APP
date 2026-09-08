@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' as intl;
 
+import '../config/period_times.dart';
 import '../parsing/models.dart';
 import 'app_controller.dart';
+import 'class_status.dart';
 import 'login_page.dart';
 import 'timetable_grid.dart';
 import 'theme.dart';
@@ -188,6 +190,9 @@ class _Body extends StatelessWidget {
                 '這個學期你沒有選課，或是還沒到開放查詢的時間。',
           )
         else ...[
+          // 現在課上到哪了 —— 只在顯示當學期時才有意義。切去看過去的學期時
+          // 「還有幾分鐘下課」是胡說，那時候不顯示。
+          if (c.isCurrentSemester) NowStatus(courses: result.courses),
           const SizedBox(height: 12),
           TimetableGrid(courses: result.courses),
           if (!result.hasSlots) const _NoSlotsNotice(),
@@ -387,3 +392,83 @@ class _Empty extends StatelessWidget {
     );
   }
 }
+
+/// 課表頂端那條「現在課上到哪了」。
+///
+/// 邏輯全在 `classStatus`（純函式，測得很兇）。這裡只負責把四種狀態畫成
+/// 一句話 —— **在課內／下一堂用醒目色，上完了／沒課用低調色**，那兩種
+/// 是「現在沒事」，不需要搶眼。
+class NowStatus extends StatelessWidget {
+  const NowStatus({super.key, required this.courses, this.now});
+
+  final List<Course> courses;
+
+  /// 給測試釘住一個「現在」。正式執行時是 null，用真正的當下時間。
+  final DateTime? now;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = now ?? DateTime.now();
+    final status = classStatus(
+      courses: courses,
+      times: PeriodTimes.ntou,
+      weekday: t.weekday - 1,
+      nowMinutes: t.hour * 60 + t.minute,
+    );
+    if (status == null) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    final (IconData icon, String text, bool highlight) = switch (status) {
+      InClass(:final course, :final minutesLeft) => (
+          Icons.play_circle_outline,
+          '${course.name}　還有 ${_mins(minutesLeft)}下課',
+          true,
+        ),
+      NextClass(:final course, :final minutesUntil, :final startMinute) => (
+          Icons.schedule,
+          '下一堂 ${course.name}　${_mins(minutesUntil)}後'
+              '（${PeriodTimes.hhmm(startMinute)}）',
+          true,
+        ),
+      DoneForToday() => (Icons.check_circle_outline, '今天的課都上完了', false),
+      NoClassToday() => (Icons.weekend_outlined, '今天沒有課', false),
+    };
+
+    final fg = highlight ? scheme.onPrimaryContainer : scheme.onSurfaceVariant;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: highlight
+            ? scheme.primaryContainer
+            : scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: fg),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: fg,
+                fontWeight: highlight ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 「45 分鐘」「1 小時 5 分」。超過一小時只寫分鐘會變成「還有 125 分鐘」，
+  /// 讀起來要換算。
+  static String _mins(int m) {
+    if (m < 60) return '$m 分鐘';
+    final h = m ~/ 60;
+    final r = m % 60;
+    return r == 0 ? '$h 小時' : '$h 小時 $r 分';
+  }
+}
+

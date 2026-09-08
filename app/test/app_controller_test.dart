@@ -122,5 +122,31 @@ void main() {
       expect(controller.phase, AppPhase.loggedOut);
       expect(controller.captcha, isNull);
     });
+
+    group('isCurrentSemester', () {
+      test('選的跟學校預設的一樣就是當學期', () async {
+        final c = await newController();
+        c.defaultYear = '115';
+        c.defaultSemester = '1';
+        c.year = '115';
+        c.semester = '1';
+        expect(c.isCurrentSemester, isTrue);
+      });
+
+      test('切去看過去的學期就不是了 —— 那時候「還有幾分鐘下課」是胡說', () async {
+        final c = await newController();
+        c.defaultYear = '115';
+        c.defaultSemester = '1';
+        c.year = '114';
+        c.semester = '2';
+        expect(c.isCurrentSemester, isFalse);
+      });
+
+      test('還沒拿到學校預設值時當作是當學期（最不打擾的預設）', () async {
+        final c = await newController();
+        expect(c.defaultYear, isNull);
+        expect(c.isCurrentSemester, isTrue);
+      });
+    });
   });
 }

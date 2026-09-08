@@ -74,6 +74,20 @@ class AppController extends ChangeNotifier {
   String? year;
   String? semester;
 
+  /// 學校在課表查詢頁預設帶出來的學年學期 —— 也就是「當學期」。
+  ///
+  /// 使用者可以在課表頁切去看過去的學期，那時候「還有幾分鐘下課」這種
+  /// 跟現在時間有關的提示就不成立了。banner 靠這個判斷現在顯示的是不是
+  /// 當學期。
+  String? defaultYear;
+  String? defaultSemester;
+
+  /// 現在顯示的是不是當學期。查詢頁還沒開過（拿不到預設值）時當作是 ——
+  /// 那是最不打擾的預設：頂多在極少數情況多顯示一次，不會顯示錯的。
+  bool get isCurrentSemester =>
+      defaultYear == null ||
+      (year == defaultYear && semester == defaultSemester);
+
   TimetableResult? timetable;
 
   /// 電子公布欄。登入握手時順便讀到的，不是另外打一次伺服器換來的。
@@ -192,6 +206,8 @@ class AppController extends ChangeNotifier {
 
       years = options.years;
       semesters = options.semesters;
+      defaultYear = options.defaultYear;
+      defaultSemester = options.defaultSemester;
       year ??= options.defaultYear;
       semester ??= options.defaultSemester;
       announcements = repository.announcements;
