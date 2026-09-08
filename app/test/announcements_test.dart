@@ -64,10 +64,20 @@ void main() {
       expect(list.every((a) => a.id.isNotEmpty), isTrue);
       expect(list.every((a) => a.date != null), isTrue);
 
-      // 真實資料裡最新那一則
-      expect(list.first.title, contains('學生宿舍開放入住'));
-      expect(list.first.unit, '學務處住宿輔導組');
-      expect(list.first.date, DateTime(2026, 8, 26));
+      // **這裡刻意不對特定某一則做斷言。**
+      //
+      // 原本寫著「最新那一則是『學生宿舍開放入住』、2026-08-26」。公告是
+      // 每天都在換的東西 —— 2026-09-08 重抓一次 Portal.html，第一則變成
+      // 「【食安宣導】中聯油品訟訴相關新聞」，測試就紅了，而 parser 一行
+      // 都沒改。那種紅燈只會訓練人去改測試遷就 fixture。
+      //
+      // 換成驗「解出來的東西合不合理」：日期真的被解析成日期，而不是
+      // 靜靜地變成 1970 或今天。
+      final year = DateTime.now().year;
+      for (final a in list) {
+        expect(a.date!.year, greaterThanOrEqualTo(year - 3), reason: a.title);
+        expect(a.date!.year, lessThanOrEqualTo(year + 1), reason: a.title);
+      }
     }, skip: missing);
   });
 }

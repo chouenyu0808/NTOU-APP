@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
 import '../config/selectors.dart';
+import '../parsing/server_message.dart';
 import 'decode.dart';
 import 'exceptions.dart';
 import 'forms.dart';
@@ -494,9 +495,24 @@ class AisSession {
   ///
   /// `Application/…/XXXX_.aspx?progcd=…` 這種選單連結只是派發器，
   /// 直接 GET 會拿到 1.4KB 空殼，真正的內容在它導向的 `XXXX_01.aspx`。
-  Future<AisPage> followJsRedirect(AisPage page, {int maxHops = 3}) async {
+  /// [onMessage] 會收到路上每一頁伺服器留的話。
+  ///
+  /// **一定要在這裡收，呼叫端收不到。** 「人工加選尚未開放」那句話在導向鏈
+  /// 的**中間**那一頁上（派發器 → 內容頁 → 首頁，話在內容頁），而呼叫端
+  /// 只看得到頭和尾 —— 頭是 1.4KB 的派發器空殼，尾是首頁，兩邊都沒有話。
+  /// 這就是為什麼那種功能在 App 裡是一片空白。
+  Future<AisPage> followJsRedirect(
+    AisPage page, {
+    int maxHops = 3,
+    void Function(String message)? onMessage,
+  }) async {
     final seen = <String>{page.url};
     var current = page;
+
+    if (onMessage != null) {
+      final m = serverMessage(current.html);
+      if (m != null) onMessage(m);
+    }
 
     for (var i = 0; i < maxHops; i++) {
       final target = jsRedirectTarget(current.html);
@@ -523,6 +539,11 @@ class AisSession {
       seen.add(dest.toString());
       log?.call('  跟隨 JS 導向 -> $target');
       current = await get(dest.toString());
+
+      if (onMessage != null) {
+        final m = serverMessage(current.html);
+        if (m != null) onMessage(m);
+      }
     }
     return current;
   }

@@ -97,6 +97,20 @@ void main() {
       expect(shared.map((f) => f.code).toSet().length, 12);
       expect(catalog.byCode('TKE2080')!.title, '選課學分超過上限學生名單查詢');
     });
+
+    test('那 12 個就是系辦報表，而且全部落在選課系統', () {
+      final staff = catalog.functions.where((f) => f.staffOnly).toList();
+      expect(staff.length, 12);
+
+      // 它們全部集中在同一組 —— 所以「選課系統」26 個項目裡有 12 個是
+      // 學生看不懂也用不到的行政統計，那一組看起來像是壞的。
+      expect(staff.map((f) => f.group).toSet(), {'選課系統'});
+      expect(catalog.groupsOf('教務系統')['選課系統']!.length, 26);
+
+      // 系辦報表全是查詢，不該有任何一個被標成會送出資料 ——
+      // 收進摺疊區的東西如果還掛著警告，等於把警告也藏起來了。
+      expect(staff.any((f) => f.mutating), isFalse);
+    });
   });
 
   test('選課那一整組都擋著', () {

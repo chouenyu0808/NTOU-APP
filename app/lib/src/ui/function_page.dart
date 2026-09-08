@@ -279,7 +279,40 @@ class _FunctionPageState extends State<FunctionPage> {
             ],
           ),
         ),
-      if (fields.isEmpty && !_busy)
+      // 學校說了話就照著講。**這一段要蓋掉下面那句「直接看下面的結果」** ——
+      // 這種頁面是被踢回首頁的，下面什麼都沒有，叫使用者往下看只會讓他
+      // 對著一片空白找不存在的東西。
+      if (view.notice != null)
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Card(
+            color: Theme.of(context).colorScheme.secondaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 20,
+                      color:
+                          Theme.of(context).colorScheme.onSecondaryContainer),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      view.notice!,
+                      style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onSecondaryContainer,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        )
+      else if (fields.isEmpty && !_busy)
         const Padding(
           padding: EdgeInsets.all(16),
           child: Text('這一頁沒有查詢條件，直接看下面的結果。'),
@@ -511,18 +544,23 @@ class FunctionTile extends StatelessWidget {
         ),
       ),
       title: Text(function.title),
-      subtitle: function.mutating
-          ? Text(
-              subtitleOverride == null
-                  ? '會送出資料'
-                  : '$subtitleOverride　·　會送出資料',
-              style: TextStyle(color: scheme.error, fontSize: 12),
-            )
-          : (subtitleOverride == null
-              ? null
-              : Text(subtitleOverride!,
-                  style: TextStyle(
-                      fontSize: 12, color: scheme.onSurfaceVariant))),
+      // **「會送出資料」這行字拿掉了。**
+      //
+      // 教務系統底下 53 個功能有 21 個會送出資料，每個都掛一行紅字的話
+      // 那一頁就是滿螢幕的警告 —— 而警告的作用是讓人停下來，到處都是就
+      // 沒人會停。同一個道理在 menu_catalog_test 裡寫過（誤標的代價是
+      // 「久了就沒人看警告了」），這裡不是誤標，但效果一樣。
+      //
+      // 區分改成靠左邊那顆圖示：紅色的 `edit_note` vs 藍色的
+      // `description_outlined`。**顏色和形狀同時不同**，所以不是只靠顏色
+      // 在傳達（色盲一樣分得出來）。清單頁頂端有一行圖例說明那個紅色。
+      //
+      // 真正的防線本來就不在這裡，是點下去之後那個確認對話框。
+      subtitle: subtitleOverride == null
+          ? null
+          : Text(subtitleOverride!,
+              style:
+                  TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
       trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: () => _open(context),
     );

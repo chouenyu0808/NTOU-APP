@@ -17,9 +17,17 @@ class FunctionView {
     this.result,
     this.extraResults = const [],
     this.values = const {},
+    this.notice,
   });
 
   final AisFunction function;
+
+  /// 學校在開這一頁時留的話，例如「人工加選尚未開放」。
+  ///
+  /// 這種頁面會**把人踢回首頁**，所以除了這句話以外什麼都沒有 ——
+  /// 沒有欄位、沒有按鈕、沒有結果。少了它畫面上就是一片空白，
+  /// 使用者只能猜是 App 壞了還是自己來錯時間。
+  final String? notice;
 
   /// 最後一次回應。下一次送出要用它的 `__VIEWSTATE`。
   final AisPage page;
@@ -55,6 +63,7 @@ class FunctionView {
     DataGridResult? result,
     List<DataGridResult>? extraResults,
     Map<String, String>? values,
+    String? notice,
     bool clearResult = false,
   }) =>
       FunctionView(
@@ -67,5 +76,8 @@ class FunctionView {
             ? const []
             : (extraResults ?? this.extraResults),
         values: values ?? this.values,
+        // 沿用而不是清掉：那句話講的是「這個功能現在不能用」，
+        // 不會因為使用者在頁面上動了什麼就不成立。
+        notice: notice ?? this.notice,
       );
 }

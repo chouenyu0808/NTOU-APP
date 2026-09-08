@@ -296,7 +296,15 @@ class AisRepository {
   Future<FunctionView> openFunction(AisFunction fn) async {
     final session = _requireSession();
     var page = await session.get(fn.path);
-    page = await session.followJsRedirect(page);
+
+    // 學校的話在導向鏈的中間那一頁上，跟完就沒了 —— 所以邊跟邊收。
+    // 留第一句：那是最靠近使用者剛才點的那個功能的，後面幾頁（通常是
+    // 首頁）就算也有話要說，講的也是別的事。
+    String? notice;
+    page = await session.followJsRedirect(
+      page,
+      onMessage: (m) => notice ??= m,
+    );
     session.checkSession(page);
 
     final schema = FunctionSchema.fromPage(page);
@@ -306,6 +314,7 @@ class AisRepository {
       schema: schema,
       cascadeFields: AisSession.autoPostBackFields(page),
       values: {for (final f in schema.visibleFields) f.name: f.value},
+      notice: notice,
     );
   }
 
