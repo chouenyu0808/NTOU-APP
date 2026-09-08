@@ -310,7 +310,7 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
                     # 檔名裡的 `__QUERY_BTN1_1151` 是在說「這份是那組條件查出來
                     # 的結果」。沒送成還掛著那個後綴，下次讀 fixture 的人會
                     # 拿一份查詢前的空表單去驗查詢結果的 parser。
-                    submit = None
+                    submit = None  # noqa: PLW2901  # 蓋掉迴圈變數是故意的，理由在上面
         except SessionExpired as e:
             # 這個不能 continue：session 沒了，後面每一頁都會存成登入頁
             print(f"\n  {e}", file=sys.stderr)
