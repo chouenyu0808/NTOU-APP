@@ -85,26 +85,34 @@ class NearestStop {
     return best;
   }
 
-  /// 小組件要把哪一站排最前面。
+  /// 小組件要顯示哪一站，以及**那是不是使用者自己指定的**。
   ///
   /// 順序是**釘選優先於定位**：使用者自己指定過的話，那就是他要的，
   /// 定位不該把它蓋掉 —— 他每天搭的就是那一站，而定位在校內只差幾百公尺，
   /// 本來就比他自己知道的少。
   ///
-  /// 兩個都沒有就回 null，照設定檔原本的順序。
-  static TransitStop? preferred(
+  /// `pinned` 決定小組件是「只顯示這一站」還是「把它排最前面」，兩者差很多：
+  ///
+  /// - **釘選是一句明確的話**（「我只在乎這一站」），所以只顯示它 ——
+  ///   而且那一站的路線可以多列幾條，那正是他要的。
+  /// - **定位是一個猜測**。位置可能是幾小時前在別的地方量的（小組件拿不到
+  ///   當下的位置，見 [LastKnownPlace]）。猜錯的時候只顯示一站，等於把
+  ///   使用者要的東西整個藏起來；排最前面則最多只是順序不理想。
+  ///
+  /// 兩個都沒有就 stop 是 null，照設定檔原本的順序。
+  static ({TransitStop? stop, bool pinned}) preferred(
     List<TransitStop> stops, {
     String? pinnedId,
     LastKnownPlace? place,
   }) {
     if (pinnedId != null && pinnedId.isNotEmpty) {
       for (final s in stops) {
-        if (s.id == pinnedId) return s;
+        if (s.id == pinnedId) return (stop: s, pinned: true);
       }
       // 釘的那一站不在設定檔裡了（改版拿掉、改名）——**不要退回定位**，
       // 那會變成「我明明釘了，它自己跑掉」。照原本順序，讓使用者重新釘。
-      return null;
+      return (stop: null, pinned: false);
     }
-    return of(stops, place);
+    return (stop: of(stops, place), pinned: false);
   }
 }

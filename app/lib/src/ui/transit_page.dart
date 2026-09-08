@@ -258,7 +258,7 @@ class _TransitPageState extends State<TransitPage> {
   /// 上面那顆鈕按下去會發生什麼事，用一句話講完。
   String get _widgetOrderTooltip {
     if (_pinnedStop != null) {
-      return '小組件釘著「${_preferred?.name ?? '某一站'}」，點一下取消';
+      return '小組件只顯示「${_preferred?.name ?? '某一站'}」，點一下取消';
     }
     if (_place != null) {
       return '小組件會把最近的「${_preferred?.name ?? '一站'}」排最前面，點一下重新定位';
@@ -273,7 +273,7 @@ class _TransitPageState extends State<TransitPage> {
           _repo!.config.stops,
           pinnedId: _pinnedStop,
           place: _place,
-        );
+        ).stop;
 
   void _openRoute(StopBoard board, BusArrival arrival) {
     final repo = _repo;
@@ -497,8 +497,8 @@ class _StopCard extends StatelessWidget {
                       ),
                       color: isPinned ? scheme.primary : scheme.onSurfaceVariant,
                       tooltip: isPinned
-                          ? '取消：讓小組件照定位決定順序'
-                          : '把這一站釘在桌面小組件最前面',
+                          ? '取消：讓小組件顯示全部站牌'
+                          : '讓桌面小組件只顯示這一站',
                       onPressed: onTogglePinned,
                     ),
                   if (onToggleCollapsed != null)

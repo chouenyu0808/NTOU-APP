@@ -164,11 +164,12 @@ TransitWidgetPayload buildTransitWidgetPayload({
   required TransitConfig config,
   Set<String> favorites = const {},
   String? preferredStopId,
+  bool onlyPreferred = false,
   required DateTime now,
 }) {
   final stops = <TransitWidgetStop>[];
 
-  for (final board in _ordered(boards, preferredStopId)) {
+  for (final board in _ordered(boards, preferredStopId, onlyPreferred)) {
     final counts = ArrivalText.routeCounts(board);
     final rows = <TransitWidgetRow>[];
 
@@ -221,16 +222,27 @@ TransitWidgetPayload buildTransitWidgetPayload({
   return TransitWidgetPayload(stops: stops, updatedAt: now);
 }
 
-/// 把使用者要的那一站排到最前面，其餘維持原本的順序。
+/// 把使用者要的那一站挑出來。
 ///
-/// **只是換順序，不是只留一站。** 小組件由上往下填到滿為止，尺寸大就多看到
-/// 幾站 —— 在這裡砍掉的話，使用者把小組件拉大也不會多出東西來。
+/// [onlyPreferred] 是**使用者自己釘的**（不是定位猜的）：那是一句明確的話，
+/// 所以整個小組件只留那一站 —— 空出來的位置拿去多列它的幾條路線，
+/// 那正是他釘它的理由。
+///
+/// 定位挑出來的**只換順序不砍**：位置可能是幾小時前在別的地方量的，
+/// 猜錯時只顯示一站等於把他要的東西整個藏起來，而排最前面最多只是順序
+/// 不理想。
 ///
 /// 找不到那個 id 就原樣回傳（設定檔改過、站被拿掉）。
-List<StopBoard> _ordered(List<StopBoard> boards, String? preferredStopId) {
+List<StopBoard> _ordered(
+  List<StopBoard> boards,
+  String? preferredStopId,
+  bool onlyPreferred,
+) {
   if (preferredStopId == null || preferredStopId.isEmpty) return boards;
   final i = boards.indexWhere((b) => b.stop.id == preferredStopId);
-  if (i <= 0) return boards;
+  if (i < 0) return boards;
+  if (onlyPreferred) return [boards[i]];
+  if (i == 0) return boards;
   return [boards[i], ...boards.where((b) => b.stop.id != preferredStopId)];
 }
 
