@@ -178,6 +178,30 @@ class _GraduationPageState extends State<GraduationPage> {
     final scheme = Theme.of(context).colorScheme;
     // 應修是 `-` 的類別（選修）沒有「差多少」可言，只列已得。
     final hasTarget = s.required_ != null;
+
+    // **「不知道」不能寫成 0。** 解不到已得學分時寫 0，等於告訴使用者
+    // 「你一分都沒拿到」—— 那跟「這一欄我沒解出來」是完全不同的兩件事。
+    final earned = s.earned?.toString() ?? '—';
+
+    // **沒解到「未通過學分」時絕對不能說「已達成」。**
+    //
+    // 原本寫的是 `(s.failed ?? 0) > 0 ? 還差N : 已達成`，於是學校哪天把
+    // 那一欄改個名字、parser 解不到（null），畫面上每一類都會變成「已達成」
+    // —— 使用者會以為自己修完了。那是這一頁最不能出錯的一句話。
+    //
+    // 分成三種：>0 是還差、==0 是已達成、null 就什麼都不說。
+    final Widget? note = switch (s.failed) {
+      null => null,
+      final f when f > 0 => Text(
+          '還差 $f',
+          style: TextStyle(fontSize: 12, color: scheme.error),
+        ),
+      _ => Text(
+          '已達成',
+          style: TextStyle(fontSize: 12, color: scheme.primary),
+        ),
+    };
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -187,19 +211,10 @@ class _GraduationPageState extends State<GraduationPage> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              hasTarget ? '${s.earned ?? 0} / ${s.required_}' : '${s.earned ?? 0}',
+              hasTarget ? '$earned / ${s.required_}' : earned,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            if (hasTarget && (s.failed ?? 0) > 0)
-              Text(
-                '還差 ${s.failed}',
-                style: TextStyle(fontSize: 12, color: scheme.error),
-              )
-            else if (hasTarget)
-              Text(
-                '已達成',
-                style: TextStyle(fontSize: 12, color: scheme.primary),
-              ),
+            if (hasTarget && note != null) note,
           ],
         ),
       ],

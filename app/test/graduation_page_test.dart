@@ -164,4 +164,60 @@ void main() {
     expect(find.textContaining('學校可能改版'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, '重試'), findsOneWidget);
   });
+
+
+  group('「不知道」不能講成一個確定的答案', () {
+    /// 學分表少了某幾欄（學校改版的樣子）。
+    String creditsMissing({required bool failedCol, required bool earnedCol}) => '''
+      <table id="DataGrid_CRD">
+        <tr><th>總計學分</th><th>應修學分</th>
+            ${earnedCol ? '<th>已得學分(1)</th>' : '<th>某個新欄名</th>'}
+            <th>修讀中學分(2)</th><th>(1) + (2)</th>
+            ${failedCol ? '<th>未通過學分</th>' : '<th>另一個新欄名</th>'}
+            <th>未通過科目</th></tr>
+        <tr><td>共同教育課程</td><td>28</td><td>0</td><td>0</td><td>0</td>
+            <td>28</td><td>20</td></tr>
+      </table>''';
+
+    testWidgets('**解不到「未通過學分」時絕對不能說「已達成」**', (tester) async {
+      // 這是這一頁最不能出錯的一句話。原本寫 `(failed ?? 0) > 0 ? 還差 : 已達成`
+      // —— 學校把那一欄改個名字，畫面上每一類都會變成「已達成」，
+      // 使用者會以為自己修完了。
+      ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+          ? _dispatcher
+          : _page(
+              rows: _notTaken,
+              credits: creditsMissing(failedCol: false, earnedCol: true),
+            );
+      await open(tester);
+
+      expect(find.text('已達成'), findsNothing);
+      // 「還差 N」那一行也不該出現。注意卡片底部固定有一句說明寫著
+      // 「『還差』是學校算的未通過學分…」—— 比對要帶空格才不會撞到它。
+      expect(find.textContaining('還差 '), findsNothing);
+    });
+
+    testWidgets('解不到「已得學分」時寫「—」，不是 0', (tester) async {
+      // 寫 0 等於說「你一分都沒拿到」，那跟「這一欄我沒解出來」是兩回事。
+      ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+          ? _dispatcher
+          : _page(
+              rows: _notTaken,
+              credits: creditsMissing(failedCol: true, earnedCol: false),
+            );
+      await open(tester);
+
+      expect(find.text('— / 28'), findsOneWidget);
+    });
+
+    testWidgets('真的是 0 就照實寫 0（跟「不知道」分得開）', (tester) async {
+      ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+          ? _dispatcher
+          : _page(rows: _notTaken, credits: _credits);
+      await open(tester);
+
+      expect(find.text('0 / 28'), findsOneWidget);
+      expect(find.text('還差 28'), findsOneWidget);
+    });
+  });
 }
