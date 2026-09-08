@@ -182,6 +182,25 @@ class NtouTheme {
     Color(0xFF7CB342), // 黃綠
     Color(0xFFD81B60), // 桃紅
     Color(0xFF546E7A), // 藍灰
+    // ↓ 2026-09-08 學校一次上架 13 個新模組（13 → 26）。
+    //
+    // **不夠的話不是「顏色少一點」，是每個顏色出現兩次** —— `moduleColor`
+    // 用的是 `index % length`，13 色配 26 個模組剛好整除，網格上會有兩個
+    // 藍色、兩個紫色。那正好毀掉上面那句話說的肌肉記憶（「請假是紫色那個」
+    // 會有兩個答案）。`module_colors_test` 現在守著「顏色不少於模組數」。
+    Color(0xFF5E35B1), // 深紫
+    Color(0xFF039BE5), // 亮藍
+    Color(0xFF2E7D32), // 深綠
+    Color(0xFFEF6C00), // 深橙
+    Color(0xFF455A64), // 深藍灰
+    Color(0xFFAD1457), // 洋紅
+    Color(0xFF00838F), // 深青
+    Color(0xFF9E9D24), // 橄欖
+    Color(0xFFC62828), // 深紅
+    Color(0xFF283593), // 深靛
+    Color(0xFF6A1B9A), // 葡萄紫
+    Color(0xFF4E342E), // 深棕
+    Color(0xFF00695C), // 深藍綠
   ];
 
   static Color moduleColor(int index) =>

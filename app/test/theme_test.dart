@@ -15,8 +15,20 @@ void main() {
       expect(NtouTheme.moduleColor(n + 1), NtouTheme.moduleColors[1]);
     });
 
-    test('剛好有 13 個模組色，對得上現有的 13 個模組', () {
-      expect(NtouTheme.moduleColors.length, 13);
+    test('模組色不重複', () {
+      // 原本這裡寫的是「剛好 13 個，對得上現有的 13 個模組」。
+      // 2026-09-08 學校一次上架 13 個新模組（13 → 26），那個數字就過期了。
+      //
+      // **重點從來不是數量，是「夠不夠、有沒有重複」** ——
+      // `moduleColor` 是 `index % length`，色數少於模組數就會有兩個模組同色，
+      // 而那正好毀掉這組顏色唯一的用途（一眼分得開、位置變成肌肉記憶）。
+      //
+      // 「色數 ≥ 模組數」那一條在 `module_list_page_test` 裡，
+      // 它讀得到真實的 `menu_tree.json`。
+      expect(
+        NtouTheme.moduleColors.toSet().length,
+        NtouTheme.moduleColors.length,
+      );
     });
   });
 

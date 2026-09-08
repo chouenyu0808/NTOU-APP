@@ -84,6 +84,23 @@ class _ModuleListPageState extends State<ModuleListPage> {
     'SDGs': Icons.public_outlined,
     '電子公布欄': Icons.campaign_outlined,
     '連結校內資訊系統': Icons.link_outlined,
+    // ↓ 2026-09-08 新上架的 13 個模組。
+    //
+    // 沒有對應的話會 fallback 到 `Icons.folder_outlined` —— 一次少 13 個
+    // 就是**網格上一半的格子長得一模一樣**，顏色再怎麼分也找不到東西。
+    '學生證補發作業': Icons.badge_outlined,
+    '職涯發展': Icons.work_outline,
+    '學生宿舍修繕系統': Icons.build_outlined,
+    '導師工作-班級系統': Icons.supervisor_account_outlined,
+    '學生團體保險': Icons.shield_outlined,
+    '獎助學金管理': Icons.emoji_events_outlined,
+    '學習助學金系統': Icons.volunteer_activism_outlined,
+    '獎懲-操行管理': Icons.gavel_outlined,
+    '遺失物-拾獲物管理': Icons.inventory_2_outlined,
+    '問卷調查系統': Icons.poll_outlined,
+    '五育護照': Icons.auto_stories_outlined,
+    '教育學程作業': Icons.cast_for_education_outlined,
+    '網路服務申請': Icons.wifi_outlined,
   };
 
   /// 顯示用的短名稱。網格的格子放不下「學生社團活動資訊系統」這種長度。
@@ -96,6 +113,18 @@ class _ModuleListPageState extends State<ModuleListPage> {
     '新生體檢收件作業': '新生體檢',
     '體育室辦證系統': '體育室辦證',
     '連結校內資訊系統': '校內系統',
+    // ↓ 新模組裡名字放不下的。沒有短名的（職涯發展、五育護照…）本來就夠短。
+    '學生證補發作業': '學生證補發',
+    '學生宿舍修繕系統': '宿舍修繕',
+    '導師工作-班級系統': '導師班級',
+    '學生團體保險': '團體保險',
+    '獎助學金管理': '獎助學金',
+    '學習助學金系統': '學習助學金',
+    '獎懲-操行管理': '獎懲操行',
+    '遺失物-拾獲物管理': '遺失物',
+    '問卷調查系統': '問卷調查',
+    '教育學程作業': '教育學程',
+    '網路服務申請': '網路服務',
   };
 
   @override

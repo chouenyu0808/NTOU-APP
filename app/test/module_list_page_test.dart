@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ntou_app/src/menu/menu_catalog.dart';
@@ -122,6 +125,48 @@ void main() {
 
       expect(find.byType(GridView), findsOneWidget);
       await unmount(tester);
+    });
+  });
+
+  group('真實的 26 個模組都要認得', () {
+    // 網格是靠**顏色 + 圖示 + 位置**讓人一眼找到東西的（見 NtouTheme 的
+    // moduleColors 註解）。2026-09-08 學校一次加了 13 個模組，兩邊都不夠用，
+    // 而症狀在畫面上是「一半的格子長一樣」，不是任何錯誤。
+    final real = MenuCatalog.fromJson(
+      jsonDecode(File('assets/menu_tree.json').readAsStringSync()) as List,
+    );
+
+    test('顏色不少於模組數，否則會有兩個模組同色', () {
+      // moduleColor 是 index % length —— 13 色配 26 個模組剛好整除，
+      // 每個顏色會出現兩次，「請假是紫色那個」就有兩個答案。
+      expect(
+        NtouTheme.moduleColors.length,
+        greaterThanOrEqualTo(real.modules.length),
+        reason: '學校又加模組了，往 moduleColors 後面接新的顏色（不要重排）',
+      );
+    });
+
+    test('顏色彼此不重複', () {
+      expect(
+        NtouTheme.moduleColors.toSet().length,
+        NtouTheme.moduleColors.length,
+      );
+    });
+
+    testWidgets('每個模組都有自己的圖示，沒有一個掉進 fallback', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: NtouTheme.of(Brightness.light),
+        home: ModuleListPage(controller: controller, catalog: real),
+      ));
+      await tester.pumpAndSettle();
+
+      // 沒對應的模組會拿到 Icons.folder_outlined。一個都不該有 ——
+      // 那是「這個模組我沒認出來」的樣子。
+      expect(
+        find.byIcon(Icons.folder_outlined),
+        findsNothing,
+        reason: '有模組沒有圖示，補進 module_list_page.dart 的 _icons',
+      );
     });
   });
 }
