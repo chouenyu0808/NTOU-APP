@@ -343,6 +343,65 @@ void main() {
       expect(find.text('公告 5'), findsNothing);
       await unmount(tester);
     });
+
+    testWidgets('超過 5 則才給「查看全部」', (tester) async {
+      // 手上其實有全部（登入握手一起拿的），首頁只截 5 則。5 則以下時
+      // 「查看全部」點進去跟這裡一模一樣，那顆按鈕只是多餘。
+      final c = await newController();
+      c.announcements = [
+        for (var i = 0; i < 7; i++)
+          Announcement(title: '公告 $i', id: '$i', date: DateTime(2026, 8, 26)),
+      ];
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('查看全部 7 則'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('剛好 5 則不給「查看全部」', (tester) async {
+      final c = await newController();
+      c.announcements = [
+        for (var i = 0; i < 5; i++)
+          Announcement(title: '公告 $i', id: '$i', date: DateTime(2026, 8, 26)),
+      ];
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('查看全部'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('沒編號的公告點下去沒反應（不能點開）', (tester) async {
+      // detailPath 是 null 時 onTap 也是 null，點了不該離開首頁。
+      final c = await newController();
+      c.announcements = const [Announcement(title: '沒編號的公告')];
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('沒編號的公告'));
+      await tester.pumpAndSettle();
+
+      // 還在首頁 —— 沒有被推到「公告」全文頁。
+      expect(find.widgetWithText(AppBar, '公告'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('有編號的公告點得開全文頁', (tester) async {
+      final c = await newController();
+      c.announcements = const [Announcement(title: '可以點的', id: '9005901')];
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('可以點的'));
+      // 沒登入，所以全文頁的抓取會快速失敗、停在錯誤狀態 —— settle 得完。
+      await tester.pumpAndSettle();
+
+      // 進到全文頁：AppBar 是「公告」，而且標題先用清單傳來的畫出來。
+      expect(find.widgetWithText(AppBar, '公告'), findsOneWidget);
+      expect(find.text('可以點的'), findsOneWidget);
+      await unmount(tester);
+    });
   });
 
   group('近期行事曆', () {

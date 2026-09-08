@@ -5,6 +5,7 @@ import '../parsing/academic_calendar.dart';
 import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../parsing/timetable.dart' show kWeekdays;
+import 'announcement_detail_page.dart';
 import 'app_controller.dart';
 import 'graduation_page.dart';
 import 'theme.dart';
@@ -176,7 +177,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 28),
             Text('校園公告', style: theme.textTheme.titleMedium),
             const SizedBox(height: 10),
-            _Announcements(items: _c.announcements),
+            _Announcements(controller: _c, items: _c.announcements),
 
             // 快捷本來有四張，其中三張（完整課表 / 預排課表 / 校務系統）
             // 只是把底部分頁列再列一次 —— 同一個目的地給兩個入口，
@@ -607,8 +608,9 @@ class _Calendar extends StatelessWidget {
 /// 電子公布欄。只列最近幾則 —— 首頁是「順手看一眼」的地方，
 /// 要全部的話選單裡有「電子公布欄 > 公告訊息查詢」。
 class _Announcements extends StatelessWidget {
-  const _Announcements({required this.items});
+  const _Announcements({required this.controller, required this.items});
 
+  final AppController controller;
   final List<Announcement> items;
 
   /// 首頁顯示幾則。
@@ -616,8 +618,6 @@ class _Announcements extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     if (items.isEmpty) {
       return Card(
         margin: EdgeInsets.zero,
@@ -638,25 +638,96 @@ class _Announcements extends StatelessWidget {
         children: [
           for (var i = 0; i < shown.length; i++) ...[
             if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
-            ListTile(
-              title: Text(shown[i].title, style: theme.textTheme.bodyMedium),
-              subtitle: Text(
-                [
-                  if (shown[i].date != null) _dateLabel(shown[i].date!),
-                  if (shown[i].unit.isNotEmpty) shown[i].unit,
-                ].join('  ·  '),
-                style: theme.textTheme.bodySmall,
+            _AnnouncementRow(controller: controller, item: shown[i]),
+          ],
+          // 手上其實有全部（登入握手時一起拿的），首頁只截 5 則。多的才給
+          // 「查看全部」—— 只有 5 則以下時那顆按鈕點進去跟這裡一模一樣。
+          if (items.length > _limit) ...[
+            const Divider(height: 1),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => AnnouncementsPage(
+                    controller: controller,
+                    items: items,
+                  ),
+                ),
               ),
+              child: Text('查看全部 ${items.length} 則'),
             ),
           ],
         ],
       ),
     );
   }
+}
+
+/// 公告清單的一列 —— 點得開全文。
+class _AnnouncementRow extends StatelessWidget {
+  const _AnnouncementRow({required this.controller, required this.item});
+
+  final AppController controller;
+  final Announcement item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // 沒有編號的公告點不開（detailPath 是 null）—— 那就不要給點按的樣子，
+    // 免得點下去沒反應。
+    final openable = item.detailPath != null;
+    return ListTile(
+      title: Text(item.title, style: theme.textTheme.bodyMedium),
+      subtitle: Text(
+        [
+          if (item.date != null) _dateLabel(item.date!),
+          if (item.unit.isNotEmpty) item.unit,
+        ].join('  ·  '),
+        style: theme.textTheme.bodySmall,
+      ),
+      trailing:
+          openable ? const Icon(Icons.chevron_right, size: 20) : null,
+      onTap: openable
+          ? () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => AnnouncementDetailPage(
+                    controller: controller,
+                    summary: item,
+                  ),
+                ),
+              )
+          : null,
+    );
+  }
 
   /// 學校的頁面用民國年，我們已經轉成西元了 —— 這裡顯示「8/26」就好。
   /// 年份對「最近的公告」沒有資訊量，佔的位置拿來放標題比較實在。
   static String _dateLabel(DateTime d) => '${d.month}/${d.day}';
+}
+
+/// 全部公告。首頁只列 5 則，這裡列手上的每一則（都是登入握手時一起拿的，
+/// 不會多打一次伺服器）。
+class AnnouncementsPage extends StatelessWidget {
+  const AnnouncementsPage({
+    super.key,
+    required this.controller,
+    required this.items,
+  });
+
+  final AppController controller;
+  final List<Announcement> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('校園公告')),
+      body: ListView.separated(
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (_, i) =>
+            _AnnouncementRow(controller: controller, item: items[i]),
+      ),
+    );
+  }
 }
 
 class _Notice extends StatelessWidget {
