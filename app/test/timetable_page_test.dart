@@ -147,4 +147,23 @@ void main() {
     // 限定在導覽列 —— 首頁上也有一個叫「校務系統」的快捷。
     expect(find.widgetWithText(NavigationBar, '校務'), findsOneWidget);
   });
+
+
+  testWidgets('每分鐘重算：計時器會跑，離開頁面時收得乾淨', (tester) async {
+    // 這一頁上跟「現在」有關的東西有兩個：頂端的「還有 N 分鐘下課」，
+    // 和格子裡「現在這一格」的外框。兩個都是 build 當下算的 —— 不重算就
+    // 凍住（倒數卡在同一個數字、外框跨節後留在上一格）。
+    //
+    // 計時器放在 _Body 那一層：一個就把兩者一起更新。這裡驗的是它的安全 ——
+    // 跑過幾分鐘不崩、離開頁面後不殘留（殘留的話 testWidgets 會自己判失敗）。
+    await tester.pumpWidget(wrap(await controllerWith(null)));
+    await tester.pumpAndSettle();
+
+    await tester.pump(const Duration(minutes: 1));
+    await tester.pump(const Duration(minutes: 1));
+
+    // 換掉整棵樹，觸發 dispose。收不乾淨這個測試不會過。
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    await tester.pump(const Duration(minutes: 1));
+  });
 }

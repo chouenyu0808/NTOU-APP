@@ -54,21 +54,15 @@ void main() {
     expect(find.text('今天沒有課'), findsOneWidget);
   });
 
-  group('每分鐘自己重算（不注入時間時）', () {
-    testWidgets('計時器會跑、而且離開頁面時收得乾淨', (tester) async {
-      // now 不注入 = 用真實時間 + 開計時器。這裡不驗「數字變了」（那要能
-      // 控制時鐘），驗的是計時器的安全：跑過幾分鐘不崩、離開頁面後不殘留
-      // —— **殘留的話 testWidgets 會自己判定失敗**（pending timer），
-      // 而 unmount 後計時器還 setState 會直接崩。這兩個才是計時器真正的風險。
-      await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(body: NowStatus(courses: courses)),
-      ));
-      await tester.pump(const Duration(minutes: 1));
-      await tester.pump(const Duration(minutes: 1));
-
-      // 把它換掉（觸發 dispose）。收不乾淨的話這個測試不會過。
-      await tester.pumpWidget(const MaterialApp(home: Scaffold(body: SizedBox())));
-      await tester.pump(const Duration(minutes: 1));
-    });
+  testWidgets('自己不養計時器 —— 每分鐘重算是父層在做的', (tester) async {
+    // 計時器放在課表頁的 _Body：一個就把這條狀態列和格子裡「現在這一格」
+    // 的外框一起更新。這個 widget 自己開一個的話會變成兩個各跑各的。
+    //
+    // 驗法：不注入時間（正式行為）pump 過幾分鐘，結束時若有殘留的計時器，
+    // testWidgets 會自己判定失敗。
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(body: NowStatus(courses: courses)),
+    ));
+    await tester.pump(const Duration(minutes: 2));
   });
 }

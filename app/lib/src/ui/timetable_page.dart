@@ -159,10 +159,50 @@ class _SemesterBar extends StatelessWidget {
   }
 }
 
-class _Body extends StatelessWidget {
+class _Body extends StatefulWidget {
   const _Body({required this.controller});
 
   final AppController controller;
+
+  @override
+  State<_Body> createState() => _BodyState();
+}
+
+class _BodyState extends State<_Body> {
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    // **這一頁上跟「現在」有關的東西不只一個**：頂端的「還有 N 分鐘下課」，
+    // 還有格子裡「現在這一格」的外框。兩個都是 build 當下算的，不重算就會
+    // 凍住 —— 倒數卡在同一個數字，外框跨節之後還留在上一格。
+    //
+    // 計時器放在**這一層**而不是各自的 widget 裡：一個計時器重建整個
+    // subtree，兩者一起更新、也不會有兩個計時器各跑各的。
+    // （一分鐘重建一次這棵樹比捲動一幀還便宜。）
+    //
+    // 對齊到整分：不對齊的話，剛好在「還有 1 分鐘」那一秒進來，會晚快一
+    // 分鐘才跳成 0。
+    final now = DateTime.now();
+    _ticker = Timer(
+      Duration(seconds: 60 - now.second, milliseconds: -now.millisecond),
+      () {
+        if (mounted) setState(() {});
+        _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+          if (mounted) setState(() {});
+        });
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  AppController get controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {
@@ -400,59 +440,20 @@ class _Empty extends StatelessWidget {
 /// 邏輯全在 `classStatus`（純函式，測得很兇）。這裡只負責把四種狀態畫成
 /// 一句話 —— **在課內／下一堂用醒目色，上完了／沒課用低調色**，那兩種
 /// 是「現在沒事」，不需要搶眼。
-class NowStatus extends StatefulWidget {
+class NowStatus extends StatelessWidget {
   const NowStatus({super.key, required this.courses, this.now});
 
   final List<Course> courses;
 
-  /// 給測試釘住一個「現在」。正式執行時是 null，用真正的當下時間 ——
-  /// 而且**每分鐘自己重算**（見 State）。
+  /// 給測試釘住一個「現在」。正式執行時是 null，用真正的當下時間。
+  ///
+  /// **每分鐘重算是父層（`_Body`）在做的** —— 那裡一個計時器就把這條狀態列
+  /// 和格子裡「現在這一格」的外框一起更新，不必兩個 widget 各養一個。
   final DateTime? now;
 
   @override
-  State<NowStatus> createState() => _NowStatusState();
-}
-
-class _NowStatusState extends State<NowStatus> {
-  Timer? _ticker;
-
-  @override
-  void initState() {
-    super.initState();
-    // **「還有 N 分鐘下課」是 build 當下算的，不會自己跳。** 課表頁只在
-    // controller 有變動時重建，所以盯著看的時候那個數字會凍住 —— 一個過期的
-    // 「還有 3 分鐘」會害人以為還來得及。每分鐘重算一次讓它誠實。
-    //
-    // 對齊到整分：先等到下一個整分，再每 60 秒一次。不對齊的話，剛好在
-    // 「還有 1 分鐘」那一秒進來，會晚快一分鐘才跳成「還有 0 分鐘」。
-    //
-    // 注入了固定時間（測試）就不開計時器 —— 那是要釘住一個當下的。
-    if (widget.now == null) {
-      final now = DateTime.now();
-      final toNextMinute =
-          Duration(seconds: 60 - now.second, milliseconds: -now.millisecond);
-      _ticker = Timer(toNextMinute, () {
-        if (mounted) setState(() {});
-        _ticker = Timer.periodic(
-          const Duration(minutes: 1),
-          (_) {
-            if (mounted) setState(() {});
-          },
-        );
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final courses = widget.courses;
-    final t = widget.now ?? DateTime.now();
+    final t = now ?? DateTime.now();
     final status = classStatus(
       courses: courses,
       times: PeriodTimes.ntou,
