@@ -146,14 +146,57 @@ void main() {
       expect(p.rows[2].done, isFalse);
     });
 
-    test('今天上完了：沒有東西反白', () {
+    test('今天上完了就換成明天的', () {
+      // 「今天結束」是實話但沒有用 —— 使用者接著要問的是明天幾點要出門。
+      final p = buildTimetableWidgetPayload(
+        timetable: table([
+          ...threeCourses(),
+          course('明天的課', periods: [1, 2], weekday: 4), // 星期五
+        ]),
+        now: at(20, 0),
+      );
+
+      expect(p.showingTomorrow, isTrue);
+      expect(p.rows.map((r) => r.name), ['明天的課']);
+      // **日期和星期也要一起換**，不然畫面上會是一份「今天」的課表
+      // 列著明天的課 —— 那看起來完全正常，是最糟的一種錯。
+      expect(p.dateLabel, '9 月 4 日');
+      expect(p.weekdayLabel, '星期五');
+      // 明天的課一堂都還沒上。
+      expect(p.rows.every((r) => !r.done), isTrue);
+      expect(p.highlightIndex, 0);
+      expect(p.highlightStarted, isFalse);
+    });
+
+    test('明天沒課就說明天沒課，不是今天沒課', () {
       final p = buildTimetableWidgetPayload(
         timetable: table(threeCourses()),
         now: at(20, 0),
       );
 
-      expect(p.highlightIndex, -1);
-      expect(p.rows.every((r) => r.done), isTrue);
+      expect(p.showingTomorrow, isTrue);
+      expect(p.emptyMessage, '明天沒有課');
+    });
+
+    test('切到明天之後只排換日那一個鬧鐘', () {
+      // 過了午夜「明天」就變成「今天」，那時候要整份重算。
+      // 中間不會有任何變化，排其他鬧鐘只是白白叫醒裝置。
+      final p = buildTimetableWidgetPayload(
+        timetable: table(threeCourses()),
+        now: at(20, 0),
+      );
+
+      expect(p.updateTimes, [DateTime(2026, 9, 4)]);
+    });
+
+    test('還沒上完就不會跳到明天', () {
+      final p = buildTimetableWidgetPayload(
+        timetable: table(threeCourses()),
+        now: at(12, 30),
+      );
+
+      expect(p.showingTomorrow, isFalse);
+      expect(p.dateLabel, '9 月 3 日');
     });
   });
 
@@ -175,6 +218,19 @@ void main() {
       expect(p.rows.every((r) => r.time.isEmpty), isTrue);
       expect(p.highlightIndex, 0);
       expect(p.highlightStarted, isFalse);
+    });
+
+    test('絕對不會跳到明天', () {
+      // 分不出哪幾堂上完了就跳到明天，等於在一個還沒下課的下午
+      // 把今天的課整份藏起來。
+      final p = buildTimetableWidgetPayload(
+        timetable: table([course('課', periods: [1, 2])]),
+        now: at(23, 0), // 照真實時間算的話今天早就上完了
+        times: PeriodTimes.unknown,
+      );
+
+      expect(p.showingTomorrow, isFalse);
+      expect(p.rows, hasLength(1));
     });
 
     test('一整天不會變，所以只排換日那一次', () {

@@ -92,6 +92,10 @@ class TimetableWidgetView extends StatelessWidget {
   /// 節次時間表不可用時說「今天第一堂」—— 那時候我們分不出哪幾堂上完了，
   /// 說「下一堂」會是錯的，跟首頁那張卡片同一套規則。
   String? get _statusBadge {
+    // **明天那一份一定要標出來。** 標題的日期雖然已經換成明天了，但使用者
+    // 掃小組件的時候看的是右上角那個標，不是日期 —— 沒有它的話，
+    // 一份明天的課表看起來就跟今天的一模一樣。
+    if (payload.showingTomorrow) return payload.isEmpty ? null : '明天';
     if (payload.isEmpty) return null;
     if (!payload.timesKnown) return '今天第一堂';
     if (payload.highlightIndex < 0) return '今天結束';

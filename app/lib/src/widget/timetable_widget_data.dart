@@ -47,6 +47,7 @@ class TimetableWidgetPayload {
     required this.timesKnown,
     required this.updateTimes,
     this.emptyMessage,
+    this.showingTomorrow = false,
   });
 
   /// 「9 月 4 日」。
@@ -69,6 +70,16 @@ class TimetableWidgetPayload {
   /// 節次時間表可不可用。false 的時候整份 payload 的 [TimetableWidgetRow.done]
   /// 全是 false、[highlightStarted] 是 false。
   final bool timesKnown;
+
+  /// 畫面上這一份是**明天**的課，不是今天的。
+  ///
+  /// 今天的課全部上完之後就切過去 —— 那時候「今天還剩什麼」的答案是
+  /// 「沒有了」，而使用者接著要問的是明天早上幾點要出門。
+  ///
+  /// **切過去的時候標題的日期和星期也一起換成明天的**，右上角還會標「明天」。
+  /// 只換內容不換日期的話，畫面上會是一份「今天」的課表列著明天的課 ——
+  /// 那是最糟的一種錯，因為它看起來完全正常。
+  final bool showingTomorrow;
 
   /// 沒有課可以顯示時要說的那句話。null = 有課。
   ///
@@ -147,6 +158,18 @@ TimetableWidgetPayload buildTimetableWidgetPayload({
   // 而且「節次時間表不可用時全部算成還沒上」那條規則只寫在那裡。
   final split = HomePage.split(today, weekday, times, nowMin);
 
+  // 今天的課全部上完了 —— 換成明天的。
+  //
+  // 「今天結束」是實話但沒有用：使用者接著要問的是明天早上幾點要出門，
+  // 而那個答案要開 App 翻課表才找得到。
+  //
+  // **節次時間表不可用的時候永遠不會走到這裡**：那時候 [HomePage.split]
+  // 會把每一堂都算成「還沒上」，`next` 不可能是 null。分不出哪幾堂上完了
+  // 就跳到明天，等於在一個還沒下課的下午把今天的課藏起來。
+  if (split.next == null) {
+    return _tomorrow(timetable, now, times, midnight);
+  }
+
   final rows = <TimetableWidgetRow>[];
   var highlightIndex = -1;
   for (final c in today) {
@@ -180,6 +203,48 @@ TimetableWidgetPayload buildTimetableWidgetPayload({
     timesKnown: times.isKnown,
     emptyMessage: null,
     updateTimes: _updateTimes(today, weekday, times, now, midnight),
+  );
+}
+
+/// 明天的課表。
+///
+/// [midnight] 是今天結束的那一刻 —— **也是唯一要重畫的時刻**：過了午夜
+/// 「明天」就變成「今天」了，那時候要整份重算。中間不會有任何變化，
+/// 所以不排其他鬧鐘。
+TimetableWidgetPayload _tomorrow(
+  TimetableResult timetable,
+  DateTime now,
+  PeriodTimes times,
+  DateTime midnight,
+) {
+  // 用 midnight 當「明天」：它就是 DateTime(年, 月, 日 + 1)，
+  // 跨月跨年由 DateTime 自己處理。
+  final weekday = HomePage.todayIndex(midnight);
+  final courses = HomePage.coursesOn(timetable, weekday);
+
+  return TimetableWidgetPayload(
+    dateLabel: '${midnight.month} 月 ${midnight.day} 日',
+    weekdayLabel: '星期${kWeekdays[weekday.clamp(0, 6)]}',
+    rows: [
+      for (final c in courses)
+        TimetableWidgetRow(
+          period: HomePage.periodLabel(c, weekday),
+          time: _timeLabel(c, weekday, times),
+          name: c.name,
+          room: c.room,
+          // 明天的課**一堂都還沒上**。照今天的時間去判斷「上完了沒」
+          // 會把明天早上的課標成已結束。
+          done: false,
+        ),
+    ],
+    // 明天的第一堂就是使用者接下來要上的那一堂。
+    highlightIndex: courses.isEmpty ? -1 : 0,
+    // 明天的課現在一定還沒開始，所以不會是「現在」。
+    highlightStarted: false,
+    timesKnown: times.isKnown,
+    emptyMessage: courses.isEmpty ? '明天沒有課' : null,
+    showingTomorrow: true,
+    updateTimes: [midnight],
   );
 }
 

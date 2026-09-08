@@ -27,9 +27,11 @@ void main() {
     int highlightIndex = -1,
     bool highlightStarted = false,
     bool timesKnown = true,
+    bool showingTomorrow = false,
     String? emptyMessage,
   }) =>
       TimetableWidgetPayload(
+        showingTomorrow: showingTomorrow,
         dateLabel: '9 月 3 日',
         weekdayLabel: '星期四',
         rows: rows,
@@ -173,6 +175,28 @@ void main() {
 
       expect(find.text('第 5 堂'), findsOneWidget);
       expect(find.text('第 1 堂'), findsNothing);
+    });
+
+    testWidgets('明天那一份右上角標「明天」', (tester) async {
+      // 標題的日期雖然換成明天了，但使用者掃小組件看的是右上角那個標 ——
+      // 沒有它的話，一份明天的課表看起來就跟今天的一模一樣。
+      await draw(
+        tester,
+        TimetableWidgetView(
+          payload: timetable(
+            rows: [row('程式設計')],
+            highlightIndex: 0,
+            showingTomorrow: true,
+          ),
+          size: const Size(320, 180),
+          brightness: Brightness.light,
+        ),
+      );
+
+      expect(find.text('明天'), findsOneWidget);
+      // 不能同時說「下一堂」—— 兩個標一起出現會讓人以為是今天的下一堂。
+      expect(find.text('下一堂'), findsNothing);
+      expect(find.text('今天結束'), findsNothing);
     });
 
     testWidgets('空白時把該說的話說出來', (tester) async {
