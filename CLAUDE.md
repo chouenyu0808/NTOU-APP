@@ -98,12 +98,44 @@ cd app && flutter test             # 673 個測試
 沒有 `spike/fixtures/` 的機器會 skip 掉 54 個（讀真實擷取頁面的那些），
 結果是 `531 passed, 54 skipped` —— 那是正常的，不是壞掉。
 
-裝到手機（Android，release 目前借用 debug key 簽章）：
+裝到手機（Android）：
 
 ```bash
-cd app && flutter build apk --release --target-platform android-arm64 --dart-define-from-file=../tdx.local.json
-C:\dev\android-sdk\platform-tools\adb.exe install -r app/build/app/outputs/flutter-apk/app-release.apk
+cd app && flutter build apk --release --target-platform android-arm64
+adb install -r app/build/app/outputs/flutter-apk/app-release.apk
 ```
+
+**`adb` 的位置也是每台不一樣**（跟 Flutter SDK 同一個病）：`choue` 那台在
+`C:\dev\android-sdk\platform-tools\`，`user` 那台在
+`%LOCALAPPDATA%\Android\Sdk\platform-tools\`。都不在 PATH 上的話用完整路徑。
+
+`transit.json` 的 `relay_base_url` 已經填了中繼網址，所以**不用帶
+`--dart-define-from-file`** —— 金鑰只在 Worker 那一端。
+
+### 簽章綁著那台電腦，換機器就裝不上去
+
+release 用 `android/key.properties` 指定的 keystore（**兩個檔案都不進版控**，
+複製 `key.properties.example` 來填，keystore 檔案自己傳）。沒有那個檔案時
+自動退回 debug keystore，只做 `app/` 不裝實機的人不用準備任何東西。
+
+**為什麼不能直接用 debug keystore**：`~/.android/debug.keystore` 是 Android SDK
+在每台電腦第一次 build 時**自動產生**的，內容隨機。兩台機器簽出來的 APK
+互不相容，裝到同一支手機會被拒絕：
+
+```
+INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match newer version
+```
+
+**這個錯誤訊息完全看不出跟「兩台機器」有關**，而且唯一的覆蓋方式是先解除
+安裝 —— 那會把預排課表、記住的帳密、課表快取全部清掉。2026-09-08 卡在這裡，
+最後是去另一台電腦複製 `debug.keystore` 過來才解決；那把 key 現在就是
+`android/ntou-release.keystore`（SHA-256 `fd0a46c5…`）。
+
+**換掉那把 key 等於要求所有使用者解除安裝重來**，所以它是長期資產，
+不是隨時可以重新產生的東西。
+
+要在同一支手機上並存新舊版比對的話，`applicationId` 加後綴就行 ——
+那是另一件事，需要時再做（2026-09-08 做過一次又撤掉了）。
 
 `tdx.local.json` 在 repo 根目錄，**不進版控**（複製 `tdx.local.json.example`
 去填）。本來是用環境變數帶的，但那個每次重開機就沒了 —— 這個檔案設一次

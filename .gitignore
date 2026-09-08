@@ -43,3 +43,19 @@ tdx.local*
 
 # Claude Code：本機專屬設定（含機器路徑、裝置序號），不進版控
 .claude/settings.local.json
+
+# ---- Android 簽章，不進版控 ----
+# **真正擋住它們的是 `app/android/.gitignore`**（Flutter 樣板自帶
+# `key.properties` 和 `**/*.keystore`，而且離檔案比較近、優先套用）。
+# 這裡重複一份是第二道，也是為了把「為什麼」寫在大家會讀的這一份裡：
+#
+# keystore 的層級跟 TDX 金鑰完全不同。**誰拿到它，誰就能簽出一份能覆蓋掉
+# 使用者手機上那個 App 的 APK** —— 而 Android 會讓它繼承原本的資料，
+# 包括存在 Keystore 裡的帳號密碼。所以它進不得 git，即使 repo 是私有的
+# （轉公開的那天，刪檔案救不回歷史）。
+#
+# 設定範本是 app/android/key.properties.example（那份進版控，不含 keystore）。
+# 兩個檔案都不在時 build 會自動退回 debug keystore，一樣能動。
+app/android/key.properties
+*.keystore
+*.jks

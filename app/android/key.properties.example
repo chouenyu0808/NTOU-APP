@@ -1,0 +1,30 @@
+# 簽章設定。**複製成 `key.properties` 再填**，那一份不進版控。
+#
+# ## 為什麼需要這個檔案
+#
+# release build 原本直接用 `signingConfigs.getByName("debug")`，也就是
+# `~/.android/debug.keystore` —— 那個檔案是 Android SDK **在每台電腦第一次
+# build 時自動產生的**，內容隨機。
+#
+# 後果是：換一台電腦 build，裝到同一支手機就會被拒絕：
+#
+#     INSTALL_FAILED_UPDATE_INCOMPATIBLE: signatures do not match newer version
+#
+# 而唯一的覆蓋方式是先解除安裝 —— 那會把預排課表（PlanStore）、記住的帳密、
+# 課表快取整個清掉。2026-09-08 就是這樣卡住的，最後是去另一台電腦複製
+# `debug.keystore` 過來才解決。
+#
+# 兩台機器指向同一個 keystore 檔案，這個問題就不存在了。
+#
+# ## storeFile 相對於 `app/android/`
+#
+# keystore 檔案本身**不要進版控**：誰拿到它，誰就能簽出一份能覆蓋掉使用者
+# App 的 APK（連同裡面的資料一起繼承）。用你們自己的方式傳給另一台機器。
+#
+# 沒有這個檔案時 build 會自動退回 debug keystore，跟以前一樣能動 ——
+# 只做 app/ 又不需要裝到實機的人不必理會這一整段。
+
+storeFile=ntou-release.keystore
+storePassword=android
+keyAlias=androiddebugkey
+keyPassword=android
