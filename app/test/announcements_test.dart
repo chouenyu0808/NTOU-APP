@@ -80,4 +80,21 @@ void main() {
       }
     }, skip: missing);
   });
+
+  group('全文頁路徑', () {
+    test('用編號拼出 BBS3010_02 的路徑', () {
+      const a = Announcement(title: 'x', id: '9005901');
+      expect(
+        a.detailPath,
+        'Application/BBS/BBS30/BBS3010_02.aspx'
+        '?pkno=9005901&progcd=BBS3010&TYPE=PORTAL',
+      );
+    });
+
+    test('沒有編號就是不能點開（null，不是空字串）', () {
+      // 空字串會被當成一個「有路徑」的東西送去 GET，拿回一頁錯的內容。
+      const a = Announcement(title: 'x');
+      expect(a.detailPath, isNull);
+    });
+  });
 }

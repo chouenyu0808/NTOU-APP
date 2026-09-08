@@ -620,6 +620,18 @@ class AisRepository {
         ),
       );
 
+  /// 抓一則公告的全文頁 HTML。[detailPath] 來自 `Announcement.detailPath`。
+  ///
+  /// **不跟 JS 導向。** 這是 BBS3010_02 的內容頁，直接 GET 就有東西 ——
+  /// 而它跟課程詳細頁（`TKE2240_03`）一樣，自己帶著指向 `/Portal.aspx` 的
+  /// 那一行 JS，跟下去會把剛拿到的內容整份蓋掉，症狀是一頁空白。
+  Future<String> fetchAnnouncement(String detailPath) async {
+    final session = _requireSession();
+    final page = await session.get(detailPath);
+    session.checkSession(page);
+    return page.html;
+  }
+
   /// 送出去的欄位，加上**要從基底裡拿掉**的那些。
   ///
   /// 為什麼需要 [omit]：`submitForm` 是先用頁面上的現值當基底，再把這裡的值

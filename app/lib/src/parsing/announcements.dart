@@ -21,6 +21,25 @@ class Announcement {
   /// `onclick="return openBbsAnnouncement('9005901');"`。
   final String id;
 
+  /// 這則公告全文頁的路徑，沒有編號就回 null（那就是不能點開）。
+  ///
+  /// URL 結構抄自 Portal 頁裡 `openBbsAnnouncement` 的定義（公開的頁面 JS，
+  /// 不用登入就看得到）：
+  /// ```js
+  /// function openBbsAnnouncement(pkno) {
+  ///   var url = '/Application/BBS/BBS30/BBS3010_02.aspx?pkno=' + pkno
+  ///           + '&progcd=BBS3010&TYPE=PORTAL#';
+  ///   doOpenFancyBox('', 1024, 768, url);
+  /// }
+  /// ```
+  /// 瀏覽器是開在一個 FancyBox 的 iframe 裡，但那只是外框 —— 內容就是這個
+  /// GET 回來的 HTML。`TYPE=PORTAL` 要帶著：少了它學校可能改用另一套版面
+  /// （或直接擋掉），而症狀是一頁看起來正常、但空的內容。
+  String? get detailPath => id.isEmpty
+      ? null
+      : 'Application/BBS/BBS30/BBS3010_02.aspx'
+          '?pkno=${Uri.encodeQueryComponent(id)}&progcd=BBS3010&TYPE=PORTAL';
+
   /// 發布日期。**頁面上是民國年**（`115/08/26`），這裡已經轉成西元。
   ///
   /// 可能是 null：解不出來的日期寧可不顯示，也不要猜一個出來 ——
