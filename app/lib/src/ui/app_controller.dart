@@ -284,8 +284,19 @@ class AppController extends ChangeNotifier {
     _pausedAt = null;
     if (since == null || phase != AppPhase.ready) return;
     if (DateTime.now().difference(since) >= backgroundGrace) {
-      await _releaseSession();
+      await _releaseSession(); // 這裡面會 notifyListeners
+      return;
     }
+
+    // **繼續用，但畫面上跟「現在」有關的東西已經過期了。**
+    //
+    // 首頁的「還有 N 分鐘」、課表的「現在這一格」都是每分鐘由計時器重算的，
+    // 而**背景的計時器不保證會跑**（Android 會凍結被切到背景的 isolate ——
+    // 上面 handlePaused 的註解就是在講這件事）。所以午休回來看 App，那些
+    // 數字可能還停在出門前的那一刻，要等計時器追上。
+    //
+    // 回到前景本來就是「一定會發生」的那道防線，順手把 UI 也叫醒。
+    notifyListeners();
   }
 
   /// App 要被關掉了。這是最後一次釋放 session 的機會，不等緩衝時間。
