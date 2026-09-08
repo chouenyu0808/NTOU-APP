@@ -141,6 +141,18 @@ void main() {
     expect(find.textContaining('學校可能改版'), findsNothing);
   });
 
+  testWidgets('右上角留著必修科目表的入口', (tester) async {
+    // 必修科目表（ENRA120）跟這一頁講同一件事，但要自己選入學年度／系所，
+    // 選錯就查到別系的規劃。所以它從首頁快捷降級成這裡的次要入口 ——
+    // **降級不是刪掉**：想轉系或雙主修的人還是需要查別系。
+    ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+        ? _dispatcher
+        : _page(rows: _notTaken, credits: _credits);
+    await open(tester);
+
+    expect(find.byTooltip('查其他系的規劃'), findsOneWidget);
+  });
+
   testWidgets('真的解不出東西時說「可能改版了」，並且給重試', (tester) async {
     ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
         ? _dispatcher

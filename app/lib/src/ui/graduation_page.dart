@@ -4,6 +4,7 @@ import '../ais/exceptions.dart';
 import '../data/function_view.dart';
 import '../parsing/graduation.dart';
 import 'app_controller.dart';
+import 'required_courses_page.dart';
 
 /// 「查詢畢業資格」——「我還差什麼才能畢業」。
 ///
@@ -56,8 +57,25 @@ class _GraduationPageState extends State<GraduationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('畢業資格'),
+        title: const Text('畢業進度'),
         actions: [
+          // 必修科目表（`ENRA120`）的入口收在這裡。
+          //
+          // 它跟這一頁講的是同一件事，但要自己選入學年度／部別／系所／
+          // 入學身分 —— 對「查自己」來說那是多餘的摩擦，而且選錯會查到
+          // 別系的規劃，畫面上完全看不出來。
+          //
+          // 它現在唯一還贏的地方是**查別系**（想轉系、雙主修的人），
+          // 所以降級成這裡的次要入口，而不是刪掉。
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => RequiredCoursesPage(controller: widget.controller),
+              ),
+            ),
+            icon: const Icon(Icons.manage_search),
+            tooltip: '查其他系的規劃',
+          ),
           IconButton(
             onPressed: _busy ? null : _open,
             icon: const Icon(Icons.refresh),

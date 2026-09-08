@@ -8,6 +8,7 @@ import '../parsing/data_grid.dart';
 import '../parsing/timetable.dart';
 import 'app_controller.dart';
 import 'graduation_page.dart';
+import 'required_courses_page.dart';
 import 'schema_field_input.dart';
 import 'theme.dart';
 
@@ -580,13 +581,18 @@ class FunctionTile extends StatelessWidget {
     //
     // 用 `code` 不用標題：學校改一個字（「查詢畢業資格」→「畢業資格查詢」）
     // 就會安靜地掉回通用頁，而畫面上只是「這一頁怎麼變醜了」。
-    if (function.code.toUpperCase() == 'ENRG010') {
+    final special = switch (function.code.toUpperCase()) {
+      'ENRG010' => (BuildContext _) => GraduationPage(controller: controller),
+      // 這一頁首頁也開得到（畢業進度右上角的「查其他系的規劃」）。
+      // 從選單進來卻是通用表單頁的話，同一個功能會有兩種長相。
+      'ENRA120' => (BuildContext _) =>
+          RequiredCoursesPage(controller: controller),
+      _ => null,
+    };
+    if (special != null) {
       if (!context.mounted) return;
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => GraduationPage(controller: controller),
-        ),
-      );
+      await Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: special));
       return;
     }
 

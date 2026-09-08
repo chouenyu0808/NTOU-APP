@@ -6,7 +6,7 @@ import '../parsing/announcements.dart';
 import '../parsing/models.dart';
 import '../parsing/timetable.dart' show kWeekdays;
 import 'app_controller.dart';
-import 'required_courses_page.dart';
+import 'graduation_page.dart';
 import 'theme.dart';
 
 /// 首頁：今天要上什麼課，一眼看完。
@@ -185,11 +185,20 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 28),
             _Shortcut(
               icon: Icons.school_outlined,
-              title: '畢業必修',
-              subtitle: '四年要修哪些課、門檻多少',
+              title: '畢業進度',
+              subtitle: '還差哪些課、門檻過了沒',
+              // **改指向畢業資格，不是必修科目表。**
+              //
+              // 兩頁講的是同一件事，但必修科目表要自己選入學年度／部別／
+              // 系所／入學身分 —— 選錯就查到別系的規劃，而畫面上完全正常。
+              // 畢業資格不用選（學校知道你是誰），而且同一份清單上多了
+              // 「我修了沒」。
+              //
+              // 必修科目表沒有消失，它在畢業資格那一頁的「其他系的規劃」——
+              // 那才是它現在唯一還贏的地方（查別系，給想轉系或雙主修的人）。
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => RequiredCoursesPage(controller: _c),
+                  builder: (_) => GraduationPage(controller: _c),
                 ),
               ),
             ),
