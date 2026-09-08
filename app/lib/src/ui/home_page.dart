@@ -7,6 +7,7 @@ import '../parsing/models.dart';
 import '../parsing/timetable.dart' show kWeekdays;
 import 'announcement_detail_page.dart';
 import 'app_controller.dart';
+import 'calendar_page.dart';
 import 'graduation_page.dart';
 import 'theme.dart';
 
@@ -598,6 +599,22 @@ class _Calendar extends StatelessWidget {
                       ),
               );
             }),
+          ],
+          // 首頁只列接下來 4 筆。整年的事件手上都有（抓官網那頁時一起 parse
+          // 的），比顯示的多才給「查看全部」—— 一樣多的時候點進去跟這裡一樣。
+          if (events.length > shown.length) ...[
+            const Divider(height: 1),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => CalendarPage(
+                    events: events,
+                    now: DateTime.now(),
+                  ),
+                ),
+              ),
+              child: const Text('查看整學期行事曆'),
+            ),
           ],
         ],
       ),

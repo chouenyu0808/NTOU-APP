@@ -467,6 +467,37 @@ void main() {
       expect(find.text('去年的事'), findsNothing);
       await unmount(tester);
     });
+
+    testWidgets('顯示不完時給「查看整學期行事曆」', (tester) async {
+      // 首頁只列接下來 4 筆。整年的都在手上，比顯示的多才給那顆按鈕。
+      final c = await newController();
+      final now = DateTime.now();
+      c.calendarEvents = [
+        for (var i = 1; i <= 8; i++)
+          ev('活動 $i', now.add(Duration(days: i * 3))),
+      ];
+      c.notifyListeners();
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.text('查看整學期行事曆'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('剛好顯示得完就不給那顆按鈕', (tester) async {
+      final c = await newController();
+      final now = DateTime.now();
+      c.calendarEvents = [
+        for (var i = 1; i <= 3; i++)
+          ev('活動 $i', now.add(Duration(days: i * 3))),
+      ];
+      c.notifyListeners();
+      await tester.pumpWidget(wrap(c));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('查看整學期'), findsNothing);
+      await unmount(tester);
+    });
   });
 
   group('快捷', () {
