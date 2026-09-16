@@ -235,6 +235,19 @@ def fixture_name(url: str) -> str:
     return safe + ".html"
 
 
+def conditioned_name(url: str, submit: FormSubmit | None) -> str:
+    """
+    fixture 檔名 + 這一份是「哪一組查詢條件」查出來的。
+
+    同一個網址配不同條件會得到完全不同的內容（`GRD5010_02` 同一頁就是
+    114-1、114-2、115-1 的成績單），只照網址命名的話它們會互相覆蓋。
+    """
+    name = fixture_name(url)
+    if submit is None:
+        return name
+    return name.removesuffix(".html") + f"__{submit.slug()}.html"
+
+
 def menu_paths() -> list[str]:
     """從 menu_tree.json 取出所有唯讀的功能頁路徑。"""
     p = FIXTURES / "menu_tree.json"
@@ -331,11 +344,7 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
             probe.describe(page)
 
         if save:
-            name = fixture_name(page.url)
-            if submit:
-                # 同一頁不同查詢條件會互相覆蓋，把條件寫進檔名
-                name = name.removesuffix(".html") + f"__{submit.slug()}.html"
-            save_fixture(page, name, who)
+            save_fixture(page, conditioned_name(page.url, submit), who)
         out.append(page)
 
         # 「詳」那一列指向的明細頁（成績要這樣才拿得到，見 detail_request）。
@@ -360,6 +369,18 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
             print(f"  明細頁失敗：{type(e).__name__}: {e}", file=sys.stderr)
             continue
 
+        # 明細頁的內容是它自己 ready 之後補抓的（見 startup_postback）。
+        # 不跟這一發，存下來的是一份**看起來很正常的空殼**。
+        startup = startup_postback(sub)
+        if startup is not None:
+            target, argument = startup
+            print(f"  這一頁載入時會自己補抓內容：__doPostBack({target!r}, {argument!r})")
+            try:
+                sub = sess.check_session(
+                    sess.follow_js_redirect(sess.postback(sub, target, argument)))
+            except Exception as e:
+                print(f"  補抓失敗：{type(e).__name__}: {e}", file=sys.stderr)
+
         if is_empty_result(sub.html):
             print("  查無符合資料")
         elif quiet:
@@ -367,7 +388,11 @@ def fetch_pages(sess: AisSession, paths: list[str], *, save: bool = False,
         else:
             probe.describe(sub)
         if save:
-            save_fixture(sub, fixture_name(sub.url), who)
+            # **條件也要寫進明細頁的檔名。** 明細頁的網址對每個學期都一樣
+            #（`GRD5010_02.aspx`），照網址命名的話 `--sweep` 掃四個學期會存成
+            # 同一個檔、一份蓋一份，最後只剩最後一個學期的成績單 —— 而且過程中
+            # 一個字都不會說。下次拿它去驗 parser 的人不會知道手上這份是哪一期。
+            save_fixture(sub, conditioned_name(sub.url, submit), who)
         out.append(sub)
     return out
 
@@ -526,7 +551,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--quiet", action="store_true",
                     help="--fetch-all 時只印標題和大小，不印完整欄位表")
     ap.add_argument("--user", help="學號（不給就互動輸入）")
-    ap.add_argument("--name", help="你的姓名 —— 存 fixture 時一併洗掉")
+    ap.add_argument("--name",
+                    help="你的真實姓名 —— 存 fixture 時一併洗掉（--save 必填，"
+                         "「-」表示明確放棄）")
     ap.add_argument("--no-follow", action="store_true",
                     help="--fetch 時不要跟 JS 導向（直接給內容頁網址時用）")
     ap.add_argument("--detail", action="store_true",
@@ -567,6 +594,39 @@ DO_EDIT_RE = re.compile(
     r"""\s*['"]([^'"]+)['"]\s*\)"""
 )
 VIEWPAGE_RE = re.compile(r"""\bviewpage\s*=\s*['"]([^'"]+)['"]""")
+
+SCRIPT_RE = re.compile(r"<script\b[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE)
+DOPOSTBACK_CALL_RE = re.compile(
+    r"""__doPostBack\(\s*['"]([^'"]*)['"]\s*,\s*['"]([^'"]*)['"]\s*\)"""
+)
+
+
+def startup_postback(page: Page) -> tuple[str, str] | None:
+    """
+    這一頁載入時**自己發給自己**的那一發 postback，沒有就回 None。
+
+    `GRD5010_02`（成績單）的 HTML 裡一張表都沒有 —— 成績是頁面 ready 之後
+    自己發一發 `__doPostBack('ReQuery','')` 才長出來的（UpdatePanel）。
+    App 和這支腳本都不跑 JS，所以拿到的永遠是空殼：欄位全空、零筆成績，
+    **而且看起來就像「這個帳號沒有成績」**，不像少做了一步。
+
+    分辨要抓哪一個跟 `parsing/server_message.dart` 同一招：只有
+    **`<script>` 頂層**（`{}` 淨深度 0）的才會在載入時自己執行。同一頁上
+    另外兩種都不能抓：
+
+        <a href="javascript:__doPostBack('ReQuery','')">   ← 點了才跑（在 HTML 裡，不在 script 裡）
+        function doSomething(){ __doPostBack('X','') }     ← 呼叫了才跑（深度 1）
+
+    括號是硬數的（字串和註解裡的也算），跟 Dart 那邊一樣 —— **算錯的方向是
+    安全的**：深度變成非 0 就是不跟，回到「跟以前一樣拿到空殼」。
+    """
+    for block in SCRIPT_RE.finditer(page.html):
+        js = block.group(1)
+        for m in DOPOSTBACK_CALL_RE.finditer(js):
+            before = js[: m.start()]
+            if before.count("{") - before.count("}") == 0:
+                return m.group(1), m.group(2)
+    return None
 
 
 def detail_request(page: Page) -> tuple[str, dict[str, str]] | None:
@@ -691,8 +751,23 @@ def main() -> int:
         print("    python probe.py --save fixtures/login.html", file=sys.stderr)
         return 2
 
+    # **姓名要在打驗證碼之前就問清楚。**
+    #
+    # scrub 洗得掉學號、身分證、IP（那些有固定樣式），但姓名程式猜不到 ——
+    # 漏給 --name 的話，真名會原封不動留在每一份 fixture 裡，而 save_fixture
+    # 的 looks_dirty 也抓不到（中文姓名沒有可辨識的樣式），check.py 照樣回報 OK。
+    # 唯一會發現的時機是有人去讀 fixture 的內容。
+    #
+    # 擋在這裡是因為代價：發現得晚就得整趟重登入，而登入要手打驗證碼。
+    if args.save and not (args.name or "").strip():
+        print("--save 需要 --name「你的真實姓名」，fixture 才洗得掉姓名。",
+              file=sys.stderr)
+        print("（真的要存未洗過的檔：--name - ）", file=sys.stderr)
+        return 2
+
+    name = None if args.name == "-" else args.name
     username = args.user or input("學號：").strip()
-    who = Identity(student_id=username, name=args.name)
+    who = Identity(student_id=username, name=name)
     password = getpass.getpass("密碼（不會顯示、不會存檔）：")
 
     sess = AisSession(

@@ -224,6 +224,74 @@ def test_detail_request_resolves_relative_to_the_page():
     assert url == "https://ais.ntou.edu.tw/Application/ENR/ENRG0/X_02.aspx"
 
 
+def test_startup_postback_finds_the_self_fired_one():
+    """
+    成績單頁的 HTML 裡一張表都沒有 —— 內容是它 ready 之後自己補抓的。
+    不跟這一發，拿到的是空殼，而空殼看起來就像「這個帳號沒有成績」。
+    """
+    from login import startup_postback
+    html = (
+        "<script>var recordName1='GRD5010_02';"
+        "Message.showProcess();;__doPostBack('ReQuery','');;</script>"
+    )
+    assert startup_postback(_grid_page(html)) == ("ReQuery", "")
+
+
+def test_startup_postback_ignores_the_anchor():
+    """
+    同一頁上還有一個**點了才跑**的：
+
+        <a id="ReQuery" href="javascript:__doPostBack('ReQuery','')"></a>
+
+    這次剛好同名所以抓錯了也看不出來，但規則錯了就是錯了 ——
+    別的頁面上那顆可能是「刪除」。它在 HTML 裡、不在 <script> 裡。
+    """
+    from login import startup_postback
+    html = "<a id=\"ReQuery\" href=\"javascript:__doPostBack('DEL_BTN1','')\"></a>"
+    assert startup_postback(_grid_page(html)) is None
+
+
+def test_startup_postback_ignores_calls_inside_functions():
+    """包在函式裡的是「呼叫了才跑」，跟載入時自己執行的是兩回事。"""
+    from login import startup_postback
+    html = "<script>function doDelete(){ __doPostBack('DEL_BTN1',''); }</script>"
+    assert startup_postback(_grid_page(html)) is None
+
+
+def test_startup_postback_absent_is_none():
+    """沒有就回 None —— 寧可拿到空殼，也不要憑空送一發 postback 出去。"""
+    from login import startup_postback
+    assert startup_postback(_grid_page("<html><body>沒有</body></html>")) is None
+
+
+def test_detail_fixtures_do_not_overwrite_each_other():
+    """
+    **同一個明細頁網址配不同學期是不同的成績單。**
+
+    `GRD5010_02.aspx` 對每一期都是同一個網址，照網址命名的話
+    `--sweep Q_AYEARSMS=1141,1142` 會把兩期的成績單存成同一個檔、
+    一份蓋一份，最後只剩後面那期 —— 而且整個過程一句話都不會說，
+    下次拿它去驗 parser 的人不會知道手上這份是哪一期的。
+    """
+    from login import FormSubmit, conditioned_name
+
+    url = "https://ais.ntou.edu.tw/Application/GRD/GRD50/GRD5010_02.aspx"
+    first = conditioned_name(url, FormSubmit("QUERY_BTN1", {"Q_AYEARSMS": "1141"}))
+    second = conditioned_name(url, FormSubmit("QUERY_BTN1", {"Q_AYEARSMS": "1142"}))
+
+    assert first != second
+    assert first.endswith("GRD5010_02__QUERY_BTN1_1141.html")
+    assert second.endswith("GRD5010_02__QUERY_BTN1_1142.html")
+
+
+def test_conditioned_name_without_submit_is_just_the_url():
+    """沒有查詢條件的頁面照舊 —— 不要憑空多一截後綴出來。"""
+    from login import conditioned_name
+
+    url = "https://ais.ntou.edu.tw/Application/GRD/GRD50/GRD5010_01.aspx"
+    assert conditioned_name(url, None) == "Application_GRD_GRD50_GRD5010_01.html"
+
+
 def test_detail_request_handles_multiple_key_pairs():
     """keyStr 是「名稱|值|名稱|值…」，doEdit1_2 就是照這個節奏拆的。"""
     from login import detail_request
