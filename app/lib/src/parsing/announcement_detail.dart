@@ -8,6 +8,7 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import 'html_text.dart';
+import 'label_value.dart';
 
 class AnnouncementDetail {
   const AnnouncementDetail({
@@ -54,18 +55,11 @@ class AnnouncementDetail {
 AnnouncementDetail parseAnnouncementDetail(String html) {
   final doc = html_parser.parse(html);
 
-  // 值欄：跟標籤同一列、標籤欄後面那個 col。回原始元素，好分辨要不要保留換行。
-  dom.Element? valueOf(String label) {
-    for (final lbl in doc.querySelectorAll('[ml]')) {
-      if (clean(lbl.text) != label) continue;
-      final col = _colAncestor(lbl);
-      final val = _nextColSibling(col);
-      if (val != null) return val;
-    }
-    return null;
-  }
+  // 值欄：跟標籤同一列、標籤欄後面那個 col（`label_value.dart`，成績單頁
+  // 用的是同一種版面）。回原始元素，好分辨要不要保留換行。
+  dom.Element? valueOf(String label) => labelledValue(doc, label);
 
-  String textOf(String label) => clean(valueOf(label)?.text ?? '');
+  String textOf(String label) => labelledText(doc, label);
 
   // 內文要保留 <br> 換行。
   final bodyEl = valueOf('內容');
@@ -86,28 +80,6 @@ AnnouncementDetail parseAnnouncementDetail(String html) {
     priority: textOf('速別'),
     attachment: textOf('附件'),
   );
-}
-
-/// 標籤所在的那個 `col-*` 欄。
-dom.Element? _colAncestor(dom.Element el) {
-  dom.Element? node = el;
-  while (node != null) {
-    final cls = node.className;
-    if (cls.split(RegExp(r'\s+')).any((c) => c.startsWith('col-'))) return node;
-    node = node.parent;
-  }
-  return null;
-}
-
-/// 同一列裡標籤欄後面的下一個 `col-*`（值欄）。
-dom.Element? _nextColSibling(dom.Element? col) {
-  if (col == null) return null;
-  var sib = col.nextElementSibling;
-  while (sib != null) {
-    if (sib.className.contains('col-')) return sib;
-    sib = sib.nextElementSibling;
-  }
-  return null;
 }
 
 /// 把 `<br>` 換成換行、其餘空白照 clean 壓掉，但保留段落之間的斷行。

@@ -501,9 +501,12 @@ void main() {
   });
 
   group('快捷', () {
-    testWidgets('只留「畢業進度」一張 —— 其餘三張只是把底部分頁列再列一次', (tester) async {
+    testWidgets('只放分頁列上沒有的入口 —— 成績和畢業進度', (tester) async {
       // 「完整課表」「預排課表」「校務系統」在分頁列上都各有一個入口。
       // 同一個目的地給兩個入口沒有讓人更快到，只是讓首頁更長。
+      //
+      // 成績（`GRD5010`）反過來：它埋在選單第三層（教務系統 > 成績系統 >
+      // 查詢各式成績），而且是學生最常查的東西之一。
       //
       // 這張原本叫「畢業必修」，指向必修科目表（`ENRA120`）。2026-09-08 改成
       // 指向畢業資格（`ENRG010`）：兩頁講的是同一件事，但必修科目表要自己選
@@ -514,6 +517,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('畢業進度'), findsOneWidget);
+      expect(find.text('成績'), findsOneWidget);
       expect(find.text('畢業必修'), findsNothing, reason: '同一張快捷不要有兩個名字');
       expect(find.text('完整課表'), findsNothing);
       expect(find.text('預排課表'), findsNothing);

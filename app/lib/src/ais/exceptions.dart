@@ -43,6 +43,18 @@ class NetworkFailure extends AisException {
   const NetworkFailure(super.message);
 }
 
+/// **學校自己有話要說**，而那句話讓這件事做不下去。
+///
+/// 「畢業資格查詢尚未開放」「人工加選尚未開放」這種 —— 學校是用注入一段 JS
+/// 彈出來的（見 `parsing/server_message.dart`），App 不跑 JS 所以要自己收。
+///
+/// 刻意跟其他例外分開：這**不是錯誤**，沒有東西壞掉，使用者也沒有做錯事，
+/// 只是現在不開放。畫面上要用平鋪直敘的語氣講，不要配一個紅色的錯誤圖示和
+/// 一顆「重試」—— 那會讓人以為是 App 出問題，然後一直按。
+class AisMessage extends AisException {
+  const AisMessage(super.message);
+}
+
 /// 送出的值不是頁面上真的有的選項。
 ///
 /// ASP.NET 的 event validation 會拒絕它沒渲染過的值，但錯誤長成

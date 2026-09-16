@@ -10,6 +10,7 @@ import '../parsing/timetable.dart' show kWeekdays;
 import 'announcement_detail_page.dart';
 import 'app_controller.dart';
 import 'calendar_page.dart';
+import 'grades_page.dart';
 import 'graduation_page.dart';
 import 'theme.dart';
 
@@ -210,9 +211,20 @@ class _HomePageState extends State<HomePage> {
 
             // 快捷本來有四張，其中三張（完整課表 / 預排課表 / 校務系統）
             // 只是把底部分頁列再列一次 —— 同一個目的地給兩個入口，
-            // 沒有讓人更快到，只是讓首頁更長。留下的這張是唯一
-            // 不在分頁列上的。
+            // 沒有讓人更快到，只是讓首頁更長。留下的都是**不在分頁列上**
+            // 而且埋得很深的（成績在選單第三層）。
             const SizedBox(height: 28),
+            _Shortcut(
+              icon: Icons.assignment_outlined,
+              title: '成績',
+              subtitle: '各科成績、抵免與累計學分',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => GradesPage(controller: _c),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             _Shortcut(
               icon: Icons.school_outlined,
               title: '畢業進度',

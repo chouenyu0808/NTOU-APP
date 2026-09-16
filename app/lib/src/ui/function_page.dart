@@ -7,6 +7,7 @@ import '../menu/menu_catalog.dart';
 import '../parsing/data_grid.dart';
 import '../parsing/timetable.dart';
 import 'app_controller.dart';
+import 'grades_page.dart';
 import 'graduation_page.dart';
 import 'required_courses_page.dart';
 import 'schema_field_input.dart';
@@ -587,6 +588,10 @@ class FunctionTile extends StatelessWidget {
       // 從選單進來卻是通用表單頁的話，同一個功能會有兩種長相。
       'ENRA120' => (BuildContext _) =>
           RequiredCoursesPage(controller: controller),
+      // 成績查詢走通用表單頁的話，使用者按下查詢只會看到**一列自己的學號**
+      // ——真正的成績在那一列的「詳」點進去、而且還要再等一發 postback
+      //（見 `AisRepository.openGrades`）。通用頁兩步都做不到。
+      'GRD5010' => (BuildContext _) => GradesPage(controller: controller),
       _ => null,
     };
     if (special != null) {

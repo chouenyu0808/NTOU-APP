@@ -10,6 +10,7 @@ import '../ais/page.dart';
 import '../config/selectors.dart';
 import '../menu/menu_catalog.dart';
 import '../parsing/announcements.dart';
+import '../parsing/grades.dart';
 import '../parsing/models.dart';
 import '../parsing/data_grid.dart';
 import '../parsing/server_message.dart';
@@ -619,6 +620,76 @@ class AisRepository {
           trail: ['教務系統', '畢業作業', '查詢畢業資格'],
         ),
       );
+
+  /// 查詢成績（`GRD5010`）。
+  ///
+  /// **這一頁要走三步，而且少哪一步都不會報錯。**
+  ///
+  /// 1. 打開查詢頁、按查詢 —— 回來的是一列**學生清單**，不是成績
+  /// 2. 跟著那一列的「詳」POST 到明細頁（`parseGradeDetailRequest`）
+  /// 3. 明細頁**還是空的** —— 成績是它載入後自己發一發
+  ///    `__doPostBack('ReQuery','')` 才補回來的（UpdatePanel）
+  ///
+  /// 第 3 步是最會被漏掉的：少了它拿到的是一份欄位齊全、統計全空、
+  /// 零筆成績的頁面，跟「這個帳號沒有成績」長得**一模一樣**。
+  /// 2026-09-16 之前這個 repo 一直以為是後者。
+  ///
+  /// 學年期不用帶：明細頁吃的只有學號，回來的是**歷年整份**成績單
+  /// （第一欄就是學年期，抵免那幾筆還掛在未來的學期上）。
+  Future<GradeReport> openGrades() async {
+    final session = _requireSession();
+    final view = await openFunction(
+      const AisFunction(
+        title: '查詢各式成績',
+        path: 'Application/GRD/GRD50/GRD5010_.aspx?progcd=STU2020',
+        trail: ['教務系統', '成績系統', '查詢各式成績'],
+      ),
+    );
+
+    // 學校自己有話要說（例如不在開放時間）就照著講，不要硬往下走。
+    if (view.notice != null) throw AisMessage(view.notice!);
+
+    final listed = await runQuery(view, _gradesQueryButton);
+    if (listed.notice != null) throw AisMessage(listed.notice!);
+
+    final detail = parseGradeDetailRequest(listed.page.html);
+    if (detail == null) {
+      // **這裡不能說「你沒有成績」。**
+      //
+      // 查詢用的是學校在頁面上預填的學年期。那一期如果沒有你的修課紀錄
+      //（休學、剛入學、還沒註冊），回來的是「查無符合資料」——
+      // 那一頁沒有可以點的「詳」，所以到不了成績單。
+      //
+      // 那跟「這個帳號沒有成績」是兩件事：成績單本身是**歷年整份**的，
+      // 只是我們沒有門票進去。把前者講成後者，正是這一整條路上
+      // 最常犯的那個錯（見 `openGrades` 的說明）。
+      final term = listed.values['Q_AYEARSMS'] ?? '';
+      throw AisMessage(
+        term.isEmpty
+            ? '查不到你的修課紀錄，所以開不了成績單。'
+            : '$term 學年期查不到你的修課紀錄，所以開不了成績單。'
+                '（這不代表你沒有成績 —— 換一個學年期再試。）',
+      );
+    }
+
+    // `viewpage` 是相對於**當前功能頁**的（功能頁埋在 Application/GRD/GRD50/）。
+    // 用網站根目錄去解會 POST 到不存在的地方，而回來的是一頁空表單，不報錯。
+    final url = Uri.parse(listed.page.url).resolve(detail.page);
+    var page = await session.post(url, detail.fields);
+    session.checkSession(page);
+
+    // 第 3 步。
+    page = await session.postback(page, _gradesReloadTarget);
+    session.checkSession(page);
+
+    return parseGrades(page.html);
+  }
+
+  /// 成績查詢頁上那顆查詢鈕。
+  static const String _gradesQueryButton = 'QUERY_BTN1';
+
+  /// 成績單頁載入後自己發的那一發 postback —— 成績是它補回來的。
+  static const String _gradesReloadTarget = 'ReQuery';
 
   /// 抓一則公告的全文頁 HTML。[detailPath] 來自 `Announcement.detailPath`。
   ///
