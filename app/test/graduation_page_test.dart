@@ -179,6 +179,109 @@ void main() {
     });
   });
 
+  group('把成績比對進來', () {
+    /// 成績那一整套（查詢 → 詳 → ReQuery），見 grades_page_test。
+    String? grades(FakeRequest r, String rows) {
+      if (r.page.startsWith('GRD5010_.aspx')) {
+        return "<html><body><script>"
+            "top.mainFrame.location.href='GRD5010_01.aspx';</script></body></html>";
+      }
+      if (r.page == 'GRD5010_02.aspx') {
+        if (r['__EVENTTARGET'] != 'ReQuery') {
+          return '<html><body><form>'
+              '<input type="hidden" name="__VIEWSTATE" value="v3">'
+              "</form><script>__doPostBack('ReQuery','');</script></body></html>";
+        }
+        return '''
+<html><body><form><input type="hidden" name="__VIEWSTATE" value="v4">
+<table id="DataGrid">
+  <tr><th>學年期</th><th>課號</th><th>開課班別</th><th>學分數</th><th>選別</th>
+      <th>課程名稱</th><th>教師姓名</th><th>學期總成績</th><th>其他成績</th></tr>
+  $rows
+</table></form></body></html>''';
+      }
+      if (r.page.startsWith('GRD5010_01.aspx') && r.pressed('QUERY_BTN1')) {
+        return '<html><body><form>'
+            '<input type="hidden" name="__VIEWSTATE" value="v2">'
+            '</form><script>var viewpage = "GRD5010_02.aspx";'
+            "doEdit1_2('','STNO|B10900000','Mod');</script></body></html>";
+      }
+      return '<html><body><form>'
+          '<input type="hidden" name="__VIEWSTATE" value="v">'
+          '<input name="Q_AYEARSMS" type="text" value="1151">'
+          '<input type="submit" name="QUERY_BTN1" value="查詢">'
+          '</form></body></html>';
+    }
+
+    String row(String name, String mark, {String credits = '3'}) =>
+        '<tr><td>1151</td><td>C1</td><td>A</td><td>$credits</td><td>必修</td>'
+        '<td>$name</td><td></td><td>$mark</td><td>詳</td></tr>';
+
+    /// 必修表：作業系統（成績裡有）、19-體育課程（名字對不上）。
+    const requirements = '''
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+    <td>三上</td><td>作業系統</td><td>3</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+    <td>一上</td><td>19-體育課程</td><td>0</td><td></td></tr>''';
+
+    void script(String gradeRows) {
+      ais.reply = (r) {
+        if (r.page.startsWith('ENRG010_.aspx')) return _dispatcher;
+        if (r.page.startsWith('ENRG010_01.aspx')) {
+          return _page(rows: requirements, credits: _credits);
+        }
+        return grades(r, gradeRows);
+      };
+    }
+
+    testWidgets('**學校沒登錄的抵免，靠成績比對出來**', (tester) async {
+      // 這一頁的必修表上「作業系統」整列是空的（學校還沒把抵免掛上去），
+      // 但成績裡有一門同名的抵免課。
+      script(row('作業系統', '抵'));
+      await open(tester);
+
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.textContaining('成績裡有「作業系統」'), findsOneWidget);
+      expect(find.text('1 / 2 門'), findsOneWidget);
+    });
+
+    testWidgets('修課中是第三種狀態，不是「還沒修」', (tester) async {
+      // 等成績和要去選課是完全不同的兩件事。
+      script(row('作業系統', '+'));
+      await open(tester);
+
+      expect(find.byIcon(Icons.pending_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.check_circle), findsNothing);
+      expect(find.text('0 / 2 門'), findsOneWidget);
+    });
+
+    testWidgets('**對不到的課要列出來，不能默默消失**', (tester) async {
+      // 「體育」對不上「19-體育課程」。不列出來的話使用者會以為
+      // 那門抵免憑空不見了，而畫面上看不出是比對的限制。
+      script(row('作業系統', '抵') + row('體育', '抵', credits: '0'));
+      await open(tester);
+
+      expect(find.text('沒有對到必修的課'), findsOneWidget);
+      expect(find.text('體育'), findsOneWidget);
+      expect(find.textContaining('只認完全同名'), findsOneWidget);
+    });
+
+    testWidgets('**成績抓不到時，退回學校自己的紀錄就好**', (tester) async {
+      // 成績要再走一整套查詢。那條路失敗不能拖累這一頁 ——
+      // 畢業資格本來就顯示得出來，成績只是加分。
+      ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+          ? _dispatcher
+          : r.page.startsWith('ENRG010_01.aspx')
+              ? _page(rows: requirements, credits: _credits)
+              : '<html><body>壞掉的成績頁</body></html>';
+      await open(tester);
+
+      expect(find.text('作業系統'), findsOneWidget);
+      expect(find.textContaining('學校可能改版'), findsNothing);
+      expect(find.text('沒有對到必修的課'), findsNothing);
+    });
+  });
+
   testWidgets('未修的是空心圓，不是打勾', (tester) async {
     ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
         ? _dispatcher

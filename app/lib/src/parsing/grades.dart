@@ -45,6 +45,19 @@ class GradeMark {
   /// 還沒有結果可言 —— 成績未到、期中退選。
   bool get hasNoScore => score == null;
 
+  /// 這門課算不算過了。
+  ///
+  /// **靠學校自己的記號判斷，不自己訂及格分數。** 學校在不及格的成績上會標
+  /// `＊`（頁尾圖例寫著），所以「沒有被標不及格」就是過了。自己訂一條
+  /// 60 分的線反而會錯：研究所是 70，而且這一欄還可能是「甲」「通過」
+  /// 這種等第 —— 那些用數字比大小一律會判成不及格。
+  ///
+  /// 抵免算過。成績未到和期中退選不算 —— 那兩個都還沒有結果。
+  bool get isPassed {
+    if (isFailed || isWithdrawn || isPending) return false;
+    return isTransferred || score != null;
+  }
+
   static const _pending = '成績未到';
   static const _transferred = '抵免';
   static const _failed = '不及格';

@@ -4,6 +4,7 @@ import '../ais/exceptions.dart';
 import '../data/function_view.dart';
 import '../parsing/grades.dart';
 import '../parsing/graduation.dart';
+import '../parsing/graduation_match.dart';
 import 'app_controller.dart';
 import 'required_courses_page.dart';
 
@@ -27,6 +28,7 @@ class GraduationPage extends StatefulWidget {
 class _GraduationPageState extends State<GraduationPage> {
   FunctionView? _view;
   GraduationStatus? _result;
+  GraduationMatch? _match;
   String? _error;
   bool _busy = true;
 
@@ -41,6 +43,7 @@ class _GraduationPageState extends State<GraduationPage> {
       _busy = true;
       _error = null;
       _result = null;
+      _match = null;
     });
     try {
       final view = await widget.controller.repository.openGraduation();
@@ -51,6 +54,23 @@ class _GraduationPageState extends State<GraduationPage> {
     } catch (e) {
       _error = '發生未預期的錯誤（${e.runtimeType}）。';
     }
+
+    // 成績是**額外**拿的，而且要再走一整套查詢（見 `openGrades`）。
+    //
+    // **失敗不能拖累這一頁。** 學校的畢業資格本來就顯示得出來，成績只是
+    // 拿來補上「學校還沒登錄的抵免」。抓不到就退回原本的樣子，不要
+    // 讓整頁變成錯誤畫面 —— 那等於用一個加分功能換掉一個本來就能用的功能。
+    final status = _result;
+    if (status != null && !status.isEmpty) {
+      try {
+        final grades = await widget.controller.repository.openGrades();
+        _match = matchGraduation(status, grades);
+      } catch (_) {
+        // 這一條路徑上的失敗對使用者沒有意義（他沒有要求看成績），
+        // 靜靜退回學校自己的紀錄就好。
+      }
+    }
+
     if (mounted) setState(() => _busy = false);
   }
 
@@ -115,6 +135,10 @@ class _GraduationPageState extends State<GraduationPage> {
         for (final g in r.groups) ...[
           const SizedBox(height: 20),
           _groupSection(context, g),
+        ],
+        if (_match != null && _match!.unmatched.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          _UnmatchedCard(courses: _match!.unmatched),
         ],
       ],
     );
@@ -229,6 +253,13 @@ class _GraduationPageState extends State<GraduationPage> {
     );
   }
 
+  /// 這一項的狀態。沒有成績可以比對時，就只看學校自己登錄的。
+  RequirementMatch _statusOf(RequiredCourse c) =>
+      _match?.of(c) ?? RequirementMatch(requirement: c);
+
+  int _doneCount(RequirementGroup g) =>
+      g.courses.where((c) => _statusOf(c).done).length;
+
   /// 一個類別底下的課目，照「建議修課學期」分堆。
   Widget _groupSection(BuildContext context, RequirementGroup g) {
     final theme = Theme.of(context);
@@ -252,7 +283,7 @@ class _GraduationPageState extends State<GraduationPage> {
                 ),
               ),
               Text(
-                '${g.takenCount} / ${g.courses.length} 門',
+                '${_doneCount(g)} / ${g.courses.length} 門',
                 style: TextStyle(
                     fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -289,33 +320,45 @@ class _GraduationPageState extends State<GraduationPage> {
 
   Widget _courseTile(BuildContext context, RequiredCourse c) {
     final scheme = Theme.of(context).colorScheme;
+    final st = _statusOf(c);
+
+    // 三態，不是兩態。「修課中」跟「還沒修」對使用者要做的事完全不同：
+    // 一個是等成績，一個是要去選課。
+    final (icon, color) = switch (st) {
+      final s when s.done => (Icons.check_circle, scheme.primary),
+      final s when s.inProgress => (Icons.pending_outlined, scheme.tertiary),
+      _ => (Icons.circle_outlined, scheme.outlineVariant),
+    };
+
+    // 這一項是靠什麼算完成的。
+    //
+    // **學校登錄的和我們比對出來的要分得開。** 前者是權威，後者是
+    // 「成績裡有一門同名的課」—— 那是推論，使用者有權知道差別，
+    // 尤其在學校還沒把抵免掛進來的時候。
+    final via = switch (st) {
+      final s when s.bySchool && c.takenName != null && c.takenName != c.name =>
+        '${c.takenTerm} ${c.takenName}',
+      final s when s.bySchool => c.takenTerm ?? '',
+      final s when s.course != null => '成績裡有「${s.course!.name}」'
+          '${s.course!.mark.note == null ? '' : '（${s.course!.mark.note}）'}',
+      _ => '',
+    };
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            c.taken ? Icons.check_circle : Icons.circle_outlined,
-            size: 18,
-            color: c.taken ? scheme.primary : scheme.outlineVariant,
-          ),
+          Icon(icon, size: 18, color: color),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(c.name),
-                // 修過的話，顯示實際修的那門課 —— 領域型的要求
-                //（「11-博雅課程」）底下修的是某一門具體的課，名字不一樣。
-                if (c.taken && c.takenName != null && c.takenName != c.name)
+                if (via.isNotEmpty)
                   Text(
-                    '${c.takenTerm} ${c.takenName}',
-                    style: TextStyle(
-                        fontSize: 12, color: scheme.onSurfaceVariant),
-                  )
-                else if (c.taken)
-                  Text(
-                    '${c.takenTerm}',
+                    via,
                     style: TextStyle(
                         fontSize: 12, color: scheme.onSurfaceVariant),
                   ),
@@ -341,6 +384,78 @@ class _GraduationPageState extends State<GraduationPage> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// 成績裡沒有對到任何一項必修的課。
+///
+/// **這張卡是整個比對功能的誠實所在。**
+///
+/// 比對只認完全同名（理由見 `matchGraduation`：用「包含」去比的話，
+/// 「程式設計實習」會被拿去抵「程式設計」，害人少修一門必修）。
+/// 代價是「體育」對不上「19-體育課程」、「國文」對不上「12-國文領域」、
+/// 「博雅【人文探索】」對不上「11-博雅課程」。
+///
+/// 那些不是「你沒修」，是名字對不起來。**不列出來的話，使用者會以為
+/// 那幾門抵免憑空消失了**，而畫面上完全看不出是比對的限制。
+class _UnmatchedCard extends StatelessWidget {
+  const _UnmatchedCard({required this.courses});
+
+  final List<CourseGrade> courses;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          child: Text(
+            '沒有對到必修的課',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '上面的比對只認完全同名的課。學校把要求寫成'
+                  '「19-體育課程」這種領域名稱時對不起來 —— 那不代表你沒修。',
+                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 12),
+                for (final c in courses) ...[
+                  Row(
+                    children: [
+                      Expanded(child: Text(c.name)),
+                      const SizedBox(width: 8),
+                      Text(
+                        [
+                          if (c.credits != null && c.credits != 0)
+                            '${c.credits} 學分',
+                          if (c.mark.note != null) c.mark.note!,
+                          if (c.mark.score != null) c.mark.score!,
+                        ].join('・'),
+                        style: TextStyle(
+                            fontSize: 12, color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                  if (c != courses.last) const Divider(height: 16),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
