@@ -256,14 +256,23 @@ void main() {
     });
 
     testWidgets('**對不到的課要列出來，不能默默消失**', (tester) async {
-      // 「體育」對不上「19-體育課程」。不列出來的話使用者會以為
-      // 那門抵免憑空不見了，而畫面上看不出是比對的限制。
-      script(row('作業系統', '抵') + row('體育', '抵', credits: '0'));
+      // 「統計學」在必修表上沒有對應的項目（是選修）。不列出來的話
+      // 使用者會以為那門抵免憑空不見了。
+      script(row('作業系統', '抵') + row('統計學', '抵'));
       await open(tester);
 
       expect(find.text('沒有對到必修的課'), findsOneWidget);
-      expect(find.text('體育'), findsOneWidget);
-      expect(find.textContaining('只認完全同名'), findsOneWidget);
+      expect(find.text('統計學'), findsOneWidget);
+    });
+
+    testWidgets('**領域型的要求，修過就算 —— 不管課名**', (tester) async {
+      // 必修表上是「19-體育課程」，成績裡是「體育」。
+      // 使用者：「只要有修過體育國文不管課名叫什麼都可以算」。
+      script(row('體育', '抵', credits: '0'));
+      await open(tester);
+
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.text('沒有對到必修的課'), findsNothing);
     });
 
     testWidgets('**成績抓不到時，退回學校自己的紀錄就好**', (tester) async {

@@ -156,16 +156,72 @@ void main() {
     });
   });
 
-  group('對不到的課一定要列出來', () {
-    test('名稱對不起來的抵免要看得到', () {
-      // 「體育」對不上「19-體育課程」—— 那是命名差異，不是沒修。
-      // 使用者看得到這份清單才判斷得出來。
+  group('領域型的要求 —— 修過就算，不管課名', () {
+    // 使用者講的：「只要有修過體育國文不管課名叫什麼都可以算」。
+    // 學校把這種要求寫成「19-體育課程」「12-國文領域」「11-博雅課程」。
+
+    test('「體育」算得進「19-體育課程」', () {
+      final status = _status(_need('19-體育課程'));
+      final m = matchGraduation(status, _report([_course('體育', '抵')]));
+      expect(m.of(status.groups.single.courses.single).done, isTrue);
+      expect(m.unmatched, isEmpty);
+    });
+
+    test('「博雅【人文探索】」算得進「11-博雅課程」', () {
+      // 這一個兩邊都不是對方的前綴，只有開頭那兩個字一樣。
+      final status = _status(_need('11-博雅課程'));
       final m = matchGraduation(
-        _status(_need('19-體育課程')),
-        _report([_course('體育', '抵')]),
+          status, _report([_course('博雅【人文探索】', '抵')]));
+      expect(m.of(status.groups.single.courses.single).done, isTrue);
+    });
+
+    test('領域要求幾列就吃幾門，多的還是「還沒修」', () {
+      final status = _status(_need('19-體育課程') * 3);
+      final m = matchGraduation(
+        status,
+        _report([_course('體育', '抵'), _course('體育', '抵')]),
       );
+      expect(m.byRequirement, hasLength(2));
+      expect(status.groups.single.courses.where((r) => !m.of(r).done),
+          hasLength(1));
+    });
+
+    test('**編號不能當依據 —— 「28-資工系專題(一)」不是領域**', () {
+      // 它跟「29-資工系專題(二)」是不同的兩門課。當成領域的話，
+      // 任何以「資工系專題」開頭的課都會被拿去抵。
+      final status = _status(_need('28-資工系專題(一)'));
+      final m = matchGraduation(
+          status, _report([_course('資工系專題(二)', '抵')]));
       expect(m.byRequirement, isEmpty);
-      expect(m.unmatched.single.name, '體育');
+      expect(m.unmatched.single.name, '資工系專題(二)');
+    });
+
+    test('**認不出是領域的就照舊嚴格** —— 放寬寧可少認', () {
+      // 「38-進階英文」沒有「領域／課程」那個結尾。
+      final status = _status(_need('38-進階英文'));
+      final m = matchGraduation(status, _report([_course('英文', '抵')]));
+      expect(m.byRequirement, isEmpty);
+    });
+
+    test('**具體課目先挑，領域後挑**', () {
+      // 「12-國文領域」的關鍵字是「國文」。領域先跑的話會把具體要求
+      // 「國文閱讀」要用的那門課先吃掉，而那一項就變成「還沒修」。
+      final status = _status(_need('12-國文領域') + _need('國文閱讀'));
+      final m = matchGraduation(
+        status,
+        _report([_course('國文閱讀', '抵'), _course('國文', '抵')]),
+      );
+      final req = status.groups.single.courses;
+      expect(m[req[1]]?.name, '國文閱讀', reason: '具體要求要拿到同名的那門');
+      expect(m[req[0]]?.name, '國文', reason: '領域拿剩下的');
+    });
+
+    test('對不到的課還是要列出來', () {
+      final m = matchGraduation(
+        _status(_need('作業系統')),
+        _report([_course('統計學', '抵')]),
+      );
+      expect(m.unmatched.single.name, '統計學');
     });
   });
 
@@ -198,12 +254,23 @@ void main() {
       expect(m.unmatched.map((c) => c.name), contains('程式設計實習'));
     });
 
-    test('體育／國文／博雅對不起來，而且列在對不到的清單裡', () {
-      // 學校用「19-體育課程」「12-國文領域」「11-博雅課程」這種領域名稱。
+    test('**體育／國文／博雅算得進對應的領域要求**', () {
+      // 學校用「19-體育課程」「12-國文領域」「11-博雅課程」這種領域名稱，
+      // 而成績裡是「體育」「國文」「博雅【人文探索】」。
+      final matched = m.byRequirement.values.map((c) => c.name).toList();
+      expect(matched.where((n) => n == '體育'), hasLength(3));
+      expect(matched.where((n) => n == '國文'), hasLength(2));
+      expect(matched.where((n) => n.startsWith('博雅')), hasLength(3));
+    });
+
+    test('剩下對不到的都是真的沒有對應的選修', () {
+      // 放寬之後剩 6 門：計算機概論實習、程式設計實習、Verilog硬體描述語言、
+      // 資料庫管理系統、統計學、程式語言 —— 必修表上本來就沒有這些。
       final left = m.unmatched.map((c) => c.name).toList();
-      expect(left, contains('體育'));
-      expect(left, contains('國文'));
-      expect(left.where((n) => n.startsWith('博雅')), isNotEmpty);
+      expect(left, isNot(contains('體育')));
+      expect(left, isNot(contains('國文')));
+      expect(left, contains('統計學'));
+      expect(left, contains('程式設計實習'));
     });
 
     test('本學期在修的課算「修課中」，不是完成', () {

@@ -72,6 +72,29 @@ String _key(String name) {
   return t.replaceFirst(RegExp(r'^\d+-'), '');
 }
 
+/// 「領域型」的要求 —— 那是一個類別，不是一門特定的課。
+///
+/// 學校寫成 `12-國文領域`、`19-體育課程`、`11-博雅課程`，意思是
+/// **「這個領域修滿」**，底下修的是哪一門都算。使用者自己講的：
+/// 「只要有修過體育國文不管課名叫什麼都可以算」。
+///
+/// **靠結尾的「領域／課程」認，不是靠前面那個編號。** 編號不能當依據：
+/// `28-資工系專題(一)` 和 `29-資工系專題(二)` 也有編號，但那是具體的兩門課
+/// —— 當成領域的話，任何以「資工系專題」開頭的課都會被拿去抵，
+/// 而那兩門是不同的課。
+///
+/// 認不出來的（`38-進階英文` 沒有那個結尾）就照一般課目嚴格比對 ——
+/// 放寬的規則寧可少認，不要多認。
+final RegExp _categoryRe = RegExp(r'^(.+?)(領域|課程)$');
+
+/// 領域要求的關鍵字（`國文領域` → `國文`），不是領域型就回 null。
+String? _categoryHead(String requirementName) {
+  final m = _categoryRe.firstMatch(_key(requirementName));
+  if (m == null) return null;
+  final head = m.group(1) ?? '';
+  return head.isEmpty ? null : head;
+}
+
 /// 排序用：先拿已經過了的，再拿正在修的，最後才是不及格／退選的。
 ///
 /// 同一門課修兩次（先當掉再重修）在成績裡是兩列。對到要求上的應該是
@@ -111,17 +134,39 @@ GraduationMatch matchGraduation(GraduationStatus status, GradeReport grades) {
   final used = <CourseGrade>{};
   final byRequirement = <RequiredCourse, CourseGrade>{};
 
-  for (final group in status.groups) {
-    for (final r in group.courses) {
-      final candidates = pool[_key(r.name)];
-      if (candidates == null) continue;
-      for (final c in candidates) {
-        if (used.contains(c)) continue;
-        used.add(c);
-        byRequirement[r] = c;
-        break;
-      }
+  final all = [
+    for (final group in status.groups) ...group.courses,
+  ];
+
+  // ---- 第一輪：完全同名 ----
+  //
+  // **一定要先跑完整輪。** 領域型的要求放在後面才不會把具體課目要用的那門課
+  // 先撈走：`12-國文領域` 的關鍵字是「國文」，如果必修表上同時有一門具體的
+  // 「國文閱讀」，領域先跑就會把它吃掉，而那門具體要求就變成「還沒修」。
+  for (final r in all) {
+    final candidates = pool[_key(r.name)];
+    if (candidates == null) continue;
+    for (final c in candidates) {
+      if (used.contains(c)) continue;
+      used.add(c);
+      byRequirement[r] = c;
+      break;
     }
+  }
+
+  // ---- 第二輪：領域型的要求，關鍵字開頭就算 ----
+  for (final r in all) {
+    if (byRequirement.containsKey(r)) continue;
+    final head = _categoryHead(r.name);
+    if (head == null) continue;
+
+    final hit = grades.courses
+        .where((c) => !used.contains(c) && _key(c.name).startsWith(head))
+        .toList()
+      ..sort((a, b) => _preference(a).compareTo(_preference(b)));
+    if (hit.isEmpty) continue;
+    used.add(hit.first);
+    byRequirement[r] = hit.first;
   }
 
   return GraduationMatch(
