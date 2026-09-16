@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../ais/exceptions.dart';
 import '../data/function_view.dart';
+import '../parsing/grades.dart';
 import '../parsing/graduation.dart';
 import 'app_controller.dart';
 import 'required_courses_page.dart';
@@ -164,8 +165,15 @@ class _GraduationPageState extends State<GraduationPage> {
               if (s != rows.last) const Divider(height: 20),
             ],
             const SizedBox(height: 8),
+            // **這句話是實測過的，不是免責聲明。**
+            //
+            // 2026-09-17：同一個帳號在成績頁有 19 筆抵免、歷年累計 40 學分，
+            // 而這一頁的每一類都是「已得 0、還差全部」—— 學校還沒把抵免
+            // 掛進畢業資格的必修對照。兩頁同時看一定會覺得其中一頁壞了，
+            // 所以要在這裡講出來，並且指出抵免在哪裡看得到。
             Text(
-              '「還差」是學校算的未通過學分，不含抵免與暑修的規則差異。',
+              '「還差」是學校算的未通過學分。抵免和暑修的學分不一定已經'
+              '反映在這一頁 —— 抵免明細在「成績」那一頁。',
               style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
             ),
           ],
@@ -324,14 +332,51 @@ class _GraduationPageState extends State<GraduationPage> {
               color: c.credits == 0 ? scheme.tertiary : scheme.onSurfaceVariant,
             ),
           ),
-          if (c.grade != null) ...[
+          // **成績那一欄不是數字。** 學校在同一欄裡混著分數和記號
+          // （`抵` 抵免、`+` 成績未到、`*` 不及格），照原樣粗體印出來的話，
+          // 一個「抵」看起來就像一個分數，而使用者只會覺得看不懂。
+          if (c.mark != null) ...[
             const SizedBox(width: 10),
-            Text(
-              c.grade!,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+            _GradeCell(mark: c.mark!),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// 必修表上的成績那一格。
+///
+/// 跟成績頁（`GradesPage`）講的是同一套記號 —— 同一個系統、同一份圖例。
+/// 兩頁對同一個「抵」講不一樣的話，使用者會以為那是兩件事。
+class _GradeCell extends StatelessWidget {
+  const _GradeCell({required this.mark});
+
+  final GradeMark mark;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    // 有分數就以分數為主角，不及格的記號用顏色講。
+    if (mark.score != null) {
+      return Text(
+        mark.score!,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: mark.isFailed ? scheme.error : null,
+        ),
+      );
+    }
+
+    // 沒有分數：認得的記號講人話，**認不得的照原樣顯示，不要自己編說法**。
+    final text = mark.note ?? mark.raw;
+    if (text.isEmpty) return const SizedBox.shrink();
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 12,
+        color: mark.isTransferred ? scheme.tertiary : scheme.onSurfaceVariant,
       ),
     );
   }

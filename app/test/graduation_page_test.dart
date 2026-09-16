@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ntou_app/src/parsing/grades.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
 import 'package:ntou_app/src/ui/graduation_page.dart';
 import 'package:ntou_app/src/ui/theme.dart';
@@ -115,6 +116,67 @@ void main() {
     expect(find.text('12-國文領域'), findsOneWidget);
     expect(find.text('1141 大一國文'), findsOneWidget);
     expect(find.text('85'), findsOneWidget);
+  });
+
+  group('成績那一欄不是數字', () {
+    /// 一列「抵免」的課：成績欄寫的是 `抵`。
+    String taken(String grade) => '''
+      <tr><td>1151</td><td>作業系統</td><td>必</td><td>3</td>
+          <td>資工系</td><td>$grade</td><td>3</td>
+          <td>三上</td><td>作業系統</td><td>3</td><td></td></tr>
+    ''';
+
+    testWidgets('**「抵」要寫成「抵免」，不是印一個粗體的抵**', (tester) async {
+      // 使用者的 19 筆抵免會全部落在這一欄。照原樣粗體印出來的話，
+      // 那個字看起來就像一個分數。
+      ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+          ? _dispatcher
+          : _page(rows: taken('抵'), credits: _credits);
+      await open(tester);
+
+      expect(find.text('抵免'), findsOneWidget);
+      expect(find.text('抵'), findsNothing);
+    });
+
+    testWidgets('半形的「成績未到」也要認得', (tester) async {
+      // 圖例印全形 ＋(U+FF0B)，資料是半形 +(U+002B) —— 成績單頁實測過。
+      ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+          ? _dispatcher
+          : _page(rows: taken('+'), credits: _credits);
+      await open(tester);
+
+      expect(find.text('成績未到'), findsOneWidget);
+      expect(find.text('+'), findsNothing);
+    });
+
+    testWidgets('真的是分數就照分數顯示', (tester) async {
+      ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+          ? _dispatcher
+          : _page(rows: taken('85'), credits: _credits);
+      await open(tester);
+
+      expect(find.text('85'), findsOneWidget);
+    });
+
+    testWidgets('跟成績頁講的是同一套話', (tester) async {
+      // 兩頁對同一個「抵」講不一樣的話，使用者會以為那是兩件事。
+      expect(parseGradeMark('抵').note, '抵免');
+      expect(parseGradeMark('+').note, '成績未到');
+    });
+
+    testWidgets('**要說抵免不一定算進這一頁，並指出去哪裡看**', (tester) async {
+      // 2026-09-17 實測：同一個帳號在成績頁有 19 筆抵免、累計 40 學分，
+      // 而這一頁每一類都是「已得 0、還差全部」—— 學校還沒把抵免掛進
+      // 畢業資格的必修對照。兩頁同時看一定會覺得其中一頁壞了。
+      ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
+          ? _dispatcher
+          : _page(rows: _notTaken, credits: _credits);
+      await open(tester);
+
+      expect(find.textContaining('抵免和暑修的學分不一定已經反映在這一頁'),
+          findsOneWidget);
+      expect(find.textContaining('「成績」那一頁'), findsOneWidget);
+    });
   });
 
   testWidgets('未修的是空心圓，不是打勾', (tester) async {

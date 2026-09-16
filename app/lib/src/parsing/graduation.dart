@@ -11,6 +11,7 @@ library;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
+import 'grades.dart';
 import 'html_text.dart';
 
 /// 一門必修課目，以及你修過它沒有。
@@ -44,8 +45,20 @@ class RequiredCourse {
   /// 領域型的要求（「11-博雅課程」）底下修的是某一門具體的課。
   final String? takenName;
 
-  /// 成績。學校用 `＊` 表示不及格、`＋` 表示成績未到（頁面下方的說明）。
+  /// 成績。**這一欄不是數字** —— 學校在同一欄裡混著分數和狀態記號
+  /// （`＊` 不及格、`＋` 成績未到、`抵` 抵免）。用 [mark] 拆開來看，
+  /// 不要直接印：畫面上一個粗體的「抵」看起來就像一個分數。
   final String? grade;
+
+  /// [grade] 拆成分數和記號。沒有成績就是 null。
+  ///
+  /// 跟成績單（`GRD5010`）共用同一套記號語意 —— 那是同一個系統、
+  /// 同一份圖例，而且**圖例印全形、資料是半形**這個坑兩邊都會踩。
+  GradeMark? get mark {
+    final g = grade;
+    if (g == null || g.isEmpty) return null;
+    return parseGradeMark(g);
+  }
 
   /// 審核結果（抵免、承認之類的批註）。
   final String? review;
