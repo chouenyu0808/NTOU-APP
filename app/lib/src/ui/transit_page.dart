@@ -81,6 +81,7 @@ class _TransitPageState extends State<TransitPage> {
   LastKnownPlace? _place;
   List<StopBoard> _boards = const [];
   bool _loading = true;
+  Future<void>? _refreshTask;
   bool _configured = true;
   String? _fatal;
   Timer? _timer;
@@ -210,9 +211,7 @@ class _TransitPageState extends State<TransitPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            forever
-                ? '定位權限被關掉了，要用的話請到系統設定裡開啟'
-                : '沒有定位權限，小組件會照原本的順序顯示',
+            forever ? '定位權限被關掉了，要用的話請到系統設定裡開啟' : '沒有定位權限，小組件會照原本的順序顯示',
           ),
         ),
       );
@@ -326,7 +325,23 @@ class _TransitPageState extends State<TransitPage> {
   /// [manual] 是使用者自己按的（下拉或按重新整理鈕），不是計時器。
   ///
   /// 手動的時候要把補充資料的退避解除 —— 那是他明確在說「現在再試一次」。
-  Future<void> _refresh({bool manual = false}) async {
+  Future<void> _refresh({bool manual = false}) {
+    // 下拉、按鈕與計時器共用同一輪更新，避免重複請求與舊結果覆蓋新結果。
+    final pending = _refreshTask;
+    if (pending != null) return pending;
+    if (_repo == null || !_configured) return Future<void>.value();
+    final task = _performRefresh(manual: manual).whenComplete(() {
+      if (mounted) {
+        setState(() => _refreshTask = null);
+      }
+    });
+    setState(() {
+      _refreshTask = task;
+    });
+    return task;
+  }
+
+  Future<void> _performRefresh({required bool manual}) async {
     final repo = _repo;
     if (repo == null || !_configured) return;
     if (manual) repo.retryExtrasNow();
@@ -370,8 +385,8 @@ class _TransitPageState extends State<TransitPage> {
                 _pinnedStop != null
                     ? Icons.push_pin
                     : _place != null
-                        ? Icons.my_location
-                        : Icons.location_searching,
+                    ? Icons.my_location
+                    : Icons.location_searching,
               ),
               tooltip: _widgetOrderTooltip,
               onPressed: _pinnedStop != null
@@ -379,9 +394,29 @@ class _TransitPageState extends State<TransitPage> {
                   : () => _locate(ask: true),
             ),
             IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: '重新整理',
-              onPressed: () => _refresh(manual: true),
+              icon: AnimatedSwitcher(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 160),
+                child: _refreshTask == null
+                    ? const Icon(Icons.refresh, key: ValueKey('更新'))
+                    : SizedBox(
+                        key: const ValueKey('更新中'),
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          value: MediaQuery.disableAnimationsOf(context)
+                              ? 0.75
+                              : null,
+                          semanticsLabel: '正在更新交通資訊',
+                        ),
+                      ),
+              ),
+              tooltip: _refreshTask == null ? '重新整理' : '正在更新',
+              onPressed: _refreshTask == null
+                  ? () => _refresh(manual: true)
+                  : null,
             ),
           ],
         ],
@@ -495,10 +530,10 @@ class _StopCard extends StatelessWidget {
                         isPinned ? Icons.push_pin : Icons.push_pin_outlined,
                         size: 20,
                       ),
-                      color: isPinned ? scheme.primary : scheme.onSurfaceVariant,
-                      tooltip: isPinned
-                          ? '取消：讓小組件顯示全部站牌'
-                          : '讓桌面小組件只顯示這一站',
+                      color: isPinned
+                          ? scheme.primary
+                          : scheme.onSurfaceVariant,
+                      tooltip: isPinned ? '取消：讓小組件顯示全部站牌' : '讓桌面小組件只顯示這一站',
                       onPressed: onTogglePinned,
                     ),
                   if (onToggleCollapsed != null)

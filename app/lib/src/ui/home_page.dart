@@ -13,6 +13,7 @@ import 'calendar_page.dart';
 import 'grades_page.dart';
 import 'graduation_page.dart';
 import 'theme.dart';
+import 'login_page.dart';
 
 /// 首頁：今天要上什麼課，一眼看完。
 ///
@@ -20,11 +21,7 @@ import 'theme.dart';
 /// 打開要先找今天在哪一欄。真正每天會看的問題只有一個 ——「等一下有什麼課、
 /// 在哪間教室」。那個問題值得一個不用捲動、不用找的位置。
 class HomePage extends StatefulWidget {
-  const HomePage({
-    super.key,
-    required this.controller,
-    this.now,
-  });
+  const HomePage({super.key, required this.controller, this.now});
 
   final AppController controller;
 
@@ -47,13 +44,22 @@ class HomePage extends StatefulWidget {
   /// 顯示時再把節次收成範圍。
   static List<Course> coursesOn(TimetableResult? t, int weekday) {
     if (t == null) return const [];
-    final out = [
-      for (final c in t.courses)
-        if (c.slots.any((s) => s.weekday == weekday)) c,
-    ];
-    out.sort((a, b) => _firstPeriod(a, weekday).compareTo(
-          _firstPeriod(b, weekday),
-        ));
+    final out = <Course>[];
+    for (final c in t.courses) {
+      final slots = c.slots.where((s) => s.weekday == weekday).toList()..sort();
+      var segment = <TimeSlot>[];
+      for (final slot in slots) {
+        if (segment.isNotEmpty && slot.period != segment.last.period + 1) {
+          out.add(c.copyWith(slots: segment));
+          segment = [];
+        }
+        segment.add(slot);
+      }
+      if (segment.isNotEmpty) out.add(c.copyWith(slots: segment));
+    }
+    out.sort(
+      (a, b) => _firstPeriod(a, weekday).compareTo(_firstPeriod(b, weekday)),
+    );
     return out;
   }
 
@@ -108,14 +114,13 @@ class HomePage extends StatefulWidget {
 
   /// 「第 2-4 節」；不連續就列出來（「第 2、5 節」）。
   static String periodLabel(Course c, int weekday) {
-    final ps = c.slots.where((s) => s.weekday == weekday).map((s) => s.period).toList()
-      ..sort();
+    final ps =
+        c.slots.where((s) => s.weekday == weekday).map((s) => s.period).toList()
+          ..sort();
     if (ps.isEmpty) return '';
     if (ps.length == 1) return '第 ${ps.first} 節';
     final continuous = ps.last - ps.first == ps.length - 1;
-    return continuous
-        ? '第 ${ps.first}-${ps.last} 節'
-        : '第 ${ps.join('、')} 節';
+    return continuous ? '第 ${ps.first}-${ps.last} 節' : '第 ${ps.join('、')} 節';
   }
 
   @override
@@ -176,23 +181,115 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
           children: [
-            // 日期直接當標題。原本上面還有一行 headlineMedium 的「首頁」，
-            // 那佔掉整個第一屏最上面那一行，而且它說的事使用者從底部
-            // 分頁列已經知道了。
-            Text(
-              '${now.month} 月 ${now.day} 日',
-              style: theme.textTheme.headlineSmall,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.end,
+              spacing: 16,
+              runSpacing: 2,
+              children: [
+                Text(
+                  '今天',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    '${now.month} 月 ${now.day} 日  星期${kWeekdays[weekday.clamp(0, 6)]}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Text(
-              '星期${kWeekdays[weekday.clamp(0, 6)]}',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
+            if (_c.phase != AppPhase.ready)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('課表與預排可離線查看'),
+                  subtitle: const Text('登入後更新課表、查詢校務資料'),
+                  trailing: TextButton(
+                    onPressed: () => ensureSignedIn(context, _c),
+                    child: const Text('登入'),
+                  ),
+                ),
+              ),
             _TodayCard(controller: _c, weekday: weekday, now: now),
+            if (_c.homeTimetable case final table?)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  '${table.label} · 更新 ${table.fetchedAt.month}/${table.fetchedAt.day}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+
+            const SizedBox(height: 26),
+            Text('常用', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 10),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final useOneColumn =
+                    MediaQuery.textScalerOf(context).scale(16) > 22;
+                final itemWidth = useOneColumn
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - 10) / 2;
+                return Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    SizedBox(
+                      width: itemWidth,
+                      child: _Shortcut(
+                        icon: Icons.assignment_outlined,
+                        title: '成績',
+                        subtitle: '各科成績、抵免與累計學分',
+                        onTap: () async {
+                          if (!await ensureSignedIn(context, _c) ||
+                              !context.mounted) {
+                            return;
+                          }
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => GradesPage(controller: _c),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _Shortcut(
+                        icon: Icons.school_outlined,
+                        title: '畢業進度',
+                        subtitle: '還差哪些課、門檻過了沒',
+                        onTap: () async {
+                          if (!await ensureSignedIn(context, _c) ||
+                              !context.mounted) {
+                            return;
+                          }
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => GraduationPage(controller: _c),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
 
             // 行事曆抓不到就整區不畫。它是學校官網上的東西，官網掛掉或手機
             // 沒網路都會是空的 —— 那時候放一張「載入失敗」的卡沒有幫到任何人，
@@ -208,42 +305,6 @@ class _HomePageState extends State<HomePage> {
             Text('校園公告', style: theme.textTheme.titleMedium),
             const SizedBox(height: 10),
             _Announcements(controller: _c, items: _c.announcements),
-
-            // 快捷本來有四張，其中三張（完整課表 / 預排課表 / 校務系統）
-            // 只是把底部分頁列再列一次 —— 同一個目的地給兩個入口，
-            // 沒有讓人更快到，只是讓首頁更長。留下的都是**不在分頁列上**
-            // 而且埋得很深的（成績在選單第三層）。
-            const SizedBox(height: 28),
-            _Shortcut(
-              icon: Icons.assignment_outlined,
-              title: '成績',
-              subtitle: '各科成績、抵免與累計學分',
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => GradesPage(controller: _c),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _Shortcut(
-              icon: Icons.school_outlined,
-              title: '畢業進度',
-              subtitle: '還差哪些課、門檻過了沒',
-              // **改指向畢業資格，不是必修科目表。**
-              //
-              // 兩頁講的是同一件事，但必修科目表要自己選入學年度／部別／
-              // 系所／入學身分 —— 選錯就查到別系的規劃，而畫面上完全正常。
-              // 畢業資格不用選（學校知道你是誰），而且同一份清單上多了
-              // 「我修了沒」。
-              //
-              // 必修科目表沒有消失，它在畢業資格那一頁的「其他系的規劃」——
-              // 那才是它現在唯一還贏的地方（查別系，給想轉系或雙主修的人）。
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => GraduationPage(controller: _c),
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -267,31 +328,44 @@ class _TodayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final t = controller.timetable;
+    final t = controller.homeTimetable;
 
     Widget wrap(Widget child) => Card(
-          margin: EdgeInsets.zero,
-          child: Padding(padding: const EdgeInsets.all(18), child: child),
-        );
+      margin: EdgeInsets.zero,
+      child: Padding(padding: const EdgeInsets.all(18), child: child),
+    );
 
     // 還沒有任何課表 —— 可能沒登入過，也可能學校系統開不起來。
     if (t == null) {
-      return wrap(_Notice(
-        icon: Icons.cloud_off_outlined,
-        title: '還沒有課表資料',
-        body: '登入之後會自動抓，抓過一次就算離線也看得到。',
-      ));
+      if (controller.loadingTimetable) {
+        return wrap(
+          const _Notice(
+            icon: Icons.schedule_outlined,
+            title: '登入完成，正在取得課表',
+            body: '你可以先使用其他功能，課表更新後會自動顯示。',
+          ),
+        );
+      }
+      return wrap(
+        _Notice(
+          icon: Icons.cloud_off_outlined,
+          title: '還沒有課表資料',
+          body: '登入之後會自動抓，抓過一次就算離線也看得到。',
+        ),
+      );
     }
 
     // 學校明確回「查無符合資料」—— 這是答案，不是錯誤。
     // 開學日期**不要寫死**，一律從行事曆讀（見下面的 nearestClassStart）——
     // 寫死一個日期只會在明年變成錯的。
     if (t.isEmpty) {
-      return wrap(_Notice(
-        icon: Icons.beach_access_outlined,
-        title: '這學期還沒有選課資料',
-        body: '${t.label}｜學校系統目前查不到修課紀錄。\n選課之後回來這裡就會出現。',
-      ));
+      return wrap(
+        _Notice(
+          icon: Icons.beach_access_outlined,
+          title: '這學期還沒有選課資料',
+          body: '${t.label}｜學校系統目前查不到修課紀錄。\n選課之後回來這裡就會出現。',
+        ),
+      );
     }
 
     // 還沒開始上課 —— 課表已經有了，但那些課還沒發生。
@@ -301,12 +375,15 @@ class _TodayCard extends StatelessWidget {
     // （學校寫「開始上課」不是「開學」），行事曆抓不到就跳過這一段 ——
     // **寧可少講一句，也不要編一個開學日期出來。**
     final classStart = nearestClassStart(controller.calendarEvents, now);
-    if (classStart != null && DateTime(now.year, now.month, now.day).isBefore(classStart)) {
-      return wrap(_Notice(
-        icon: Icons.event_available_outlined,
-        title: '${classStart.month} 月 ${classStart.day} 日開始上課',
-        body: '${t.label}｜這學期共 ${t.courses.length} 門課。',
-      ));
+    if (classStart != null &&
+        DateTime(now.year, now.month, now.day).isBefore(classStart)) {
+      return wrap(
+        _Notice(
+          icon: Icons.event_available_outlined,
+          title: '${classStart.month} 月 ${classStart.day} 日開始上課',
+          body: '${t.label}｜這學期共 ${t.courses.length} 門課。',
+        ),
+      );
     }
 
     // 有課，但**一門都沒有上課時間** —— 那不是「今天沒有課」，
@@ -319,22 +396,26 @@ class _TodayCard extends StatelessWidget {
     // 結果首頁會拿一個咖啡杯圖示對每一個使用者說「今天沒有課」，
     // 而他其實第二節就要進教室。**編一個錯的答案比承認不知道糟得多。**
     if (!t.hasSlots) {
-      return wrap(_Notice(
-        icon: Icons.schedule_outlined,
-        title: '這學期有 ${t.courses.length} 門課，但沒有上課時間',
-      ));
+      return wrap(
+        _Notice(
+          icon: Icons.schedule_outlined,
+          title: '這學期有 ${t.courses.length} 門課，但沒有上課時間',
+        ),
+      );
     }
 
     final today = HomePage.coursesOn(t, weekday);
 
     if (today.isEmpty) {
-      return wrap(_Notice(
-        icon: weekday >= 5
-            ? Icons.weekend_outlined
-            : Icons.free_breakfast_outlined,
-        title: weekday >= 5 ? '週末，今天沒有課' : '今天沒有課',
-        body: '${t.label}｜這學期共 ${t.courses.length} 門課。',
-      ));
+      return wrap(
+        _Notice(
+          icon: weekday >= 5
+              ? Icons.weekend_outlined
+              : Icons.free_breakfast_outlined,
+          title: weekday >= 5 ? '週末，今天沒有課' : '今天沒有課',
+          body: '${t.label}｜這學期共 ${t.courses.length} 門課。',
+        ),
+      );
     }
 
     final times = PeriodTimes.ntou;
@@ -348,13 +429,6 @@ class _TodayCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 已經上完的收成一行。它們還有用（「我今天到底去了沒」），
-        // 但不該跟等一下要去的課搶同樣的位置。
-        if (split.done.isNotEmpty) ...[
-          _DoneRow(courses: split.done, weekday: weekday),
-          const SizedBox(height: 10),
-        ],
-
         if (split.next != null) ...[
           _NextClass(
             course: split.next!,
@@ -370,12 +444,13 @@ class _TodayCard extends StatelessWidget {
             padding: const EdgeInsets.only(left: 4, bottom: 6),
             child: Text(
               times.isKnown ? '今天還有' : '今天的課',
-              style: theme.textTheme.titleSmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
             ),
           ),
-          Card(
-            margin: EdgeInsets.zero,
+          Material(
+            color: Colors.transparent,
             child: Column(
               children: [
                 for (var i = 0; i < split.later.length; i++) ...[
@@ -386,6 +461,11 @@ class _TodayCard extends StatelessWidget {
               ],
             ),
           ),
+        ],
+        // 已結束的課保留查閱，但把第一眼的位置留給接下來的課。
+        if (split.done.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _DoneRow(courses: split.done, weekday: weekday),
         ],
       ],
     );
@@ -403,26 +483,31 @@ class _CourseRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       leading: Container(
-        width: 44,
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        width: 46,
+        padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
           color: scheme.primaryContainer,
           borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
         ),
         child: Text(
-          HomePage.periodLabel(course, weekday)
-              .replaceAll('第 ', '')
-              .replaceAll(' 節', ''),
+          HomePage.periodLabel(
+            course,
+            weekday,
+          ).replaceAll('第 ', '').replaceAll(' 節', ''),
           textAlign: TextAlign.center,
           style: TextStyle(
             color: scheme.onPrimaryContainer,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             fontSize: 12,
           ),
         ),
       ),
-      title: Text(course.name),
+      title: Text(
+        course.name,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: Text(
         [
           if (course.teacher.isNotEmpty) course.teacher,
@@ -461,6 +546,7 @@ class _NextClass extends StatelessWidget {
         .reduce((a, b) => a < b ? a : b);
 
     final slot = times[start];
+    final endSlot = times[HomePage.lastPeriod(course, weekday)];
     final until = times.minutesUntil(start, now);
     final started = slot != null && now >= slot.start;
 
@@ -469,73 +555,90 @@ class _NextClass extends StatelessWidget {
     final label = !times.isKnown
         ? '今天第一堂'
         : started
-            ? '現在'
-            : '下一堂';
+        ? '現在'
+        : '下一堂';
 
-    return Card(
-      margin: EdgeInsets.zero,
-      color: scheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(NtouTheme.radiusLg),
+        border: Border.all(color: scheme.outlineVariant, width: 0.7),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 8,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              // 時間只有真的知道才寫。**不要猜** —— 猜錯的話畫面上看不出來，
+              // 使用者只會照著遲到。
+              if (slot != null)
                 Text(
-                  label,
+                  '${PeriodTimes.hhmm(slot.start)}'
+                  '–${PeriodTimes.hhmm(endSlot?.end ?? slot.end)}',
                   style: theme.textTheme.labelLarge?.copyWith(
-                    color: scheme.onPrimaryContainer.withValues(alpha: 0.8),
-                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
-                // 時間只有真的知道才寫。**不要猜** —— 猜錯的話畫面上看不出來，
-                // 使用者只會照著遲到。
-                if (slot != null)
-                  Text(
-                    '${PeriodTimes.hhmm(slot.start)}'
-                    '–${PeriodTimes.hhmm(slot.end)}',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: scheme.onPrimaryContainer.withValues(alpha: 0.8),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            course.name,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontSize: 25,
+              height: 1.2,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            [
+              HomePage.periodLabel(course, weekday),
+              if (course.room.isNotEmpty) course.room,
+              if (course.teacher.isNotEmpty) course.teacher,
+            ].join(' · '),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          if (until != null) ...[
+            const SizedBox(height: 18),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.schedule_outlined, size: 16, color: scheme.primary),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    until >= 60
+                        ? '還有 ${until ~/ 60} 小時 ${until % 60} 分'
+                        : '還有 $until 分鐘',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              course.name,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: scheme.onPrimaryContainer,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              [
-                HomePage.periodLabel(course, weekday),
-                if (course.room.isNotEmpty) course.room,
-                if (course.teacher.isNotEmpty) course.teacher,
-              ].join(' · '),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: scheme.onPrimaryContainer.withValues(alpha: 0.85),
-              ),
-            ),
-            if (until != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                until >= 60
-                    ? '還有 ${until ~/ 60} 小時 ${until % 60} 分'
-                    : '還有 $until 分鐘',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
@@ -557,12 +660,16 @@ class _DoneRow extends StatelessWidget {
       child: ExpansionTile(
         shape: const Border(),
         collapsedShape: const Border(),
-        leading: Icon(Icons.check_circle_outline,
-            size: 20, color: scheme.onSurfaceVariant),
+        leading: Icon(
+          Icons.check_circle_outline,
+          size: 20,
+          color: scheme.onSurfaceVariant,
+        ),
         title: Text(
           '今天已經上完 ${courses.length} 堂',
-          style: theme.textTheme.bodyMedium
-              ?.copyWith(color: scheme.onSurfaceVariant),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
         ),
         children: [
           for (final c in courses) _CourseRow(course: c, weekday: weekday),
@@ -600,45 +707,47 @@ class _Calendar extends StatelessWidget {
         children: [
           for (var i = 0; i < shown.length; i++) ...[
             if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
-            Builder(builder: (context) {
-              final e = shown[i];
-              final ongoing = e.covers(today);
-              // 起訖日**不要疊成兩行塞進 leading** —— ListTile 的 leading
-              // 高度是有限的，兩行 Text 會把它撐破（RenderFlex overflow）。
-              // 左邊只放開始日，結束日跟「進行中」一起放到副標。
-              final note = [
-                if (!e.isSingleDay) '到 ${e.end.month}/${e.end.day}',
-                // 「進行中」要標出來 —— 一條開始日在上禮拜的事件，
-                // 光看日期會被當成已經過去了。
-                if (ongoing) '進行中',
-              ].join(' · ');
+            Builder(
+              builder: (context) {
+                final e = shown[i];
+                final ongoing = e.covers(today);
+                // 起訖日**不要疊成兩行塞進 leading** —— ListTile 的 leading
+                // 高度是有限的，兩行 Text 會把它撐破（RenderFlex overflow）。
+                // 左邊只放開始日，結束日跟「進行中」一起放到副標。
+                final note = [
+                  if (!e.isSingleDay) '到 ${e.end.month}/${e.end.day}',
+                  // 「進行中」要標出來 —— 一條開始日在上禮拜的事件，
+                  // 光看日期會被當成已經過去了。
+                  if (ongoing) '進行中',
+                ].join(' · ');
 
-              return ListTile(
-                leading: SizedBox(
-                  width: 44,
-                  child: Center(
-                    child: Text(
-                      '${e.start.month}/${e.start.day}',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: ongoing ? scheme.primary : scheme.onSurface,
-                        fontWeight: FontWeight.w700,
+                return ListTile(
+                  leading: SizedBox(
+                    width: 44,
+                    child: Center(
+                      child: Text(
+                        '${e.start.month}/${e.start.day}',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: ongoing ? scheme.primary : scheme.onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                title: Text(e.title, style: theme.textTheme.bodyMedium),
-                subtitle: note.isEmpty
-                    ? null
-                    : Text(
-                        note,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: ongoing
-                              ? scheme.primary
-                              : scheme.onSurfaceVariant,
+                  title: Text(e.title, style: theme.textTheme.bodyMedium),
+                  subtitle: note.isEmpty
+                      ? null
+                      : Text(
+                          note,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: ongoing
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-              );
-            }),
+                );
+              },
+            ),
           ],
           // 首頁只列接下來 4 筆。整年的事件手上都有（抓官網那頁時一起 parse
           // 的），比顯示的多才給「查看全部」—— 一樣多的時候點進去跟這裡一樣。
@@ -647,10 +756,8 @@ class _Calendar extends StatelessWidget {
             TextButton(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => CalendarPage(
-                    events: events,
-                    now: DateTime.now(),
-                  ),
+                  builder: (_) =>
+                      CalendarPage(events: events, now: DateTime.now()),
                 ),
               ),
               child: const Text('查看整學期行事曆'),
@@ -676,13 +783,12 @@ class _Announcements extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) {
-      return Card(
-        margin: EdgeInsets.zero,
-        child: const Padding(
-          padding: EdgeInsets.all(18),
-          child: _Notice(
-            icon: Icons.campaign_outlined,
-            title: '登入後顯示校園公告',
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          controller.phase == AppPhase.ready ? '目前沒有可顯示的公告' : '登入後顯示校園公告',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       );
@@ -704,10 +810,8 @@ class _Announcements extends StatelessWidget {
             TextButton(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => AnnouncementsPage(
-                    controller: controller,
-                    items: items,
-                  ),
+                  builder: (_) =>
+                      AnnouncementsPage(controller: controller, items: items),
                 ),
               ),
               child: Text('查看全部 ${items.length} 則'),
@@ -741,17 +845,16 @@ class _AnnouncementRow extends StatelessWidget {
         ].join('  ·  '),
         style: theme.textTheme.bodySmall,
       ),
-      trailing:
-          openable ? const Icon(Icons.chevron_right, size: 20) : null,
+      trailing: openable ? const Icon(Icons.chevron_right, size: 20) : null,
       onTap: openable
           ? () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => AnnouncementDetailPage(
-                    controller: controller,
-                    summary: item,
-                  ),
+              MaterialPageRoute<void>(
+                builder: (_) => AnnouncementDetailPage(
+                  controller: controller,
+                  summary: item,
                 ),
-              )
+              ),
+            )
           : null,
     );
   }
@@ -811,8 +914,9 @@ class _Notice extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   b,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ],
@@ -837,14 +941,46 @@ class _Shortcut extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          leading: Icon(icon),
-          title: Text(title),
-          subtitle: Text(subtitle),
-          trailing: const Icon(Icons.chevron_right, size: 20),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Semantics(
+      button: true,
+      label: '$title，$subtitle',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Material(
+        color: scheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(NtouTheme.radiusLg),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
           onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+            child: Row(
+              children: [
+                Icon(icon, color: scheme.primary, size: 22),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: scheme.onSurfaceVariant,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
         ),
-      );
+      ),
+    );
+  }
 }

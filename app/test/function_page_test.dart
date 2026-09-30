@@ -84,6 +84,20 @@ const _printOnlyPage =
     r'<input type="submit" name="PRINT_BTN1" ml="CB_列印" value="列印">'
     '</form></body></html>';
 
+/// 要上傳檔案的功能頁（學生請假上傳補件、上傳兵役相關附件）。
+///
+/// `<input type="file">` 送不出去 —— `AisRepository._sendable` 會整個跳過它，
+/// 而送出鈕照樣按得下去：學校那邊收到的是一張**沒有附件**的申請，
+/// 而且回應裡一個字都不會提到少了東西。
+const _uploadPage =
+    '<html><head><title>SEC2080_學生請假上傳補件</title></head><body><form>'
+    r'<input type="hidden" name="__VIEWSTATE" value="vs">'
+    '<select name="Q_AYEAR" cname="學年度">'
+    '<option value="115">115</option></select>'
+    r'<input type="file" name="UP_FILE" cname="證明文件">'
+    r'<input type="submit" name="SAVE_BTN1" ml="CB_送出" value="送出">'
+    '</form></body></html>';
+
 /// 被踢回登入頁 —— **狀態碼一樣是 200**，只能靠指紋認出來。
 const _kickedToLogin =
     '<html><body><input name="M_PORTAL_LOGIN_ACNT"><input name="LoginPWD">'
@@ -107,6 +121,13 @@ const _mutatingFn = AisFunction(
   trail: ['教務系統', '選課系統', '線上加退選'],
 );
 
+/// 要上傳檔案的功能頁。這一支在 `mutating` 清單裡 —— 送出去是一張申請。
+const _uploadFn = AisFunction(
+  title: '學生請假上傳補件',
+  path: 'Application/SEC/SEC20/SEC2080_.aspx?progcd=x',
+  trail: ['學生請假', '學生請假上傳補件'],
+);
+
 /// 缺曠課紀錄 —— 學號欄是空的那種頁面。
 const _absenceFn = AisFunction(
   title: '查詢缺曠課紀錄',
@@ -119,7 +140,8 @@ bool _isDispatcher(FakeRequest r) =>
     r.page.startsWith('TKE2211_.aspx') ||
     r.page.startsWith('TKE2011_.aspx') ||
     r.page.startsWith('GRD7050_.aspx') ||
-    r.page.startsWith('SEC5010_.aspx');
+    r.page.startsWith('SEC5010_.aspx') ||
+    r.page.startsWith('SEC2080_.aspx');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -240,6 +262,118 @@ void main() {
 
       expect(find.text('按上面的按鈕開始查詢。'), findsNothing,
           reason: '上面沒有按鈕可以按');
+      await unmount(tester);
+    });
+
+    testWidgets('只有列印鈕的頁面要說出為什麼是空的', (tester) async {
+      // 不叫人去按不存在的鈕是對的，但畫面上只剩一個學年度下拉、下面全空 ——
+      // 使用者分不出是 App 壞了還是自己少按了什麼。
+      ais.reply = (r) => _isDispatcher(r) ? _dispatcher : _printOnlyPage;
+      await open(tester, fn: _printFn);
+
+      expect(
+        find.textContaining('這一頁的內容是學校的列印報表'),
+        findsOneWidget,
+      );
+      // 說了開不出來就要說去哪裡印，不然使用者還是不知道下一步該做什麼。
+      expect(find.textContaining('學校網頁版'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('學校自己有話要說的時候不要再補一句列印報表', (tester) async {
+      // 那句話才是使用者需要知道的原因。兩句疊在一起只會互相搶。
+      ais.reply = (r) {
+        if (_isDispatcher(r)) return _dispatcher;
+        // 話在導向鏈的中間那一頁上（`_dispatcher` 導向的就是這一頁）
+        if (r.page.startsWith('TKE2211_01.aspx')) {
+          return "<html><body>"
+              "<script>alert('不在開放列印時間!');</script>"
+              "<script>location.href='/Portal.aspx';</script>"
+              "</body></html>";
+        }
+        return '<html><body>首頁</body></html>';
+      };
+      await open(tester, fn: _printFn);
+
+      expect(find.text('不在開放列印時間'), findsOneWidget);
+      expect(find.textContaining('學校的列印報表'), findsNothing);
+      await unmount(tester);
+    });
+  });
+
+  group('要上傳檔案的頁面', () {
+    // App 送不出檔案（`_sendable` 會跳過 file 欄位），但送出鈕照樣按得下去。
+    // 學校那邊收下的是一張**沒有附件**的申請，而且回應裡不會提到這件事 ——
+    // 使用者按完看到的是「已送出」，要等到被退件才知道。
+    //
+    // 這是會改資料、而且不可逆的操作，所以不能安靜地發生。
+
+    void upload() {
+      ais.reply = (r) => _isDispatcher(r) ? _dispatcher : _uploadPage;
+    }
+
+    Finder submitButton() => find.widgetWithText(FilledButton, '送出');
+
+    testWidgets('還沒按之前，整頁就先說這裡送出的申請不會有附件', (tester) async {
+      upload();
+      await open(tester, fn: _uploadFn);
+
+      // 填完十個欄位才發現白填太晚了 —— 開始填之前就要知道。
+      expect(
+        find.textContaining('從這裡送出的申請不會有附件'),
+        findsOneWidget,
+      );
+      // 要附檔案的人得知道還有別條路可以走
+      expect(find.textContaining('要附檔案的話請到學校網頁版送'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets('按下送出會先問一次，而且取消就真的不送', (tester) async {
+      upload();
+      await open(tester, fn: _uploadFn);
+
+      await tester.tap(submitButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text('這樣送出不會附上檔案'), findsOneWidget);
+      // 欄位名用學校自己標的（cname="證明文件"），說「檔案」使用者不知道是哪一格
+      expect(find.textContaining('證明文件'), findsWidgets);
+      expect(ais.posts, isEmpty, reason: '還沒確認就不能送出去');
+
+      await tester.tap(find.widgetWithText(TextButton, '取消'));
+      await tester.pumpAndSettle();
+      expect(ais.posts, isEmpty);
+      await unmount(tester);
+    });
+
+    testWidgets('確認過就照送 —— 這是提醒，不是擋', (tester) async {
+      // 要附件的人有別條路（學校網頁版），但也有人只是要送一張不用附件的
+      // 申請。知道了還要送是他的選擇，App 不該替他決定。
+      upload();
+      await open(tester, fn: _uploadFn);
+
+      await tester.tap(submitButton());
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '仍要送出'));
+      await tester.pumpAndSettle();
+
+      final sent = ais.posts.single;
+      expect(sent.pressed('SAVE_BTN1'), isTrue);
+      // 使用者填的那幾格照樣要送到
+      expect(sent['Q_AYEAR'], '115');
+      await unmount(tester);
+    });
+
+    testWidgets('沒有檔案欄位的頁面不要多問一次', (tester) async {
+      // 警告到處都是就沒人會停下來看。這一句只屬於真的會少東西的那幾頁。
+      script();
+      await open(tester);
+
+      await tester.tap(queryButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text('這樣送出不會附上檔案'), findsNothing);
+      expect(ais.posts, hasLength(1));
       await unmount(tester);
     });
   });
@@ -378,6 +512,8 @@ void main() {
       await tester.tap(queryButton());
       await tester.pumpAndSettle();
 
+      await tester.ensureVisible(find.byIcon(Icons.chevron_right));
+      await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.chevron_right));
       await tester.pumpAndSettle();
 
@@ -400,6 +536,27 @@ void main() {
       expect(back.onPressed, isNull);
       await unmount(tester);
     });
+  });
+
+  testWidgets('翻到最後一頁仍能返回上一頁，查無資料有明確回饋', (tester) async {
+    ais.reply = (r) {
+      if (_isDispatcher(r)) return _dispatcher;
+      final page = r[r'PC$PageNo'] ?? '1';
+      return _queryPage(result: '$_resultTable$_pagerRow')
+        .replaceAll(r'name="PC$PageNo" value="1"', 'name="PC\$PageNo" value="$page"');
+    };
+    await open(tester);
+    await tester.tap(queryButton()); await tester.pumpAndSettle();
+    for (var i = 0; i < 2; i++) {
+      await tester.ensureVisible(find.byIcon(Icons.chevron_right));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.chevron_right)); await tester.pumpAndSettle();
+    }
+    expect(find.text('3 / 3'), findsOneWidget);
+    expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.chevron_right)).onPressed, isNull);
+    await tester.tap(find.byIcon(Icons.chevron_left)); await tester.pumpAndSettle();
+    expect(find.text('2 / 3'), findsOneWidget);
+    await unmount(tester);
   });
 
   group('分頁式的功能頁', () {

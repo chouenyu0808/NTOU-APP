@@ -10,7 +10,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
-import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetPlugin
 import es.antonborri.home_widget.HomeWidgetProvider
@@ -206,11 +205,12 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
     protected fun askDart(context: Context, surface: Surface) {
         val prefs = context.getSharedPreferences(HOME_WIDGET_PREFERENCES, Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
-        if (now - prefs.millis(ASK_KEY) < ASK_COOLDOWN_MS) return
-        runCatching { prefs.edit().putString(ASK_KEY, now.toString()).apply() }
+        val askKey = "${ASK_KEY}_$host"
+        if (now - prefs.millis(askKey) in 0 until ASK_COOLDOWN_MS) return
+        runCatching { prefs.edit().putString(askKey, now.toString()).apply() }
 
         runCatching {
-            HomeWidgetBackgroundIntent.getBroadcast(context, surface.uri(host)).send()
+            WidgetBackgroundReceiver.getBroadcast(context, surface.uri(host)).send()
         }
     }
 
@@ -225,7 +225,7 @@ abstract class NtouWidgetProvider : HomeWidgetProvider() {
      * 自動更新沒人在看，不需要多畫那一張。
      */
     protected fun manualIntent(context: Context, surface: Surface): PendingIntent =
-        HomeWidgetBackgroundIntent.getBroadcast(context, surface.uri(host, manual = true))
+        WidgetBackgroundReceiver.getBroadcast(context, surface.uri(host, manual = true))
 
     /** 這個小組件現在多大。 */
     protected fun surfaceOf(

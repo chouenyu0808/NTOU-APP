@@ -23,7 +23,8 @@ class TimetableCache {
   Future<SharedPreferences> get _p async =>
       _prefs ??= _injected ?? await SharedPreferences.getInstance();
 
-  static String _key(String year, String semester) => 'timetable.$year.$semester';
+  static String _key(String year, String semester) =>
+      'timetable.$year.$semester';
   static const _kLastViewed = 'timetable.last_viewed';
 
   Future<TimetableResult?> read(String year, String semester) async {
@@ -53,6 +54,17 @@ class TimetableCache {
     return (year: v[0], semester: v[1]);
   }
 
+  /// 只記學校確認的當學期，不能用歷史查詢覆蓋。
+  Future<void> saveCurrentSemester(String year, String semester) async {
+    await (await _p).setStringList('timetable.current', [year, semester]);
+  }
+
+  Future<({String year, String semester})?> currentSemester() async {
+    final value = (await _p).getStringList('timetable.current');
+    if (value == null || value.length != 2) return null;
+    return (year: value[0], semester: value[1]);
+  }
+
   /// **換帳號**時清掉 —— 不是登出時。
   ///
   /// 登出刻意留著（登出對話框也是這樣講的）：學校一次只允許一個 session，
@@ -61,7 +73,8 @@ class TimetableCache {
   /// [AppController.submitLogin] 發現學號換了的那一刻。
   Future<void> clear() async {
     final prefs = await _p;
-    for (final k in prefs.getKeys().where((k) => k.startsWith('timetable.')).toList()) {
+    for (final k
+        in prefs.getKeys().where((k) => k.startsWith('timetable.')).toList()) {
       await prefs.remove(k);
     }
   }

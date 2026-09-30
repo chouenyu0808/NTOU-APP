@@ -34,14 +34,10 @@ String _need(String name) =>
     '<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td>'
     '<td>一上</td><td>$name</td><td>3</td><td></td></tr>';
 
-GradeReport _report(List<CourseGrade> courses) =>
-    GradeReport(courses: courses);
+GradeReport _report(List<CourseGrade> courses) => GradeReport(courses: courses);
 
-CourseGrade _course(String name, String mark) => CourseGrade(
-      term: '1151',
-      name: name,
-      mark: parseGradeMark(mark),
-    );
+CourseGrade _course(String name, String mark) =>
+    CourseGrade(term: '1151', name: name, mark: parseGradeMark(mark));
 
 void main() {
   group('**只認完全同名 —— 這是在真實資料上驗過的**', () {
@@ -82,13 +78,26 @@ void main() {
     test('要求前面的編號不算在名字裡', () {
       // 「28-資工系專題(一)」的編號是學校排版用的。
       final status = _status(_need('28-資工系專題(一)'));
-      final m = matchGraduation(
-          status, _report([_course('資工系專題(一)', '85')]));
+      final m = matchGraduation(status, _report([_course('資工系專題(一)', '85')]));
       expect(m[status.groups.single.courses.single], isNotNull);
     });
   });
 
   group('什麼才算「修過了」', () {
+    test('學校登錄修課不等於完成，仍要看成績', () {
+      for (final grade in ['+', '*55', 'W', '待審核', '']) {
+        final r = RequiredCourse(
+          term: '一上',
+          name: '演算法',
+          takenTerm: '1151',
+          grade: grade,
+        );
+        final m = RequirementMatch(requirement: r);
+        expect(m.done, isFalse, reason: grade);
+        expect(m.inProgress, grade == '+');
+        expect(m.needsConfirmation, grade == '待審核' || grade.isEmpty);
+      }
+    });
     RequirementMatch match(String mark) {
       final status = _status(_need('演算法'));
       final m = matchGraduation(status, _report([_course('演算法', mark)]));
@@ -152,7 +161,10 @@ void main() {
         status,
         _report([_course('微積分', '*40'), _course('微積分', '75')]),
       );
-      expect(m.of(status.groups.single.courses.single).course?.mark.score, '75');
+      expect(
+        m.of(status.groups.single.courses.single).course?.mark.score,
+        '75',
+      );
     });
   });
 
@@ -170,8 +182,7 @@ void main() {
     test('「博雅【人文探索】」算得進「11-博雅課程」', () {
       // 這一個兩邊都不是對方的前綴，只有開頭那兩個字一樣。
       final status = _status(_need('11-博雅課程'));
-      final m = matchGraduation(
-          status, _report([_course('博雅【人文探索】', '抵')]));
+      final m = matchGraduation(status, _report([_course('博雅【人文探索】', '抵')]));
       expect(m.of(status.groups.single.courses.single).done, isTrue);
     });
 
@@ -182,16 +193,17 @@ void main() {
         _report([_course('體育', '抵'), _course('體育', '抵')]),
       );
       expect(m.byRequirement, hasLength(2));
-      expect(status.groups.single.courses.where((r) => !m.of(r).done),
-          hasLength(1));
+      expect(
+        status.groups.single.courses.where((r) => !m.of(r).done),
+        hasLength(1),
+      );
     });
 
     test('**編號不能當依據 —— 「28-資工系專題(一)」不是領域**', () {
       // 它跟「29-資工系專題(二)」是不同的兩門課。當成領域的話，
       // 任何以「資工系專題」開頭的課都會被拿去抵。
       final status = _status(_need('28-資工系專題(一)'));
-      final m = matchGraduation(
-          status, _report([_course('資工系專題(二)', '抵')]));
+      final m = matchGraduation(status, _report([_course('資工系專題(二)', '抵')]));
       expect(m.byRequirement, isEmpty);
       expect(m.unmatched.single.name, '資工系專題(二)');
     });
@@ -284,8 +296,11 @@ void main() {
       expect(inProgress, contains('程式設計'));
       for (final g in status.groups) {
         for (final r in g.courses) {
-          expect(m.of(r).done && m.of(r).inProgress, isFalse,
-              reason: '完成和修課中不能同時成立');
+          expect(
+            m.of(r).done && m.of(r).inProgress,
+            isFalse,
+            reason: '完成和修課中不能同時成立',
+          );
         }
       }
     });

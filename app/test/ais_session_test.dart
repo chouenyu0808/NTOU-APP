@@ -55,6 +55,26 @@ AisPage page(String html, {String url = 'https://ais.ntou.edu.tw/x.aspx'}) =>
     AisPage(url: url, status: 200, html: html);
 
 void main() {
+  test('入口輔助頁逾時不重試，仍依序載完其他頁並回報進度', () async {
+    final adapter = _FlakyAdapter(
+      failTimes: 1,
+      failType: DioExceptionType.receiveTimeout,
+    );
+    final session = sessionWith(adapter);
+    final progress = <int>[];
+    final loaded = await session.enterPortal(
+      page('<frameset><frame src="title.aspx"><frame src="portal.aspx">'
+          '<frame src="menu.aspx"><frame src="timeout.aspx"></frameset>'),
+      onProgress: (completed, total) {
+        expect(total, 4);
+        progress.add(completed);
+      },
+    );
+    expect(adapter.calls, 4, reason: '失敗的第一頁不可多花兩次逾時重試');
+    expect(loaded.length, 3);
+    expect(progress, [0, 1, 2, 3, 4]);
+  });
+
   // 純方法不碰網路，隨手給個假 adapter 就能建 session。
   final s = sessionWith(_FlakyAdapter(failTimes: 0));
 

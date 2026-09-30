@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ntou_app/src/ui/login_page.dart';
 import 'package:ntou_app/src/menu/menu_catalog.dart';
 import 'package:ntou_app/src/ui/app_controller.dart';
 import 'package:ntou_app/src/ui/function_list_page.dart';
@@ -150,15 +151,18 @@ void main() {
     });
   });
 
-  testWidgets('未登入時點功能會提示先登入，不會直接進去', (tester) async {
+  testWidgets('未登入時點功能可直接登入，取消後回原清單', (tester) async {
     await tester.pumpWidget(wrap());
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('課程課表查詢'));
     await tester.pumpAndSettle();
 
-    expect(find.text('請先登入'), findsOneWidget);
-    // 沒有離開這一頁。
+    expect(find.byType(LoginPage), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    // 取消登入不丟失原本的清單。
     expect(find.widgetWithText(AppBar, '教務系統'), findsOneWidget);
+    await unmount(tester);
   });
 }

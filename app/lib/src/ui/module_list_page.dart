@@ -4,22 +4,12 @@ import '../menu/menu_catalog.dart';
 import 'app_controller.dart';
 import 'function_list_page.dart';
 import 'function_page.dart';
-import 'theme.dart';
+import 'login_page.dart';
+import '../storage/recent_functions.dart';
 import 'timetable_page.dart' show confirmLogout;
 
-/// 學校系統的 13 個模組。
-///
-/// 用彩色圖示網格而不是展開式清單：13 個模組展開之後有 50 個功能，
-/// 攤在一個捲動清單上要找很久。網格一眼掃得完，顏色和位置固定之後
-/// 會變成肌肉記憶（「請假是紫色那個」）。
-///
-/// 路徑來自 `assets/menu_tree.json`（spike 遞迴展開整棵 TreeView 抓下來的），
-/// **App 不自己走選單** —— 那套 callback 是整個逆向裡最脆的一段。
-///
-/// 設計稿上還有一區「最近用過」的 chips，這裡刻意沒做：那要記錄使用者開過
-/// 哪些功能，而現在沒有任何地方在記。塞幾個看起來合理的假 chips 上去，
-/// 使用者按下第一個就會發現那不是他用過的東西 —— 那比空著更糟。
-/// 等到真的有使用紀錄了再補，不是排版問題。
+/// 以常用功能和真實的最近使用紀錄為入口，完整分類保留在下方。
+/// 選單從本機資產讀取，搜尋不用連到學校。
 class ModuleListPage extends StatefulWidget {
   const ModuleListPage({
     super.key,
@@ -37,12 +27,26 @@ class ModuleListPage extends StatefulWidget {
 class _ModuleListPageState extends State<ModuleListPage> {
   final _search = TextEditingController();
   String _query = '';
+  List<String> _recent = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecent();
+    RecentFunctions.changes.addListener(_loadRecent);
+  }
+
+  Future<void> _loadRecent() async {
+    final paths = await RecentFunctions.read();
+    if (mounted) setState(() => _recent = paths);
+  }
 
   MenuCatalog get catalog => widget.catalog;
   AppController get controller => widget.controller;
 
   @override
   void dispose() {
+    RecentFunctions.changes.removeListener(_loadRecent);
     _search.dispose();
     super.dispose();
   }
@@ -55,55 +59,30 @@ class _ModuleListPageState extends State<ModuleListPage> {
   /// 比 `trail` 而不只是名稱：使用者記得的常常是「請假那一區的東西」，
   /// 不是「取消請假申請」這個確切的字。
   List<AisFunction> get _matches {
-    final q = _query.trim();
+    final q = _query.trim().toLowerCase();
+    final aliases = {
+      '缺課': '缺曠',
+      '缺席': '缺曠',
+      '分數': '成績',
+      '宿舍維修': '修繕',
+      '畢業學分': '畢業',
+    };
+    final terms = [q, if (aliases[q] != null) aliases[q]!];
     if (q.isEmpty) return const [];
     return [
       for (final f in catalog.functions)
-        if (f.title.contains(q) || f.trail.join(' ').contains(q)) f,
+        if (!f.staffOnly &&
+            terms.any(
+              (term) =>
+                  f.title.toLowerCase().contains(term) ||
+                  f.trail.join(' ').toLowerCase().contains(term),
+            ))
+          f,
     ];
   }
 
-  /// 這個功能屬於哪一個模組的顏色。顏色的位置是固定的（見 NtouTheme），
-  /// 所以搜尋結果的圓點跟網格上的顏色會對得起來。
-  Color _colorOf(AisFunction f) {
-    final i = catalog.modules.indexOf(f.module);
-    return i < 0 ? Theme.of(context).colorScheme.outline : NtouTheme.moduleColor(i);
-  }
+  Color _colorOf(AisFunction f) => Theme.of(context).colorScheme.primary;
 
-  static const Map<String, IconData> _icons = {
-    '教務系統': Icons.school_outlined,
-    '暑修作業': Icons.wb_sunny_outlined,
-    '學生宿舍管理系統': Icons.bed_outlined,
-    '校外租賃訊息管理': Icons.home_work_outlined,
-    '就學貸款-減免補助': Icons.savings_outlined,
-    '學生請假': Icons.event_busy_outlined,
-    '學生社團活動資訊系統': Icons.groups_outlined,
-    '學生兵役管理': Icons.military_tech_outlined,
-    '新生體檢收件作業': Icons.health_and_safety_outlined,
-    '體育室辦證系統': Icons.fitness_center_outlined,
-    'SDGs': Icons.public_outlined,
-    '電子公布欄': Icons.campaign_outlined,
-    '連結校內資訊系統': Icons.link_outlined,
-    // ↓ 2026-09-08 新上架的 13 個模組。
-    //
-    // 沒有對應的話會 fallback 到 `Icons.folder_outlined` —— 一次少 13 個
-    // 就是**網格上一半的格子長得一模一樣**，顏色再怎麼分也找不到東西。
-    '學生證補發作業': Icons.badge_outlined,
-    '職涯發展': Icons.work_outline,
-    '學生宿舍修繕系統': Icons.build_outlined,
-    '導師工作-班級系統': Icons.supervisor_account_outlined,
-    '學生團體保險': Icons.shield_outlined,
-    '獎助學金管理': Icons.emoji_events_outlined,
-    '學習助學金系統': Icons.volunteer_activism_outlined,
-    '獎懲-操行管理': Icons.gavel_outlined,
-    '遺失物-拾獲物管理': Icons.inventory_2_outlined,
-    '問卷調查系統': Icons.poll_outlined,
-    '五育護照': Icons.auto_stories_outlined,
-    '教育學程作業': Icons.cast_for_education_outlined,
-    '網路服務申請': Icons.wifi_outlined,
-  };
-
-  /// 顯示用的短名稱。網格的格子放不下「學生社團活動資訊系統」這種長度。
   static const Map<String, String> _shortNames = {
     '學生宿舍管理系統': '學生宿舍',
     '校外租賃訊息管理': '校外租賃',
@@ -159,61 +138,122 @@ class _ModuleListPageState extends State<ModuleListPage> {
           ),
           const SizedBox(height: 16),
 
-          if (_query.trim().isNotEmpty) ..._searchResults(theme) else ...[
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              child: GridView.count(
-                crossAxisCount: 4,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 0.82,
+          if (_query.trim().isNotEmpty)
+            ..._searchResults(theme)
+          else ...[
+            if (controller.phase != AppPhase.ready)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('登入後查詢個人校務資料'),
+                trailing: TextButton(
+                  onPressed: () => ensureSignedIn(context, controller),
+                  child: const Text('登入'),
+                ),
+              ),
+            Text('常用功能', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            for (final code in ['GRD5010', 'GRD7050', 'ENRG010', 'TKE2011'])
+              if (catalog.byCode(code) case final function?)
+                FunctionTile(controller: controller, function: function),
+            if (_recent.isNotEmpty) ...[
+              const Divider(height: 32),
+              Row(
                 children: [
-                  for (var i = 0; i < modules.length; i++)
-                    _ModuleTile(
-                      label: _shortNames[modules[i]] ?? modules[i],
-                      icon: _icons[modules[i]] ?? Icons.folder_outlined,
-                      color: NtouTheme.moduleColor(i),
-                      count: catalog.inModule(modules[i]).length,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => FunctionListPage(
-                            controller: controller,
-                            catalog: catalog,
-                            module: modules[i],
-                            color: NtouTheme.moduleColor(i),
+                  Expanded(
+                    child: Text('最近使用', style: theme.textTheme.titleMedium),
+                  ),
+                  IconButton(
+                    tooltip: '更新最近使用',
+                    onPressed: _loadRecent,
+                    icon: const Icon(Icons.refresh, size: 18),
+                  ),
+                ],
+              ),
+              for (final path in _recent)
+                for (final function in catalog.functions.where(
+                  (f) => f.path == path,
+                ))
+                  FunctionTile(controller: controller, function: function),
+            ],
+            const Divider(height: 32),
+            Text('全部服務', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+                final columns = constraints.maxWidth >= 480 * scale
+                    ? 3
+                    : constraints.maxWidth >= 320 * scale
+                    ? 2
+                    : 1;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  children: [
+                    for (var i = 0; i < modules.length; i++)
+                      SizedBox(
+                        width:
+                            (constraints.maxWidth - (columns - 1) * 12) /
+                            columns,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
+                          title: Text(_shortNames[modules[i]] ?? modules[i]),
+                          subtitle: Text(
+                            '${catalog.inModule(modules[i]).length} 項服務',
+                          ),
+                          trailing: const Icon(Icons.chevron_right, size: 16),
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => FunctionListPage(
+                                  controller: controller,
+                                  catalog: catalog,
+                                  module: modules[i],
+                                  color: theme.colorScheme.primary,
+                                ),
+                              ),
+                            );
+                            await _loadRecent();
+                          },
                         ),
                       ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Text('帳號', style: theme.textTheme.titleSmall),
+            ),
+            Card(
+              child: Column(
+                children: [
+                  for (final f in catalog.standalone)
+                    if (!f.path.contains('LogOut') &&
+                        !f.path.contains('Portal'))
+                      FunctionTile(controller: controller, function: f),
+                  // 登出從課表頁的 AppBar 搬過來 —— 那不屬於課表。
+                  if (controller.phase == AppPhase.ready)
+                    ListTile(
+                      leading: Icon(
+                        Icons.logout,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      title: Text(
+                        '登出',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      onTap: () => confirmLogout(context, controller),
                     ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text('帳號', style: theme.textTheme.titleSmall),
-          ),
-          Card(
-            child: Column(
-              children: [
-                for (final f in catalog.standalone)
-                  if (!f.path.contains('LogOut') && !f.path.contains('Portal'))
-                    FunctionTile(controller: controller, function: f),
-                // 登出從課表頁的 AppBar 搬過來 —— 那不屬於課表。
-                if (controller.phase == AppPhase.ready)
-                  ListTile(
-                    leading: Icon(Icons.logout,
-                        color: Theme.of(context).colorScheme.error),
-                    title: Text('登出',
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.error)),
-                    onTap: () => confirmLogout(context, controller),
-                  ),
-              ],
-            ),
-          ),
           ],
         ],
       ),
@@ -286,56 +326,6 @@ class _SearchHit extends StatelessWidget {
       function: function,
       color: color,
       subtitleOverride: trail,
-    );
-  }
-}
-
-class _ModuleTile extends StatelessWidget {
-  const _ModuleTile({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.count,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final int count;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(NtouTheme.radiusLg),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(NtouTheme.radiusLg),
-            ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.labelMedium?.copyWith(height: 1.15),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

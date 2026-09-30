@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 課表小組件的規格。
 
-     **刻意沒有 updatePeriodMillis。** 那個系統下限是 30 分鐘，而課表要在
-     每個節次交界重畫（反白要跟著移動）—— 30 分鐘太粗，而且它會叫醒裝置。
-     這個小組件完全靠 HomeWidget.scheduleWidgetUpdates 排的鬧鐘，時刻是
-     Dart 算出來的（見 TimetableWidgetPayload.updateTimes）。 -->
+     節次交界仍由 Dart 排鬧鐘；每 30 分鐘另檢查是否過期，補救午夜更新失敗後
+     沒有下一天鬧鐘的情況。未過期時只貼現有圖片，不啟動 Dart、不連網。 -->
 <!-- previewLayout 和 previewImage 兩個都留：Android 12 以上用前者
      （系統直接 inflate，深淺色和字級都自然跟著走），以下退回後者。
      只留 previewImage 的話選取器裡是一張放大的 App 圖示，很醜。 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:updatePeriodMillis="1800000"
     android:minWidth="250dp"
     android:minHeight="110dp"
     android:minResizeWidth="180dp"

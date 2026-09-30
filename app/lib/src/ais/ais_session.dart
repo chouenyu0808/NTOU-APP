@@ -28,8 +28,8 @@ typedef AisLogger = void Function(String line);
 ///   - 內建節流，不要把學校的機器打爛
 class AisSession {
   AisSession({required this.config, Dio? dio, CookieJar? cookieJar, this.log})
-      : cookieJar = cookieJar ?? CookieJar(),
-        _dio = dio ?? Dio() {
+    : cookieJar = cookieJar ?? CookieJar(),
+      _dio = dio ?? Dio() {
     _dio.options
       ..baseUrl = config.baseUrl
       ..connectTimeout = _timeout
@@ -108,7 +108,9 @@ class AisSession {
       _hiddenFrom = _formKeyOf(page.url);
     }
 
-    log?.call('  ${page.summary} viewstate ${(found['__VIEWSTATE'] ?? '').length}B');
+    log?.call(
+      '  ${page.summary} viewstate ${(found['__VIEWSTATE'] ?? '').length}B',
+    );
     return page;
   }
 
@@ -121,7 +123,7 @@ class AisSession {
   /// （而且登入 POST 綁著一次性驗證碼，重送本來就會失敗。）
   Future<AisPage> get(String path, {int retries = 2}) async {
     final url = _resolve(path);
-    for (var attempt = 0;; attempt++) {
+    for (var attempt = 0; ; attempt++) {
       await _throttle();
       try {
         return _absorb(await _dio.getUri<dynamic>(url), url);
@@ -168,16 +170,14 @@ class AisSession {
   /// **不要把 `e.toString()` 丟給使用者。** dio 的訊息裡有完整 URL 和堆疊，
   /// 對學生沒有意義，而且看起來像是 App 壞了。
   static String _explain(DioException e) => switch (e.type) {
-        DioExceptionType.connectionTimeout ||
-        DioExceptionType.receiveTimeout ||
-        DioExceptionType.sendTimeout =>
-          '連線逾時。學校系統可能正忙（選課期間很常見），等一下再試。',
-        DioExceptionType.badCertificate =>
-          '無法驗證學校網站的憑證。如果你在公共 Wi-Fi 上，換個網路再試。',
-        DioExceptionType.connectionError =>
-          '連不上學校系統。檢查一下網路，或確認 ais.ntou.edu.tw 是不是在維護。',
-        _ => '連線失敗，請再試一次。',
-      };
+    DioExceptionType.connectionTimeout ||
+    DioExceptionType.receiveTimeout ||
+    DioExceptionType.sendTimeout => '連線逾時。學校系統可能正忙（選課期間很常見），等一下再試。',
+    DioExceptionType.badCertificate => '無法驗證學校網站的憑證。如果你在公共 Wi-Fi 上，換個網路再試。',
+    DioExceptionType.connectionError =>
+      '連不上學校系統。檢查一下網路，或確認 ais.ntou.edu.tw 是不是在維護。',
+    _ => '連線失敗，請再試一次。',
+  };
 
   // ---------- WebForms 舞步 ----------
 
@@ -278,8 +278,9 @@ class AisSession {
   }
 
   /// `__doPostBack(\'Q_X\',\'\')` —— 反斜線是可選的，這個系統兩種寫法都有。
-  static final RegExp _doPostBackRe =
-      RegExp(r"""__doPostBack\(\s*\\?['"]([^'"\\]+)""");
+  static final RegExp _doPostBackRe = RegExp(
+    r"""__doPostBack\(\s*\\?['"]([^'"\\]+)""",
+  );
 
   // ---------- 登入 ----------
 
@@ -448,16 +449,26 @@ class AisSession {
   /// 瀏覽器載完它會接著載四個 frame（title / MenuTree / portal / timeout）。
   /// 登入後直接跳去功能頁等於握手只做一半，會被導到 `ConfirmInOrOut.aspx`，
   /// 而那個訊息（「一次僅許可一個帳號登入」）會把人帶往完全錯誤的方向。
-  Future<List<AisPage>> enterPortal(AisPage page) async {
+  Future<List<AisPage>> enterPortal(
+    AisPage page, {
+    void Function(int completed, int total)? onProgress,
+  }) async {
     final loaded = <AisPage>[];
-    for (final dest in frameSources(page, _base)) {
+    final sources = frameSources(page, _base);
+    var completed = 0;
+    for (final dest in sources) {
+      onProgress?.call(completed, sources.length);
       try {
-        loaded.add(await get(dest.toString()));
+        // 這些頁面本來就允許失敗後繼續；重試會把單頁逾時累加三次。
+        // 每頁仍依序嘗試一次，後續查詢頁負責驗證登入是否真正可用。
+        loaded.add(await get(dest.toString(), retries: 0));
       } on AisException catch (e) {
         // 少載一個 frame 通常還是能過握手，不值得讓整次登入失敗
         log?.call('  frame ${dest.path} 載入失敗（${e.runtimeType}），繼續');
       }
+      completed++;
     }
+    onProgress?.call(completed, sources.length);
     return loaded;
   }
 
@@ -477,7 +488,9 @@ class AisSession {
       final src = frame.attributes['src']?.trim();
       if (src == null || src.isEmpty) continue;
       final lower = src.toLowerCase();
-      if (lower.startsWith('about:') || lower.startsWith('javascript:')) continue;
+      if (lower.startsWith('about:') || lower.startsWith('javascript:')) {
+        continue;
+      }
 
       final Uri dest;
       try {
@@ -595,6 +608,7 @@ class AisSession {
   static String _formKeyOf(String url) =>
       Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
 
-  String pathOf(String url) =>
-      url.startsWith(config.baseUrl) ? url.substring(config.baseUrl.length) : url;
+  String pathOf(String url) => url.startsWith(config.baseUrl)
+      ? url.substring(config.baseUrl.length)
+      : url;
 }

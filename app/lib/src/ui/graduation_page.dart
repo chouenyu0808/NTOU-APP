@@ -30,6 +30,7 @@ class _GraduationPageState extends State<GraduationPage> {
   GraduationStatus? _result;
   GraduationMatch? _match;
   String? _error;
+  bool _gradesUnavailable = false;
   bool _busy = true;
 
   @override
@@ -42,6 +43,8 @@ class _GraduationPageState extends State<GraduationPage> {
     setState(() {
       _busy = true;
       _error = null;
+      _view = null;
+      _gradesUnavailable = false;
       _result = null;
       _match = null;
     });
@@ -58,16 +61,16 @@ class _GraduationPageState extends State<GraduationPage> {
     // 成績是**額外**拿的，而且要再走一整套查詢（見 `openGrades`）。
     //
     // **失敗不能拖累這一頁。** 學校的畢業資格本來就顯示得出來，成績只是
-    // 拿來補上「學校還沒登錄的抵免」。抓不到就退回原本的樣子，不要
-    // 讓整頁變成錯誤畫面 —— 那等於用一個加分功能換掉一個本來就能用的功能。
+    // 拿來補上「學校還沒登錄的抵免」。抓不到仍顯示學校紀錄，並提示比對
+    // 未完成，避免使用者把缺少資料誤認為尚未通過。
     final status = _result;
     if (status != null && !status.isEmpty) {
       try {
         final grades = await widget.controller.repository.openGrades();
         _match = matchGraduation(status, grades);
       } catch (_) {
-        // 這一條路徑上的失敗對使用者沒有意義（他沒有要求看成績），
-        // 靜靜退回學校自己的紀錄就好。
+        // 保留學校資料，但必須說明抵免比對尚未完成。
+        _gradesUnavailable = true;
       }
     }
 
@@ -91,7 +94,8 @@ class _GraduationPageState extends State<GraduationPage> {
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => RequiredCoursesPage(controller: widget.controller),
+                builder: (_) =>
+                    RequiredCoursesPage(controller: widget.controller),
               ),
             ),
             icon: const Icon(Icons.manage_search),
@@ -131,6 +135,22 @@ class _GraduationPageState extends State<GraduationPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
+        if (_gradesUnavailable)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '成績比對未完成，目前僅顯示學校的畢業資格紀錄。'
+                    '未標示完成的課程不一定還需要修。',
+                  ),
+                  TextButton(onPressed: _open, child: const Text('重試成績比對')),
+                ],
+              ),
+            ),
+          ),
         _summaryCard(context, r),
         for (final g in r.groups) ...[
           const SizedBox(height: 20),
@@ -144,8 +164,12 @@ class _GraduationPageState extends State<GraduationPage> {
     );
   }
 
-  Widget _message(BuildContext context, String text, IconData icon,
-      {bool retry = false}) {
+  Widget _message(
+    BuildContext context,
+    String text,
+    IconData icon, {
+    bool retry = false,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
@@ -225,13 +249,10 @@ class _GraduationPageState extends State<GraduationPage> {
     final Widget? note = switch (s.failed) {
       null => null,
       final f when f > 0 => Text(
-          '還差 $f',
-          style: TextStyle(fontSize: 12, color: scheme.error),
-        ),
-      _ => Text(
-          '已達成',
-          style: TextStyle(fontSize: 12, color: scheme.primary),
-        ),
+        '還差 $f',
+        style: TextStyle(fontSize: 12, color: scheme.error),
+      ),
+      _ => Text('已達成', style: TextStyle(fontSize: 12, color: scheme.primary)),
     };
 
     return Row(
@@ -278,14 +299,17 @@ class _GraduationPageState extends State<GraduationPage> {
               Expanded(
                 child: Text(
                   g.category,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(color: theme.colorScheme.primary),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
               ),
               Text(
                 '${_doneCount(g)} / ${g.courses.length} 門',
                 style: TextStyle(
-                    fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -339,8 +363,9 @@ class _GraduationPageState extends State<GraduationPage> {
       final s when s.bySchool && c.takenName != null && c.takenName != c.name =>
         '${c.takenTerm} ${c.takenName}',
       final s when s.bySchool => c.takenTerm ?? '',
-      final s when s.course != null => '成績裡有「${s.course!.name}」'
-          '${s.course!.mark.note == null ? '' : '（${s.course!.mark.note}）'}',
+      final s when s.course != null =>
+        '成績裡有「${s.course!.name}」'
+            '${s.course!.mark.note == null ? '' : '（${s.course!.mark.note}）'}',
       _ => '',
     };
 
@@ -356,11 +381,15 @@ class _GraduationPageState extends State<GraduationPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(c.name),
+                if (st.needsConfirmation)
+                  const Text('通過狀態待確認', style: TextStyle(fontSize: 12)),
                 if (via.isNotEmpty)
                   Text(
                     via,
                     style: TextStyle(
-                        fontSize: 12, color: scheme.onSurfaceVariant),
+                      fontSize: 12,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),
@@ -392,13 +421,8 @@ class _GraduationPageState extends State<GraduationPage> {
 ///
 /// **這張卡是整個比對功能的誠實所在。**
 ///
-/// 比對只認完全同名（理由見 `matchGraduation`：用「包含」去比的話，
-/// 「程式設計實習」會被拿去抵「程式設計」，害人少修一門必修）。
-/// 代價是「體育」對不上「19-體育課程」、「國文」對不上「12-國文領域」、
-/// 「博雅【人文探索】」對不上「11-博雅課程」。
-///
-/// 那些不是「你沒修」，是名字對不起來。**不列出來的話，使用者會以為
-/// 那幾門抵免憑空消失了**，而畫面上完全看不出是比對的限制。
+/// 一般課名精準比對，領域要求另依課名開頭比對。剩下的可能是選修或未辨識
+/// 的名稱；保留這些課程，讓使用者能看出自動配對的限制。
 class _UnmatchedCard extends StatelessWidget {
   const _UnmatchedCard({required this.courses});
 
@@ -416,8 +440,9 @@ class _UnmatchedCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
           child: Text(
             '沒有對到必修的課',
-            style: theme.textTheme.titleSmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
         ),
         Card(
@@ -427,9 +452,12 @@ class _UnmatchedCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '上面的比對只認完全同名的課。學校把要求寫成'
-                  '「19-體育課程」這種領域名稱時對不起來 —— 那不代表你沒修。',
-                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                  '一般必修依課名比對；國文、體育等領域要求會依課名開頭比對。'
+                  '以下可能是選修或尚未辨識的課程，未配對不代表沒有通過。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 for (final c in courses) ...[
@@ -445,7 +473,9 @@ class _UnmatchedCard extends StatelessWidget {
                           if (c.mark.score != null) c.mark.score!,
                         ].join('・'),
                         style: TextStyle(
-                            fontSize: 12, color: scheme.onSurfaceVariant),
+                          fontSize: 12,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),

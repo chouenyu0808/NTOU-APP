@@ -12,6 +12,9 @@ import 'graduation_page.dart';
 import 'required_courses_page.dart';
 import 'schema_field_input.dart';
 import 'theme.dart';
+import 'login_page.dart';
+import 'school_web_handoff.dart';
+import '../storage/recent_functions.dart';
 
 /// 通用的功能頁。
 ///
@@ -109,6 +112,60 @@ class _FunctionPageState extends State<FunctionPage> {
         tabIndex: view.schema.isTabbed ? group.index : null,
       );
     });
+  }
+
+  /// 這一組條件裡要附檔案的欄位。
+  ///
+  /// 學校那幾頁（學生請假上傳補件、上傳兵役相關附件）是 `<input type="file">`，
+  /// 而 App 送不出檔案 —— `AisRepository._sendable` 會把這種欄位整個跳過。
+  /// 送出鈕照樣按得下去，學校那邊也照樣收下，只是**收到的是一張沒有附件的申請**。
+  List<SchemaField> _fileFieldsOf(SchemaGroup group) =>
+      group.fields.where((f) => f.kind == FieldKind.file).toList();
+
+  /// 按下表單上的送出鈕。
+  ///
+  /// 這一頁要附檔案的話**一定要先問**：送出去是不可逆的（申請已經進去了），
+  /// 而少了附件這件事在學校的回應裡不會提到一個字 —— 使用者按完看到的是
+  /// 「已送出」，要等到被退件才知道。
+  Future<void> _submit(SchemaButton button) async {
+    final view = _view;
+    if (view == null) return;
+
+    final files = _fileFieldsOf(_groupOf(view));
+    if (files.isNotEmpty && !await _confirmWithoutAttachment(files)) return;
+
+    await _run(button.name);
+  }
+
+  Future<bool> _confirmWithoutAttachment(List<SchemaField> files) async {
+    // 欄位名是學校自己標的（`CNAME`），直接引用 —— 使用者在畫面上看到的
+    // 就是這幾個字，說「檔案」會讓人不確定是指哪一格。
+    final names =
+        files.map((f) => f.label).where((l) => l.isNotEmpty).join('、');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.warning_amber_outlined,
+            color: Theme.of(ctx).colorScheme.error),
+        title: const Text('這樣送出不會附上檔案'),
+        content: Text(
+          names.isEmpty
+              ? '這一頁要附上檔案，但 App 沒辦法傳檔。現在送出的話，學校收到的是一份沒有附件的申請。'
+              : '這一頁要附上「$names」，但 App 沒辦法傳檔。現在送出的話，學校收到的是一份沒有附件的申請。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('仍要送出'),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
   }
 
   /// 按下一列上的鈕。
@@ -262,8 +319,15 @@ class _FunctionPageState extends State<FunctionPage> {
     final group = _groupOf(view);
     final fields = group.visibleFields;
     final buttons = group.queryButtons;
+    final fileFields = _fileFieldsOf(group);
 
     return [
+      if (fileFields.isNotEmpty) ...[
+        _attachmentWarning(fileFields),
+        SchoolWebHandoff(controller: widget.controller, functionTitle: widget.function.title),
+      ],
+      if (group.buttons.any((b) => b.isPrint))
+        SchoolWebHandoff(controller: widget.controller, functionTitle: widget.function.title),
       if (view.schema.isTabbed)
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -330,6 +394,9 @@ class _FunctionPageState extends State<FunctionPage> {
             onChanged: (v) => _setField(f.name, v),
           ),
         ),
+      // 送出鈕正上方，因為這句話是關於「按下去會發生什麼」——
+      // 放在頁首的話，填完十個欄位捲到底要按的時候已經看不到了。
+
       if (buttons.isNotEmpty)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -339,7 +406,7 @@ class _FunctionPageState extends State<FunctionPage> {
             children: [
               for (final b in buttons)
                 FilledButton(
-                  onPressed: _busy ? null : () => _run(b.name),
+                  onPressed: _busy ? null : () => _submit(b),
                   child: Text(b.label),
                 ),
             ],
@@ -349,12 +416,78 @@ class _FunctionPageState extends State<FunctionPage> {
     ];
   }
 
+  /// 「這張申請不會帶附件」——整頁層級的那一句。
+  ///
+  /// 送出前的那個確認對話框是最後一道；這一句是要讓使用者在**開始填之前**
+  /// 就知道從這裡送出的東西是不完整的，不要填完十個欄位才發現白填。
+  Widget _attachmentWarning(List<SchemaField> files) {
+    final scheme = Theme.of(context).colorScheme;
+    final names =
+        files.map((f) => f.label).where((l) => l.isNotEmpty).join('、');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: scheme.errorContainer,
+          borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_outlined,
+                size: 20, color: scheme.onErrorContainer),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                names.isEmpty
+                    ? '這一頁要附上檔案，但 App 沒辦法傳檔 —— 從這裡送出的申請不會有附件。'
+                        '要附檔案的話請到學校網頁版送。'
+                    : '這一頁要附上「$names」，但 App 沒辦法傳檔 —— 從這裡送出的申請不會有附件。'
+                        '要附檔案的話請到學校網頁版送。',
+                style: TextStyle(color: scheme.onErrorContainer, height: 1.4),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildResult(FunctionView view) {
     final r = view.result;
     if (r == null) {
+      final group = _groupOf(view);
       // 一顆按得下去的按鈕都沒有（只有列印的那幾頁）——
       // 不要叫使用者去按一顆不存在的鈕。
-      if (_groupOf(view).queryButtons.isEmpty) return const SizedBox.shrink();
+      if (group.queryButtons.isEmpty) {
+        // 但也不能就這樣留一片空白：上面一個學年度下拉、下面什麼都沒有，
+        // 使用者分不出是 App 壞了還是自己少按了什麼。這 10 個功能
+        //（列印註冊/考試請假單、在學證明申請列印…）點進來永遠是這樣，
+        // 所以要說出為什麼、以及該去哪裡才印得到。
+        //
+        // 學校自己有話要說的時候（上面那張卡片）就不要再補一句 ——
+        // 那句話才是使用者真正需要知道的原因。
+        if (view.notice != null || !group.buttons.any((b) => b.isPrint)) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.print_outlined,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('這一頁的內容是學校的列印報表，App 裡開不出來。'
+                    '需要的話請到學校網頁版列印。'),
+              ),
+            ],
+          ),
+        );
+      }
 
       // 會改資料的頁面（維護新生資料那一類）不是查詢頁 —— 它下面根本不會出現
       // 結果表格。跟使用者說「按上面的按鈕開始查詢」只會讓人以為自己少按了什麼。
@@ -365,7 +498,18 @@ class _FunctionPageState extends State<FunctionPage> {
             : '按上面的按鈕開始查詢。'),
       );
     }
-    if (r.isEmpty || r.columns.isEmpty) return const SizedBox.shrink();
+    if (r.isEmpty || r.columns.isEmpty) {
+      return Padding(padding: const EdgeInsets.all(24), child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(r.isEmpty ? '查無符合資料' : '這份結果暫時無法在 App 顯示'),
+          const SizedBox(height: 8),
+          Text(r.isEmpty ? '可調整上方條件後重新查詢。' : '請至學校網頁查看完整內容。'),
+          if (!r.isEmpty) SchoolWebHandoff(controller: widget.controller,
+            functionTitle: widget.function.title),
+        ],
+      ));
+    }
 
     // 一頁可能有不只一張表（線上加退選：上面是可加選的課，下面是已選上的、
     // 帶著退選鈕的那張）。少畫一張等於整個退選功能不存在。
@@ -395,7 +539,7 @@ class _FunctionPageState extends State<FunctionPage> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
             '${r.rowCount} 筆'
-            '${r.paging.hasMore ? '（第 ${r.paging.pageNo} / ${r.paging.lastPage} 頁）' : ''}',
+            '${r.paging.lastPage > 1 ? '（第 ${r.paging.pageNo} / ${r.paging.lastPage} 頁）' : ''}',
             style: Theme.of(context).textTheme.labelLarge,
           ),
         ),
@@ -416,6 +560,12 @@ class _FunctionPageState extends State<FunctionPage> {
                   cells: [
                     for (var col = 0; col < r.rows[i].length; col++)
                       DataCell(
+                        onTap: r.actionAt(i, col) == null ? () => showDialog<void>(
+                          context: context, builder: (ctx) => AlertDialog(
+                            title: Text(r.columns[col]),
+                            content: SingleChildScrollView(child: SelectableText(r.rows[i][col])),
+                            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('關閉'))],
+                          )) : null,
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 200),
                           // 這一格可以按（加選 / 退選 / 詳）就畫成鈕。畫成純文字的話
@@ -435,7 +585,7 @@ class _FunctionPageState extends State<FunctionPage> {
             ],
           ),
         ),
-        if (r.paging.hasMore) _Pager(paging: r.paging, onGo: _goPage),
+        if (r.paging.lastPage > 1) _Pager(paging: r.paging, onGo: _goPage),
       ],
     );
   }
@@ -532,19 +682,9 @@ class FunctionTile extends StatelessWidget {
     final tint = color ?? scheme.primary;
 
     return ListTile(
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: (function.mutating ? scheme.error : tint)
-              .withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(NtouTheme.radiusMd),
-        ),
-        child: Icon(
-          function.mutating ? Icons.edit_note : Icons.description_outlined,
-          size: 19,
-          color: function.mutating ? scheme.error : tint,
-        ),
+      leading: Icon(
+        function.mutating ? Icons.edit_note : Icons.description_outlined,
+        size: 22, color: function.mutating ? scheme.error : tint,
       ),
       title: Text(function.title),
       // **「會送出資料」這行字拿掉了。**
@@ -559,9 +699,9 @@ class FunctionTile extends StatelessWidget {
       // 在傳達（色盲一樣分得出來）。清單頁頂端有一行圖例說明那個紅色。
       //
       // 真正的防線本來就不在這裡，是點下去之後那個確認對話框。
-      subtitle: subtitleOverride == null
+      subtitle: subtitleOverride == null && !function.title.contains('上傳') && !function.title.contains('列印')
           ? null
-          : Text(subtitleOverride!,
+          : Text(subtitleOverride ?? (function.title.contains('上傳') ? '附件需至學校網頁上傳' : '報表需至學校網頁列印'),
               style:
                   TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
       trailing: const Icon(Icons.chevron_right, size: 20),
@@ -571,9 +711,7 @@ class FunctionTile extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     if (controller.phase != AppPhase.ready) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('請先登入')));
-      return;
+      if (!await ensureSignedIn(context, controller) || !context.mounted) return;
     }
 
     // 少數幾個功能有專屬畫面。通用表單頁也開得起來（它讀學校自己的宣告），
@@ -582,6 +720,12 @@ class FunctionTile extends StatelessWidget {
     //
     // 用 `code` 不用標題：學校改一個字（「查詢畢業資格」→「畢業資格查詢」）
     // 就會安靜地掉回通用頁，而畫面上只是「這一頁怎麼變醜了」。
+    try {
+      await RecentFunctions.record(function.path);
+    } catch (_) {
+      // 使用紀錄失敗不影響功能本身。
+    }
+    if (!context.mounted) return;
     final special = switch (function.code.toUpperCase()) {
       'ENRG010' => (BuildContext _) => GraduationPage(controller: controller),
       // 這一頁首頁也開得到（畢業進度右上角的「查其他系的規劃」）。

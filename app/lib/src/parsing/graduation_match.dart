@@ -25,19 +25,21 @@ class RequirementMatch {
   /// 我們從成績比對到的（學校還沒登錄）。
   bool get byMatch => !bySchool && course != null;
 
-  /// 這一項可以算完成了。
-  bool get done => bySchool || (course?.mark.isPassed ?? false);
+  /// 有修課紀錄不代表已通過；學校登錄的成績優先。
+  GradeMark? get mark => bySchool ? requirement.mark : course?.mark;
+
+  bool get done => mark?.isPassed ?? false;
 
   /// 正在修，還沒有成績。
-  bool get inProgress => !done && (course?.mark.isPending ?? false);
+  bool get inProgress => !done && (mark?.isPending ?? false);
+
+  bool get needsConfirmation =>
+      (bySchool || course != null) && (mark?.isUnconfirmed ?? true);
 }
 
 /// 整張必修表的比對結果。
 class GraduationMatch {
-  const GraduationMatch({
-    required this.byRequirement,
-    required this.unmatched,
-  });
+  const GraduationMatch({required this.byRequirement, required this.unmatched});
 
   /// 每一項要求對到的課。鍵是 `GraduationStatus` 裡那些 [RequiredCourse]
   /// **實例本身**（`RequiredCourse` 沒有覆寫 `==`，所以這是同一性比對）——
@@ -134,9 +136,7 @@ GraduationMatch matchGraduation(GraduationStatus status, GradeReport grades) {
   final used = <CourseGrade>{};
   final byRequirement = <RequiredCourse, CourseGrade>{};
 
-  final all = [
-    for (final group in status.groups) ...group.courses,
-  ];
+  final all = [for (final group in status.groups) ...group.courses];
 
   // ---- 第一輪：完全同名 ----
   //
@@ -160,10 +160,11 @@ GraduationMatch matchGraduation(GraduationStatus status, GradeReport grades) {
     final head = _categoryHead(r.name);
     if (head == null) continue;
 
-    final hit = grades.courses
-        .where((c) => !used.contains(c) && _key(c.name).startsWith(head))
-        .toList()
-      ..sort((a, b) => _preference(a).compareTo(_preference(b)));
+    final hit =
+        grades.courses
+            .where((c) => !used.contains(c) && _key(c.name).startsWith(head))
+            .toList()
+          ..sort((a, b) => _preference(a).compareTo(_preference(b)));
     if (hit.isEmpty) continue;
     used.add(hit.first);
     byRequirement[r] = hit.first;

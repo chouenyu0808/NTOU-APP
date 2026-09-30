@@ -89,6 +89,20 @@ class AppController extends ChangeNotifier {
       (year == defaultYear && semester == defaultSemester);
 
   TimetableResult? timetable;
+  TimetableResult? currentTimetable;
+
+  TimetableResult? get homeTimetable {
+    final now = DateTime.now();
+    final expectedYear =
+        defaultYear ?? '${now.year - 1911 - (now.month >= 8 ? 0 : 1)}';
+    final expectedSemester =
+        defaultSemester ?? (now.month >= 8 || now.month == 1 ? '1' : '2');
+    final current = currentTimetable ?? timetable;
+    return current?.year == expectedYear &&
+            current?.semester == expectedSemester
+        ? current
+        : null;
+  }
 
   /// 電子公布欄。登入握手時順便讀到的，不是另外打一次伺服器換來的。
   List<Announcement> announcements = const [];
@@ -100,6 +114,7 @@ class AppController extends ChangeNotifier {
   bool showingCache = false;
 
   bool loadingTimetable = false;
+  String loginStatus = '正在驗證帳號';
 
   // ---------- 啟動 ----------
 
@@ -121,6 +136,15 @@ class AppController extends ChangeNotifier {
       showingCache = timetable != null;
     }
 
+    final current = await repository.cache.currentSemester();
+    if (current != null) {
+      defaultYear = current.year;
+      defaultSemester = current.semester;
+      currentTimetable = await repository.cached(
+        current.year,
+        current.semester,
+      );
+    }
     phase = AppPhase.loggedOut;
     notifyListeners();
 
@@ -140,6 +164,7 @@ class AppController extends ChangeNotifier {
 
   /// 開登入頁、通過排隊、抓驗證碼。
   Future<void> startLogin() async {
+    _timetableRevision++;
     phase = AppPhase.openingLogin;
     error = null;
     captcha = null;
@@ -164,6 +189,7 @@ class AppController extends ChangeNotifier {
     required bool remember,
   }) async {
     phase = AppPhase.loggingIn;
+    loginStatus = '正在驗證帳號';
     error = null;
     notifyListeners();
 
@@ -172,6 +198,11 @@ class AppController extends ChangeNotifier {
         username: account,
         password: password,
         captcha: captchaText,
+        onProgress: (message) {
+          if (phase != AppPhase.loggingIn) return;
+          loginStatus = message;
+          notifyListeners();
+        },
       );
 
       // 換帳號了：把上一個人的課表快取整個丟掉。
@@ -187,6 +218,7 @@ class AppController extends ChangeNotifier {
         // 就掛在桌面上，不用解鎖 App 就看得到。
         await widgets?.clearTimetable();
         timetable = null;
+        currentTimetable = null;
         showingCache = false;
         // 學年學期也要放掉 —— 那是上一個人選的，新的人要用他自己的預設值。
         year = null;
@@ -208,6 +240,14 @@ class AppController extends ChangeNotifier {
       semesters = options.semesters;
       defaultYear = options.defaultYear;
       defaultSemester = options.defaultSemester;
+      await repository.cache.saveCurrentSemester(
+        defaultYear!,
+        defaultSemester!,
+      );
+      currentTimetable = await repository.cached(
+        defaultYear!,
+        defaultSemester!,
+      );
       year ??= options.defaultYear;
       semester ??= options.defaultSemester;
       announcements = repository.announcements;
@@ -216,6 +256,15 @@ class AppController extends ChangeNotifier {
     }, onFailure: () async => phase = AppPhase.loggedOut);
 
     if (ok) {
+      // 先取得首頁的當學期資料，再恢復使用者正在瀏覽的學期。
+      if (!isCurrentSemester) {
+        await _guard(() async {
+          currentTimetable = await repository.fetchTimetable(
+            year: defaultYear!,
+            semester: defaultSemester!,
+          );
+        });
+      }
       await refreshTimetable();
       return;
     }
@@ -310,6 +359,7 @@ class AppController extends ChangeNotifier {
   /// 課表快取留著 —— 回到 App 時馬上看得到東西，只是要重新登入才能更新。
   Future<void> _releaseSession() async {
     if (phase != AppPhase.ready) return;
+    _timetableRevision++;
     await repository.logout();
     captcha = null;
     phase = AppPhase.loggedOut;
@@ -319,11 +369,13 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _timetableRevision++;
     _logoutTimer?.cancel();
     super.dispose();
   }
 
   Future<void> logout() async {
+    _timetableRevision++;
     await _guard(() async {
       await repository.logout();
       await credentials.clearPassword();
@@ -335,7 +387,11 @@ class AppController extends ChangeNotifier {
 
   // ---------- 課表 ----------
 
+  int _timetableRevision = 0;
+  Future<void> _timetableQueue = Future<void>.value();
+
   Future<void> selectSemester({String? newYear, String? newSemester}) async {
+    final revision = ++_timetableRevision;
     year = newYear ?? year;
     semester = newSemester ?? semester;
 
@@ -343,12 +399,18 @@ class AppController extends ChangeNotifier {
     final s = semester;
     if (y == null || s == null) return;
 
+    // 下拉選單與內容必須屬於同一學期，沒有快取時不可沿用上一學期。
+    timetable = null;
+    showingCache = false;
+    loadingTimetable = false;
+    error = null;
+    notifyListeners();
+
     // 換學期時先把快取畫出來，網路慢的時候不會空一段。
     final cached = await repository.cached(y, s);
-    if (cached != null) {
-      timetable = cached;
-      showingCache = true;
-    }
+    if (revision != _timetableRevision) return;
+    timetable = cached;
+    showingCache = cached != null;
     notifyListeners();
 
     if (phase == AppPhase.ready) await refreshTimetable();
@@ -358,25 +420,42 @@ class AppController extends ChangeNotifier {
     final y = year;
     final s = semester;
     if (y == null || s == null) return;
+    final revision = ++_timetableRevision;
+    bool isCurrent() => revision == _timetableRevision;
+
+    // WebForms 查詢共用 __VIEWSTATE，整次查詢依序執行。
+    final previous = _timetableQueue;
+    final completed = Completer<void>();
+    _timetableQueue = completed.future;
 
     loadingTimetable = true;
     error = null;
     notifyListeners();
 
-    await _guard(() async {
-      timetable = await repository.fetchTimetable(year: y, semester: s);
-      showingCache = false;
-    });
+    try {
+      await previous;
+      if (!isCurrent()) return;
+      await _guard(() async {
+        final result = await repository.fetchTimetable(year: y, semester: s);
+        if (!isCurrent()) return;
+        timetable = result;
+        if (y == defaultYear && s == defaultSemester) currentTimetable = result;
+        showingCache = false;
+      }, isCurrent: isCurrent);
 
-    loadingTimetable = false;
-    notifyListeners();
+      if (!isCurrent()) return;
+      loadingTimetable = false;
+      notifyListeners();
 
-    // 抓到新課表就順手把桌面上那張圖重畫。
-    //
-    // **放在 _guard 外面**：抓失敗時也要重畫 —— 快取沒變，但「今天」可能
-    // 已經換了一天（App 在背景放了一夜），那張圖還停在昨天。
-    // 桌面上沒有這個小組件的話 refreshTimetable 自己會直接回來，不做事。
-    await widgets?.refreshTimetable();
+      // 抓到新課表就順手把桌面上那張圖重畫。
+      //
+      // **放在 _guard 外面**：抓失敗時也要重畫 —— 快取沒變，但「今天」可能
+      // 已經換了一天（App 在背景放了一夜），那張圖還停在昨天。
+      // 桌面上沒有這個小組件的話 refreshTimetable 自己會直接回來，不做事。
+      await widgets?.refreshTimetable();
+    } finally {
+      completed.complete();
+    }
   }
 
   // ---------- 錯誤處理 ----------
@@ -388,19 +467,24 @@ class AppController extends ChangeNotifier {
   Future<bool> _guard(
     Future<void> Function() body, {
     Future<void> Function()? onFailure,
+    bool Function()? isCurrent,
   }) async {
     try {
       await body();
+      if (isCurrent != null && !isCurrent()) return false;
       notifyListeners();
       return true;
     } on SessionExpired catch (e) {
+      if (isCurrent != null && !isCurrent()) return false;
       repository.invalidateSession();
       error = e.message;
       phase = AppPhase.loggedOut;
     } on AisException catch (e) {
+      if (isCurrent != null && !isCurrent()) return false;
       error = e.message;
       await onFailure?.call();
     } catch (e) {
+      if (isCurrent != null && !isCurrent()) return false;
       // 沒預期到的例外。**只說類型，不說內容** ——
       // 這條路徑上可能有登入回應的碎片，而那裡面有明文密碼。
       error = '發生未預期的錯誤（${e.runtimeType}）。請再試一次。';

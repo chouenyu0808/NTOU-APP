@@ -104,8 +104,11 @@ class _PlannerPageState extends State<PlannerPage> {
     }
   }
 
-  Future<void> _save() async {
-    await widget.store.write(_plan);
+  Future<void> _writes = Future<void>.value();
+  Future<void> _save() {
+    final snapshot = _plan;
+    _writes = _writes.then((_) => widget.store.write(snapshot));
+    return _writes;
   }
 
   void _updatePlan(CoursePlan plan) {
@@ -119,11 +122,39 @@ class _PlannerPageState extends State<PlannerPage> {
       builder: (_) => EditSlotsDialog(initial: pc.slots),
     );
     if (result != null) {
-      _updatePlan(_plan.update(pc.copyWith(slots: result, slotsAreManual: true)));
+      _updatePlan(
+        _plan.update(pc.copyWith(slots: result, slotsAreManual: true)),
+      );
     }
   }
 
-  void _removeCourse(String key) => _updatePlan(_plan.remove(key));
+  void _removeCourse(String key) {
+    final removed = _plan.courses.firstWhere((c) => c.key == key);
+    final year = _plan.year;
+    final semester = _plan.semester;
+    _updatePlan(_plan.remove(key));
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('已移除「${removed.course.name}」'),
+        action: SnackBarAction(
+          label: '復原',
+          onPressed: () async {
+            // 切換學期後仍只復原到原學期，不覆蓋其餘新增與編輯。
+            await _writes;
+            final latest =
+                await widget.store.read(year, semester) ??
+                CoursePlan(year: year, semester: semester);
+            final restored = latest.add(removed);
+            await widget.store.write(restored);
+            if (mounted && _year == year && _semester == semester) {
+              setState(() => _plan = restored);
+            }
+          },
+        ),
+      ),
+    );
+  }
 
   Future<void> _changeSemester() async {
     // 選項用學校給的 (value, label) 成對帶著走。
@@ -138,9 +169,12 @@ class _PlannerPageState extends State<PlannerPage> {
         ? [for (final o in _c.semesters) (value: o.value, label: o.label)]
         : const [(value: '1', label: '上學期'), (value: '2', label: '下學期')];
 
-    String tempYear = years.any((y) => y.value == _year) ? _year : years.first.value;
-    String tempSem =
-        semesters.any((s) => s.value == _semester) ? _semester : semesters.first.value;
+    String tempYear = years.any((y) => y.value == _year)
+        ? _year
+        : years.first.value;
+    String tempSem = semesters.any((s) => s.value == _semester)
+        ? _semester
+        : semesters.first.value;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -172,8 +206,14 @@ class _PlannerPageState extends State<PlannerPage> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('確定')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('確定'),
+            ),
           ],
         ),
       ),
@@ -236,6 +276,7 @@ class _PlannerPageState extends State<PlannerPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: _openBrowser,
         icon: const Icon(Icons.add),
         label: const Text('新增課程'),
@@ -243,58 +284,61 @@ class _PlannerPageState extends State<PlannerPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _plan.courses.isEmpty
-              ? _EmptyPlanner(onAdd: _openBrowser)
-              : ListView(
-                  padding: const EdgeInsets.only(bottom: 96),
-                  children: [
-                    // 衝堂警告
-                    if (conflicts.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      for (final c in conflicts)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-                          child: _ConflictBanner(conflict: c),
-                        ),
-                    ],
-
-                    // 課表格子
-                    const SizedBox(height: 8),
-                    TimetableGrid(courses: _plan.asCourses()),
-
-                    // 統計
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Row(
-                        children: [
-                          _Stat(_plan.courses.length.toString(), '門課'),
-                          const SizedBox(width: 20),
-                          _Stat(_plan.totalCredits.toStringAsFixed(1), '學分'),
-                          if (_plan.missingSlotCount > 0) ...[
-                            const SizedBox(width: 20),
-                            _Stat(
-                              _plan.missingSlotCount.toString(),
-                              '堂未填時段',
-                              color: scheme.error,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    const Divider(height: 24),
-
-                    // 課程清單
-                    for (final pc in _plan.courses)
-                      _CourseItem(
-                        pc: pc,
-                        selection: widget.controller.repository.config
-                            .courseSearch
-                            .selectionLabel(pc.course.selectionType),
-                        onEditSlots: () => _editSlots(pc),
-                        onRemove: () => _removeCourse(pc.key),
-                      ),
-                  ],
+          ? _EmptyPlanner(onAdd: _openBrowser)
+          : ListView(
+              padding: const EdgeInsets.only(bottom: 96),
+              children: [
+                // 衝堂警告
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Text('預排只儲存在這支手機，尚未送出正式選課。'),
                 ),
+                if (conflicts.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  for (final c in conflicts)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                      child: _ConflictBanner(conflict: c),
+                    ),
+                ],
+
+                // 課表格子
+                const SizedBox(height: 8),
+                TimetableGrid(courses: _plan.asCourses()),
+
+                // 統計
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Row(
+                    children: [
+                      _Stat(_plan.courses.length.toString(), '門課'),
+                      const SizedBox(width: 20),
+                      _Stat(_plan.totalCredits.toStringAsFixed(1), '學分'),
+                      if (_plan.missingSlotCount > 0) ...[
+                        const SizedBox(width: 20),
+                        _Stat(
+                          _plan.missingSlotCount.toString(),
+                          '堂未填時段',
+                          color: scheme.error,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const Divider(height: 24),
+
+                // 課程清單
+                for (final pc in _plan.courses)
+                  _CourseItem(
+                    pc: pc,
+                    selection: widget.controller.repository.config.courseSearch
+                        .selectionLabel(pc.course.selectionType),
+                    onEditSlots: () => _editSlots(pc),
+                    onRemove: () => _removeCourse(pc.key),
+                  ),
+              ],
+            ),
     );
   }
 }
@@ -312,21 +356,21 @@ class _EmptyPlanner extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.event_note_outlined, size: 64, color: scheme.outlineVariant),
+          Icon(
+            Icons.event_note_outlined,
+            size: 64,
+            color: scheme.outlineVariant,
+          ),
           const SizedBox(height: 16),
           Text('還沒有預排的課程', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           Text(
             '從學校的開課清單挑，或自己打。加進來會當場檢查衝堂。',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+            style: Theme.of(context).textTheme.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 24),
-          FilledButton.tonal(
-            onPressed: onAdd,
-            child: const Text('去挑第一門課'),
-          ),
+          FilledButton.tonal(onPressed: onAdd, child: const Text('去挑第一門課')),
         ],
       ),
     );
@@ -350,7 +394,11 @@ class _ConflictBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.warning_amber_outlined, color: scheme.onErrorContainer, size: 20),
+          Icon(
+            Icons.warning_amber_outlined,
+            color: scheme.onErrorContainer,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -381,7 +429,13 @@ class _Stat extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
-        Text(value, style: theme.textTheme.headlineSmall?.copyWith(color: c, fontWeight: FontWeight.w700)),
+        Text(
+          value,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            color: c,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         const SizedBox(width: 3),
         Text(label, style: theme.textTheme.bodySmall?.copyWith(color: c)),
       ],
@@ -418,8 +472,10 @@ class _CourseItem extends StatelessWidget {
       title: Row(
         children: [
           Flexible(
-            child: Text(course.name,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              course.name,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
           if (selection.isNotEmpty) ...[
             const SizedBox(width: 8),
@@ -447,7 +503,10 @@ class _CourseItem extends StatelessWidget {
                 label: const Text('點此填入上課時間'),
                 avatar: Icon(Icons.schedule, size: 16, color: scheme.error),
                 backgroundColor: scheme.errorContainer,
-                labelStyle: TextStyle(color: scheme.onErrorContainer, fontSize: 12),
+                labelStyle: TextStyle(
+                  color: scheme.onErrorContainer,
+                  fontSize: 12,
+                ),
                 padding: EdgeInsets.zero,
               ),
             )
@@ -458,7 +517,10 @@ class _CourseItem extends StatelessWidget {
               children: [
                 for (final s in pc.slots)
                   Chip(
-                    label: Text(s.toString(), style: const TextStyle(fontSize: 12)),
+                    label: Text(
+                      s.toString(),
+                      style: const TextStyle(fontSize: 12),
+                    ),
                     padding: EdgeInsets.zero,
                     visualDensity: VisualDensity.compact,
                   ),

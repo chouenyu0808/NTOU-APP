@@ -6,6 +6,7 @@ import 'app_controller.dart';
 import 'home_page.dart';
 import 'login_page.dart';
 import 'module_list_page.dart';
+import 'navigation_icon.dart';
 import 'planner_page.dart';
 import 'timetable_page.dart';
 import 'transit_page.dart';
@@ -24,7 +25,7 @@ class HomeShell extends StatefulWidget {
     required this.controller,
     required this.catalog,
     required this.planStore,
-    this.promptLoginOnOpen = true,
+    this.promptLoginOnOpen = false,
   });
 
   final AppController controller;
@@ -74,14 +75,14 @@ class _HomeShellState extends State<HomeShell> {
 
   /// 課表分頁標題位置的切換鈕。
   Widget _scheduleSwitch() => SegmentedButton<int>(
-        segments: const [
-          ButtonSegment(value: 0, label: Text('本學期')),
-          ButtonSegment(value: 1, label: Text('預排')),
-        ],
-        selected: {_schedule},
-        showSelectedIcon: false,
-        onSelectionChanged: (v) => setState(() => _schedule = v.first),
-      );
+    segments: const [
+      ButtonSegment(value: 0, label: Text('本學期')),
+      ButtonSegment(value: 1, label: Text('預排')),
+    ],
+    selected: {_schedule},
+    showSelectedIcon: false,
+    onSelectionChanged: (v) => setState(() => _schedule = v.first),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -126,27 +127,42 @@ class _HomeShellState extends State<HomeShell> {
         ],
       ),
       bottomNavigationBar: NavigationBar(
+        animationDuration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+            icon: NavigationIcon(
+              icon: Icons.home_outlined,
+              selectedIcon: Icons.home,
+              selected: _index == 0,
+            ),
             label: '首頁',
           ),
           NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month),
+            icon: NavigationIcon(
+              icon: Icons.calendar_month_outlined,
+              selectedIcon: Icons.calendar_month,
+              selected: _index == 1,
+            ),
             label: '課表',
           ),
           NavigationDestination(
-            icon: Icon(Icons.apps_outlined),
-            selectedIcon: Icon(Icons.apps),
+            icon: NavigationIcon(
+              icon: Icons.apps_outlined,
+              selectedIcon: Icons.apps,
+              selected: _index == 2,
+            ),
             label: '校務',
           ),
           NavigationDestination(
-            icon: Icon(Icons.directions_bus_outlined),
-            selectedIcon: Icon(Icons.directions_bus),
+            icon: NavigationIcon(
+              icon: Icons.directions_bus_outlined,
+              selectedIcon: Icons.directions_bus,
+              selected: _index == 3,
+            ),
             label: '交通',
           ),
         ],

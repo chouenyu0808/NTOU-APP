@@ -35,8 +35,18 @@ class SchemaFieldInput extends StatelessWidget {
 
     // 不要畫成文字框 —— 使用者會在裡面打字，然後送出一個伺服器看不懂的值，
     // 而失敗訊息不會提到檔案。
+    //
+    // 但光是凍住還不夠：送出鈕照樣按得下去，而 `AisRepository._sendable`
+    // 會把這一格整個跳過 —— 學校那邊收到的是一張**沒有附件**的申請，
+    // 一路上沒有任何錯誤，使用者按完不會知道自己送了一張缺件的。
+    // 所以這一格一定要自己開口，把人帶去學校網頁版。
     if (field.kind == FieldKind.file) {
-      return _frozen(context, '', icon: Icons.attach_file);
+      return _frozen(
+        context,
+        '',
+        icon: Icons.attach_file,
+        helper: '這一格要附檔案，App 還附不上 —— 這份申請請到學校網頁版送出',
+      );
     }
 
     return switch (field.kind) {

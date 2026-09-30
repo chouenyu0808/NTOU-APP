@@ -47,16 +47,21 @@ class GradeMark {
 
   /// 這門課算不算過了。
   ///
-  /// **靠學校自己的記號判斷，不自己訂及格分數。** 學校在不及格的成績上會標
-  /// `＊`（頁尾圖例寫著），所以「沒有被標不及格」就是過了。自己訂一條
-  /// 60 分的線反而會錯：研究所是 70，而且這一欄還可能是「甲」「通過」
-  /// 這種等第 —— 那些用數字比大小一律會判成不及格。
+  /// 數字成績依學校的 `＊` 不及格記號判斷，避免自行套用不同學制的門檻。
+  /// 文字只接受明確的「通過」「及格」；未知等第與新記號須待確認。
   ///
   /// 抵免算過。成績未到和期中退選不算 —— 那兩個都還沒有結果。
   bool get isPassed {
     if (isFailed || isWithdrawn || isPending) return false;
-    return isTransferred || score != null;
+    if (isTransferred) return true;
+    if (score == '通過' || score == '及格') return true;
+    final value = double.tryParse(score ?? '');
+    return value != null && value.isFinite && value >= 0 && value <= 100;
   }
+
+  /// 未知記號保留原文，不能因為有文字就推定及格。
+  bool get isUnconfirmed =>
+      !isPassed && !isFailed && !isWithdrawn && !isPending;
 
   static const _pending = '成績未到';
   static const _transferred = '抵免';
@@ -187,10 +192,7 @@ class CourseGrade {
 
 /// 整份成績單。
 class GradeReport {
-  const GradeReport({
-    required this.courses,
-    this.totals = const {},
-  });
+  const GradeReport({required this.courses, this.totals = const {}});
 
   final List<CourseGrade> courses;
 
@@ -209,8 +211,10 @@ class GradeReport {
     return list;
   }
 
-  List<CourseGrade> inTerm(String term) =>
-      [for (final c in courses) if (c.term == term) c];
+  List<CourseGrade> inTerm(String term) => [
+    for (final c in courses)
+      if (c.term == term) c,
+  ];
 }
 
 /// 上面那排統計欄的標籤。畫面上照這個順序排。
@@ -256,16 +260,18 @@ GradeReport parseGrades(String html) {
     final name = clean(r[_colName] ?? '');
     if (name.isEmpty) continue;
 
-    courses.add(CourseGrade(
-      term: clean(r[_colTerm] ?? ''),
-      name: name,
-      code: clean(r[_colCode] ?? ''),
-      classNo: clean(r[_colClassNo] ?? ''),
-      kind: clean(r[_colKind] ?? ''),
-      teacher: clean(r[_colTeacher] ?? ''),
-      credits: int.tryParse(clean(r[_colCredits] ?? '')),
-      mark: parseGradeMark(r[_colScore] ?? ''),
-    ));
+    courses.add(
+      CourseGrade(
+        term: clean(r[_colTerm] ?? ''),
+        name: name,
+        code: clean(r[_colCode] ?? ''),
+        classNo: clean(r[_colClassNo] ?? ''),
+        kind: clean(r[_colKind] ?? ''),
+        teacher: clean(r[_colTeacher] ?? ''),
+        credits: int.tryParse(clean(r[_colCredits] ?? '')),
+        mark: parseGradeMark(r[_colScore] ?? ''),
+      ),
+    );
   }
 
   return GradeReport(courses: courses, totals: totals);

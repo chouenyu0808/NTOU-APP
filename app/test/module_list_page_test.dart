@@ -38,9 +38,9 @@ void main() {
   });
 
   Widget wrap() => MaterialApp(
-        theme: NtouTheme.of(Brightness.light),
-        home: ModuleListPage(controller: controller, catalog: catalog),
-      );
+    theme: NtouTheme.of(Brightness.light),
+    home: ModuleListPage(controller: controller, catalog: catalog),
+  );
 
   testWidgets('顯示模組網格與「帳號」區', (tester) async {
     await tester.pumpWidget(wrap());
@@ -114,7 +114,7 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('清空之後網格回來，13 色原封不動', (tester) async {
+    testWidgets('清空之後回到全部服務', (tester) async {
       await tester.pumpWidget(wrap());
       await tester.pumpAndSettle();
 
@@ -123,7 +123,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.clear));
       await tester.pumpAndSettle();
 
-      expect(find.byType(GridView), findsOneWidget);
+      expect(find.text('全部服務'), findsOneWidget);
       await unmount(tester);
     });
   });
@@ -154,10 +154,12 @@ void main() {
     });
 
     testWidgets('每個模組都有自己的圖示，沒有一個掉進 fallback', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        theme: NtouTheme.of(Brightness.light),
-        home: ModuleListPage(controller: controller, catalog: real),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: NtouTheme.of(Brightness.light),
+          home: ModuleListPage(controller: controller, catalog: real),
+        ),
+      );
       await tester.pumpAndSettle();
 
       // 沒對應的模組會拿到 Icons.folder_outlined。一個都不該有 ——

@@ -14,6 +14,7 @@ import '../parsing/grades.dart';
 import '../parsing/models.dart';
 import '../parsing/data_grid.dart';
 import '../parsing/server_message.dart';
+import '../parsing/startup_postback.dart';
 import '../parsing/tables.dart';
 import '../parsing/timetable.dart';
 import '../storage/timetable_cache.dart';
@@ -114,9 +115,7 @@ class AisRepository {
     final page = _loginPage = await session.openLoginPage();
     final image = await session.fetchCaptcha(page);
     if (image == null) {
-      throw const LoginFailed(
-        '拿不到驗證碼圖片。學校系統可能正在維護，或是登入頁改版了。',
-      );
+      throw const LoginFailed('拿不到驗證碼圖片。學校系統可能正在維護，或是登入頁改版了。');
     }
     return CaptchaChallenge(image);
   }
@@ -131,6 +130,7 @@ class AisRepository {
     required String username,
     required String password,
     required String captcha,
+    void Function(String message)? onProgress,
   }) async {
     final session = _session;
     final loginPage = _loginPage;
@@ -138,6 +138,7 @@ class AisRepository {
       throw const LoginFailed('登入流程沒有開始，請重新整理登入頁。');
     }
 
+    onProgress?.call('正在驗證帳號');
     final landing = await session.login(
       page: loginPage,
       username: username,
@@ -151,8 +152,15 @@ class AisRepository {
     // 入口頁的四個 frame 裡就有電子公布欄 —— **順便讀走**。
     // 選單裡雖然有「電子公布欄 > 公告訊息查詢」，但為了首頁那幾則去開那一頁
     // 等於多打一次學校的伺服器，而資料已經在手上了。
-    _announcements = _pickAnnouncements(await session.enterPortal(landing));
+    _announcements = _pickAnnouncements(
+      await session.enterPortal(
+        landing,
+        onProgress: (completed, total) =>
+            onProgress?.call('正在載入校務資料（$completed/$total）'),
+      ),
+    );
 
+    onProgress?.call('正在讀取學期資料');
     return _openQueryPage(session);
   }
 
@@ -312,10 +320,7 @@ class AisRepository {
     // 留第一句：那是最靠近使用者剛才點的那個功能的，後面幾頁（通常是
     // 首頁）就算也有話要說，講的也是別的事。
     String? notice;
-    page = await session.followJsRedirect(
-      page,
-      onMessage: (m) => notice ??= m,
-    );
+    page = await session.followJsRedirect(page, onMessage: (m) => notice ??= m);
     session.checkSession(page);
 
     final schema = FunctionSchema.fromPage(page);
@@ -342,6 +347,16 @@ class AisRepository {
       }
     }
 
+    // **開頁面這條路刻意不跟頁面自己那一發 postback**，那件事跟在 [runQuery]。
+    //
+    // 分辨「空殼」靠的是「解不到任何結果表格」，而剛打開的功能頁本來就還沒有
+    // 結果 —— 那個條件在這裡對 131 個功能永遠成立，等於沒有訊號可用。剩下的
+    // 規則只能是「頁面上有頂層 postback 就跟」，那是在替使用者按一顆他還沒按
+    // 的鈕：同一招認出來的目標在別的頁面上可能是「刪除」。
+    //
+    // 會被誤判成「查無資料」的時機是**送出查詢之後**，那時候「解不到表格」
+    // 才真的是異常訊號。成績明細頁也不經過這裡 ——
+    // 它是 [openGrades] 拿著「詳」的參數直接 POST 過去的。
     return FunctionView(
       function: fn,
       page: page,
@@ -382,8 +397,7 @@ class AisRepository {
       cascadeFields: AisSession.autoPostBackFields(page),
       // 伺服器可能重填了下游的選項，所以值要以回應為準，不是以使用者填的為準
       values: {
-        for (final f in schema.visibleFields)
-          f.name: values[f.name] ?? f.value,
+        for (final f in schema.visibleFields) f.name: values[f.name] ?? f.value,
       },
       clearResult: true,
     );
@@ -413,7 +427,7 @@ class AisRepository {
     // （例如「用課號還是課名查」）不一定進得了 schema。
     if (extra != null) fields.addAll(extra);
 
-    final page = await session.submitForm(
+    var page = await session.submitForm(
       view.page,
       button,
       values: fields,
@@ -423,7 +437,35 @@ class AisRepository {
     session.checkSession(page);
 
     // 一頁可能有不只一張結果表格（線上加退選：可加選的課 + 已選上的課）。
-    final grids = parseDataGrids(page.html);
+    var grids = parseDataGrids(page.html);
+
+    // **一張表都解不到的時候，先問這一頁是不是還缺一發 postback。**
+    //
+    // 有些頁面的結果不在它回給我們的 HTML 裡：頁面載入之後自己發一發
+    // `__doPostBack('ReQuery','')`（UpdatePanel）才把表格補回來。App 不跑 JS，
+    // 所以拿到的是空殼 —— **而空殼跟「這個帳號沒有資料」長得一模一樣**：
+    // 欄位齊全、統計全空、零筆、狀態碼 200、沒有任何錯誤。
+    // 成績單就是這樣被誤判了九天（見 [openGrades]）。
+    //
+    // 有結果的頁面不補送，那是白白多打學校一次請求。
+    // 而且**只補一次**（這裡沒有迴圈）：補回來還是解不到表格的話，那就是
+    // 真的沒有表格，再送下去只會跟自己繞圈 —— 而每一圈都是一次請求。
+    //
+    // 補送失敗就讓它往上丟。這一步沒有「部分結果」可以留 ——
+    // 手上那份是空殼，吞掉錯誤只會再一次把「沒問到」講成「你沒有資料」。
+    if (!_hasGrid(grids)) {
+      final startup = startupPostback(page.html);
+      if (startup != null) {
+        page = await session.postback(
+          page,
+          startup.target,
+          argument: startup.argument,
+        );
+        session.checkSession(page);
+        grids = parseDataGrids(page.html);
+      }
+    }
+
     return view.copyWith(
       page: page,
       schema: FunctionSchema.fromPage(page),
@@ -443,6 +485,15 @@ class AisRepository {
     );
   }
 
+  /// 這次回應裡有沒有真的解出一張結果表格。
+  ///
+  /// **不能用 `grids.isEmpty` 問這件事。** 一張表都找不到的時候
+  /// `parseDataGrids` 照樣回一筆空的結果（呼叫端要拿得到分頁狀態和
+  /// 「查無符合資料」），所以那個清單幾乎永遠不是空的 —— 拿它當條件的話，
+  /// 上面那一發永遠不會送出去，而且完全看不出來。
+  static bool _hasGrid(List<DataGridResult> grids) =>
+      grids.any((g) => g.columns.isNotEmpty);
+
   // ---------- 課程查詢 ----------
 
   /// 打開課程查詢頁。
@@ -454,7 +505,10 @@ class AisRepository {
 
     final schema = FunctionSchema.fromPage(page);
     return FunctionView(
-      // Course search is not in the normal function list we fetch dynamically. We create a dummy AisFunction.
+      // 課程查詢有自己的入口（`course_browser_page`），不是從選單那份功能清單
+      // 點進來的，所以**沒有現成的 `AisFunction` 可以帶進來**。這裡當場補一個，
+      // 讓它照樣走通用功能頁那一套（`_sendable`、`runQuery`、結果表格）——
+      // 路徑以 `selectors.json` 為準，學校搬家時只改那一份。
       function: AisFunction(
         title: '課程課表查詢',
         path: config.courseSearch.path,
@@ -579,9 +633,7 @@ class AisRepository {
       page: page,
       schema: schema,
       cascadeFields: AisSession.autoPostBackFields(page),
-      values: {
-        for (final f in schema.visibleFields) f.name: f.value,
-      },
+      values: {for (final f in schema.visibleFields) f.name: f.value},
       result: grids.isEmpty ? null : grids.first,
       extraResults: grids.skip(1).toList(),
       // **這一條路上的訊息比查詢那條更要緊。** 這裡跑的是結果表格裡那些
@@ -599,12 +651,12 @@ class AisRepository {
   /// 全部由 `FunctionSchema` 從頁面自己的宣告讀出來，跟通用功能頁同一套。
   /// 學校加一個查詢條件，這裡自動就多一個下拉。
   Future<FunctionView> openRequiredCourses() => openFunction(
-        AisFunction(
-          title: '查詢必修科目表',
-          path: config.requiredCoursesPath,
-          trail: const ['教務系統', '選課系統', '查詢必修科目表'],
-        ),
-      );
+    AisFunction(
+      title: '查詢必修科目表',
+      path: config.requiredCoursesPath,
+      trail: const ['教務系統', '選課系統', '查詢必修科目表'],
+    ),
+  );
 
   /// 查詢畢業資格（`ENRG010`）。
   ///
@@ -614,12 +666,12 @@ class AisRepository {
   /// 路徑寫在這裡而不是 selectors.json，因為它只有這一個用途，
   /// 而且選單裡就有（`catalog.byCode('ENRG010')`）—— 兩邊都改反而容易漂。
   Future<FunctionView> openGraduation() => openFunction(
-        const AisFunction(
-          title: '查詢畢業資格',
-          path: 'Application/ENR/ENRG0/ENRG010_.aspx?progcd=ENRG010',
-          trail: ['教務系統', '畢業作業', '查詢畢業資格'],
-        ),
-      );
+    const AisFunction(
+      title: '查詢畢業資格',
+      path: 'Application/ENR/ENRG0/ENRG010_.aspx?progcd=ENRG010',
+      trail: ['教務系統', '畢業作業', '查詢畢業資格'],
+    ),
+  );
 
   /// 查詢成績（`GRD5010`）。
   ///
@@ -668,7 +720,7 @@ class AisRepository {
         term.isEmpty
             ? '查不到你的修課紀錄，所以開不了成績單。'
             : '$term 學年期查不到你的修課紀錄，所以開不了成績單。'
-                '（這不代表你沒有成績 —— 換一個學年期再試。）',
+                  '（這不代表你沒有成績 —— 換一個學年期再試。）',
       );
     }
 
@@ -678,8 +730,18 @@ class AisRepository {
     var page = await session.post(url, detail.fields);
     session.checkSession(page);
 
-    // 第 3 步。
-    page = await session.postback(page, _gradesReloadTarget);
+    // 第 3 步。**目標從頁面上讀**，跟 [runQuery] 補送空殼是同一套規則
+    //（`<script>` 頂層那一發），兩邊不會各走各的。
+    //
+    // 但這一頁**一定要送出這一發**：它的成績永遠是那一發補回來的，
+    // 讀不到目標時不能就這樣算了 —— 那會安靜地退回九天前那個錯誤結論。
+    // 所以認不出來就用寫死的 [_gradesReloadTarget] 硬送。
+    final startup = startupPostback(page.html);
+    page = await session.postback(
+      page,
+      startup?.target ?? _gradesReloadTarget,
+      argument: startup?.argument ?? '',
+    );
     session.checkSession(page);
 
     return parseGrades(page.html);
@@ -689,6 +751,9 @@ class AisRepository {
   static const String _gradesQueryButton = 'QUERY_BTN1';
 
   /// 成績單頁載入後自己發的那一發 postback —— 成績是它補回來的。
+  ///
+  /// 正常情況下是從頁面上讀出來的（`startupPostback`），這一份是**讀不到時的
+  /// 退路**：這一頁少了那一發就是一份空殼，而空殼看起來完全像「沒有成績」。
   static const String _gradesReloadTarget = 'ReQuery';
 
   /// 抓一則公告的全文頁 HTML。[detailPath] 來自 `Announcement.detailPath`。

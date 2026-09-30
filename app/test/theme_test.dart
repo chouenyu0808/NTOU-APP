@@ -43,7 +43,7 @@ void main() {
 
     test('刻意避開 Material 預設的紫，用海洋藍當種子', () {
       // 深海藍 seed，不是那個「一看就知道還沒設計過」的預設紫。
-      expect(NtouTheme.seed, const Color(0xFF00506B));
+      expect(NtouTheme.seed, const Color(0xFF173B51));
       final light = NtouTheme.of(Brightness.light);
       expect(light.colorScheme.primary, isNot(const Color(0xFF6750A4)));
     });

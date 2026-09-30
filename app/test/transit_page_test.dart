@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +19,29 @@ void main() {
     // 讀最愛會丟 MissingPluginException —— 那個錯誤被吞掉了，
     // 但畫面會因為多一次 async 往返而慢一拍，測試看起來像整頁沒畫出來。
     setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    testWidgets('更新時保留看板，停用按鈕並合併計時器請求', (tester) async {
+      final repo = _FakeRepo([StopBoard(stop: _gym)]);
+      await _pump(tester, repo, autoRefresh: const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      final before = repo.calls;
+      repo.pending = Completer<List<StopBoard>>();
+      await tester.tap(find.byTooltip('重新整理'));
+      await tester.pump();
+      expect(find.text('海大體育館'), findsOneWidget);
+      expect(
+        tester.widget<IconButton>(find.byWidgetPredicate(
+          (widget) => widget is IconButton && widget.tooltip == '正在更新',
+        )).onPressed,
+        isNull,
+      );
+      await tester.pump(const Duration(seconds: 31));
+      expect(repo.calls, before + 1);
+      repo.pending!.complete([StopBoard(stop: _gym)]);
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('重新整理'), findsOneWidget);
+      await _teardown(tester);
+    });
 
     testWidgets('沒有金鑰時給一句話，不是五張錯誤卡片', (tester) async {
       await _pump(tester, _FakeRepo(const [], configured: false));
@@ -783,6 +808,7 @@ class _FakeRepo extends TransitRepository {
   final List<StopBoard> prepared;
   final bool configured;
   int calls = 0;
+  Completer<List<StopBoard>>? pending;
 
   @override
   bool get isConfigured => configured;
@@ -812,8 +838,13 @@ class _FakeRepo extends TransitRepository {
   /// 畫面現在走的是整批那條路徑。逐站那個保留著，因為它是 [boards] 的
   /// 退路，也還有測試在用。
   @override
-  Future<List<StopBoard>> boards(List<TransitStop> stops) async =>
-      Future.wait([for (final s in stops) board(s)]);
+  Future<List<StopBoard>> boards(List<TransitStop> stops) async {
+    if (pending != null) {
+      calls++;
+      return pending!.future;
+    }
+    return Future.wait([for (final s in stops) board(s)]);
+  }
 
   static TdxClient _client(bool configured) => TdxClient(
         config: _config,

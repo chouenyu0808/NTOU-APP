@@ -113,9 +113,8 @@ class WidgetUpdater {
     // **一次給完整的一串。** 這個 API 是整批取代的語意，只給下一個時刻的話
     // 其餘的會被洗掉，症狀是小組件更新一次之後就再也不動了。
     //
-    // 課表小組件沒有 `updatePeriodMillis`（那個最快也只有 30 分鐘，而且會
-    // 叫醒裝置）—— 它完全靠這串鬧鐘。所以畫失敗時一定要把重試那一刻也排進去，
-    // 不然這個小組件就再也沒有東西會叫醒它了。
+    // 節次更新靠這串鬧鐘，系統每 30 分鐘的更新只做補救。
+    // 畫失敗時也排入重試時刻，不必一直等到下次定期檢查。
     await _schedule(
       drawn ? payload.updateTimes : [validUntil, ...payload.updateTimes],
       WidgetKeys.timetableProvider,

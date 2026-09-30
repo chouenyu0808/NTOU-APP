@@ -11,15 +11,30 @@ import 'cached_timetable_page.dart';
 import 'ntou_mark.dart';
 import 'theme.dart';
 
+/// 登入完成後回到原本要做的事；取消時保留原頁。
+Future<bool> ensureSignedIn(
+  BuildContext context,
+  AppController controller,
+) async {
+  if (controller.phase == AppPhase.ready) return true;
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => LoginPage(controller: controller)),
+  );
+  return controller.phase == AppPhase.ready;
+}
+
 /// 登入畫面。
 ///
 /// 進到這一頁就開始跑登入流程（開登入頁 → 通過排隊關卡 → 抓驗證碼），
 /// 那要三個請求、好幾秒。使用者在讀畫面、打學號的時候就讓它跑完，
 /// 比等他按了按鈕才開始要快得多。
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key, required this.controller});
+  const LoginPage({super.key, required this.controller, this.recognizeCaptcha});
 
   final AppController controller;
+
+  /// 可注入辨識結果，以測試延遲、誤判與手動接管；正式使用裝置端 ML Kit。
+  final Future<String> Function(Uint8List bytes)? recognizeCaptcha;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -37,6 +52,12 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _remember = false;
   bool _showPassword = false;
+  bool _passwordRestored = false;
+  bool _autoAttempted = false;
+  bool _manualEdited = false;
+  Uint8List? _recognizedCaptcha;
+  Uint8List? _recognizingCaptcha;
+  String? _recognitionStatus;
 
   AppController get _c => widget.controller;
 
@@ -51,15 +72,49 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _restorePassword() async {
+    final account = _account.text;
     final saved = await _c.savedPassword();
-    if (saved != null && mounted) _password.text = saved;
+    // 儲存讀取可能比手動輸入慢，不覆蓋使用者已換的帳號或密碼。
+    if (!mounted ||
+        saved == null ||
+        _account.text != account ||
+        _password.text.isNotEmpty) {
+      return;
+    }
+    setState(() {
+      _password.text = saved;
+      _passwordRestored = true;
+    });
+    _tryAutomaticLogin();
+  }
+
+  void _tryAutomaticLogin() {
+    if (!mounted ||
+        _autoAttempted ||
+        _manualEdited ||
+        !_passwordRestored ||
+        !_remember ||
+        !_c.hasSavedPassword ||
+        _c.error != null ||
+        _recognizedCaptcha == null ||
+        !identical(_recognizedCaptcha, _c.captcha) ||
+        !_canSubmit ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      return;
+    }
+    _autoAttempted = true;
+    _submit();
+  }
+
+  void _onCredentialsEdited(String _) {
+    setState(() => _manualEdited = true);
   }
 
   void _openCached() => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => CachedTimetablePage(controller: _c),
-        ),
-      );
+    MaterialPageRoute<void>(
+      builder: (_) => CachedTimetablePage(controller: _c),
+    ),
+  );
 
   /// 錯誤卡自己有沒有給「看快取課表」那顆鈕。
   bool get _errorOffersCache =>
@@ -70,6 +125,19 @@ class _LoginPageState extends State<LoginPage> {
   void _onControllerChanged() {
     if (!mounted) return;
     setState(() {});
+    if (_c.phase == AppPhase.ready &&
+        Navigator.of(context).canPop() &&
+        ModalRoute.of(context)?.isCurrent == true) {
+      Navigator.of(context).pop();
+      return;
+    }
+    if (_c.phase == AppPhase.openingLogin) {
+      _recognizingCaptcha = null;
+      _recognitionStatus = null;
+      _recognizedCaptcha = null;
+      _captcha.clear();
+      _captchaLength = 0;
+    }
     if (_c.phase != AppPhase.awaitingCaptcha) {
       _lastCaptcha = null;
       return;
@@ -92,41 +160,20 @@ class _LoginPageState extends State<LoginPage> {
     _captchaFocus.requestFocus();
   }
 
-  /// 試著把驗證碼認出來，**填進欄位就停手**。
-  ///
-  /// 認出來之後不自動送出。這不是保守，是這條路徑上唯一站得住的做法：
-  ///
-  ///   - 驗證碼是**一次性**的。送出去那張圖就作廢，不管對錯。
-  ///   - 學校的失敗是**靜默**的：重畫一次登入頁配一張新圖，不給任何訊息。
-  ///   - 圖只有 116×54，四個字裡有一兩個看不清是常態，OCR 認錯很正常。
-  ///
-  /// 三件事湊在一起就是一個自己會轉的迴圈：認成 4 碼 → 自動送 → 靜默失敗 →
-  /// [AppController.submitLogin] 自動換一張 → 又自動認、又自動送。存了密碼的話
-  /// 開 App 就開始連環重試，使用者插不進手，也看不出來為什麼一直失敗。
-  ///
-  /// 所以這裡只負責填。要不要送是使用者按下去的那一下 ——
-  /// 這跟 [_onCaptchaChanged] 只認「使用者親手打完第 4 碼」是同一條線。
+  /// 已記住帳密時最多自動送出一次；失敗後換圖也不重新取得自動送出資格。
   Future<void> _autoRecognizeCaptcha(Uint8List bytes) async {
+    if (identical(_recognizingCaptcha, bytes)) return;
+    setState(() {
+      _recognizingCaptcha = bytes;
+      _recognitionStatus = '正在辨識驗證碼…';
+    });
     try {
-      // ML Kit 要求圖片最小 32x32，先放大再送去辨識
-      final scaledBytes = await _scaleUpToMinSize(bytes, minSize: 64);
-
-      final tempDir = await getTemporaryDirectory();
-      final file = File('${tempDir.path}/captcha.png');
-      await file.writeAsBytes(scaledBytes, flush: true);
-
-      final inputImage = InputImage.fromFile(file);
-      final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
-      await textRecognizer.close();
-
-      final rawText = recognizedText.text;
+      final rawText = await (widget.recognizeCaptcha ?? _recognizeOnDevice)(
+        bytes,
+      );
       // 只保留英文字母和數字（過濾掉空白、雜訊標點符號）
       final text = rawText.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-      // 認不出來就當沒發生過。**不要跳訊息說「辨識失敗」** ——
-      // 使用者本來就要自己打，那句話只是在報告一件他不需要知道的內部狀況。
-      //
       // **不是剛好 4 碼就整個放棄，不要截斷之後再填。** 驗證碼一定是 4 碼，
       // 認出 6 碼代表這次本來就認錯了（116×54 的圖，雜訊線被讀成字元是常態），
       // 砍成 4 碼只是把一個錯的答案變得像對的。
@@ -137,32 +184,72 @@ class _LoginPageState extends State<LoginPage> {
       // `counterText: ''` 把「6/4」藏起來。三個湊在一起的症狀是：
       // 使用者看到驗證碼欄有字、以為填好了，登入鈕卻一直是暗的，
       // 而畫面上沒有任何一處說得出為什麼。
-      if (text.length != 4 || !mounted) return;
-      if (_c.phase != AppPhase.awaitingCaptcha) return;
+      if (!mounted) return;
+      if (_c.phase != AppPhase.awaitingCaptcha ||
+          !identical(bytes, _c.captcha)) {
+        return;
+      }
+      // 只記錄字數，不記錄驗證碼、帳密或頁面內容。
+      debugPrint('驗證碼辨識完成：${text.length} 碼');
+      if (text.length != 4) {
+        setState(() => _recognitionStatus = '這張驗證碼未能辨識，請手動輸入或重新辨識。');
+        return;
+      }
 
       // 使用者已經自己動手了就不要蓋掉他打的東西。
-      if (_captcha.text.isNotEmpty) return;
+      if (_captcha.text.isNotEmpty) {
+        setState(() => _recognitionStatus = null);
+        return;
+      }
 
       _captcha.text = text;
+      _recognizedCaptcha = bytes;
       // `TextEditingController` 直接設值不會觸發 onChanged，`_captchaLength`
       // 要自己跟上 —— 不同步的話，使用者刪掉一個字再補回來會被當成
       // 「剛打完第 4 碼」而自動送出，等於繞回原本那個迴圈。
       _captchaLength = text.length;
-      setState(() {});
+      setState(() => _recognitionStatus = '已填入辨識結果，請確認是否正確。');
+      _tryAutomaticLogin();
       _focusCaptcha();
     } catch (e) {
       // **只進 debug log，不給使用者看。** 這條路徑上的例外文字可能夾著
       // 頁面或檔案路徑的碎片，而這一頁其他每一處都刻意只說類型不說內容。
       // 對使用者來說「OCR 掛了」跟「沒認出來」要做的事一模一樣：自己打。
       debugPrint('OCR failed: ${e.runtimeType}');
+      if (mounted && identical(bytes, _c.captcha)) {
+        setState(() => _recognitionStatus = '辨識暫時無法使用，請手動輸入或重新辨識。');
+      }
+    } finally {
+      if (mounted && identical(bytes, _recognizingCaptcha)) {
+        setState(() => _recognizingCaptcha = null);
+      }
+    }
+  }
+
+  Future<String> _recognizeOnDevice(Uint8List bytes) async {
+    final scaledBytes = await _scaleUpToMinSize(bytes, minSize: 64);
+    final tempDir = await getTemporaryDirectory();
+    final directory = await tempDir.createTemp('captcha-');
+    final file = File('${directory.path}/image.png');
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+    try {
+      await file.writeAsBytes(scaledBytes, flush: true);
+      return (await recognizer.processImage(InputImage.fromFile(file))).text;
+    } finally {
+      await recognizer.close();
+      await directory.delete(recursive: true);
     }
   }
 
   /// ML Kit 要求圖片最小 32x32，把驗證碼放大到至少 [minSize] 像素。
   /// 用 dart:ui 做，不需要額外套件。
-  Future<Uint8List> _scaleUpToMinSize(Uint8List bytes, {int minSize = 64}) async {
+  Future<Uint8List> _scaleUpToMinSize(
+    Uint8List bytes, {
+    int minSize = 64,
+  }) async {
     final codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
+    codec.dispose();
     final src = frame.image;
 
     final w = src.width;
@@ -191,6 +278,7 @@ class _LoginPageState extends State<LoginPage> {
 
     final picture = recorder.endRecording();
     final resized = await picture.toImage(newW, newH);
+    picture.dispose();
     final byteData = await resized.toByteData(format: ui.ImageByteFormat.png);
     resized.dispose();
 
@@ -225,18 +313,14 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _submit() async {
     if (!_canSubmit) return;
+    _autoAttempted = true;
     await _c.submitLogin(
       account: _account.text.trim(),
       password: _password.text,
       captchaText: _captcha.text.trim(),
       remember: _remember,
     );
-    if (mounted) {
-      _captcha.clear();
-      // `clear()` 不會觸發 TextField 的 onChanged，長度要自己歸零，
-      // 不然下一張驗證碼打第一碼就會被當成「剛打完第 4 碼」。
-      _captchaLength = 0;
-    }
+    // 新圖在 openingLogin 時清空；此處再清會與下一輪辨識結果競速。
   }
 
   /// 驗證碼欄上一次的長度。
@@ -246,6 +330,7 @@ class _LoginPageState extends State<LoginPage> {
   int _captchaLength = 0;
 
   void _onCaptchaChanged(String value) {
+    _manualEdited = true;
     final was = _captchaLength;
     _captchaLength = value.length;
     setState(() {});
@@ -264,25 +349,15 @@ class _LoginPageState extends State<LoginPage> {
     final scheme = theme.colorScheme;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              scheme.primary.withValues(alpha: 0.18),
-              scheme.surface,
-              scheme.surface,
-            ],
-            stops: const [0, 0.42, 1],
-          ),
-        ),
+      appBar: AppBar(title: const Text('登入校務系統')),
+      body: Material(
+        color: scheme.surface,
         child: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 40, 24, 32),
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
             children: [
               const _Wordmark(),
-              const SizedBox(height: 36),
+              const SizedBox(height: 24),
 
               if (_c.error != null) ...[
                 _ErrorCard(
@@ -309,7 +384,7 @@ class _LoginPageState extends State<LoginPage> {
                         autocorrect: false,
                         enableSuggestions: false,
                         textInputAction: TextInputAction.next,
-                        onChanged: (_) => setState(() {}),
+                        onChanged: _onCredentialsEdited,
                       ),
                       const SizedBox(height: 14),
                       TextField(
@@ -322,16 +397,18 @@ class _LoginPageState extends State<LoginPage> {
                           labelText: '密碼',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            icon: Icon(_showPassword
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined),
+                            icon: Icon(
+                              _showPassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
                             onPressed: () =>
                                 setState(() => _showPassword = !_showPassword),
                             tooltip: _showPassword ? '隱藏密碼' : '顯示密碼',
                           ),
                         ),
                         textInputAction: TextInputAction.next,
-                        onChanged: (_) => setState(() {}),
+                        onChanged: _onCredentialsEdited,
                       ),
                       const SizedBox(height: 14),
                       _CaptchaField(
@@ -355,6 +432,7 @@ class _LoginPageState extends State<LoginPage> {
                 controlAffinity: ListTileControlAffinity.leading,
                 dense: true,
                 title: const Text('記住密碼'),
+                subtitle: const Text('下次開啟時自動登入；驗證碼辨識失敗可手動輸入'),
               ),
 
               const SizedBox(height: 12),
@@ -374,6 +452,36 @@ class _LoginPageState extends State<LoginPage> {
                       )
                     : const Text('登入'),
               ),
+
+              if (!_busy &&
+                  _c.phase == AppPhase.awaitingCaptcha &&
+                  _recognitionStatus != null) ...[
+                const SizedBox(height: 8),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(_recognitionStatus!, textAlign: TextAlign.center),
+                ),
+                if (_recognizingCaptcha == null && _captcha.text.isEmpty)
+                  TextButton(
+                    onPressed: () {
+                      final bytes = _c.captcha;
+                      if (bytes != null) _autoRecognizeCaptcha(bytes);
+                    },
+                    child: const Text('重新辨識'),
+                  ),
+              ],
+              if (_busy) ...[
+                const SizedBox(height: 12),
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _c.phase == AppPhase.openingLogin
+                        ? '正在連接學校並取得驗證碼'
+                        : _c.loginStatus,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
 
               // 帳號在瀏覽器登著的時候 App 根本登不進去 —— 那時候這是唯一
               // 還看得到自己資料的路。只有真的有快取才顯示。
@@ -402,45 +510,22 @@ class _LoginPageState extends State<LoginPage> {
 
 class _Wordmark extends StatelessWidget {
   const _Wordmark();
-
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Container(
-          width: 76,
-          height: 76,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            // 白底深藍字，跟 assets/icon.png 一模一樣 —— 連深色模式也不變。
-            // 這一格的重點就是「桌面上那張臉」跟「開 App 看到的那張臉」是同一個，
-            // 所以它不跟著主題走：跟著走的話深色模式下兩邊就對不起來了。
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(NtouTheme.radiusPill),
-          ),
-          // 字身佔的比例跟 assets/icon.png 一樣，兩邊才對得起來。
-          child: const NtouMark(size: 76.0 * NtouMark.iconSpan, color: NtouTheme.seed),
+  Widget build(BuildContext context) => Row(
+    children: [
+      NtouMark(size: 42, color: Theme.of(context).colorScheme.primary),
+      const SizedBox(width: 16),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('NTOU', style: Theme.of(context).textTheme.titleLarge),
+            Text('國立臺灣海洋大學', style: Theme.of(context).textTheme.bodySmall),
+          ],
         ),
-        const SizedBox(height: 18),
-        Text(
-          'NTOU',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: 4,
-                color: scheme.onSurface,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '國立臺灣海洋大學',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }
 
 /// 驗證碼圖 + 輸入框。
@@ -448,13 +533,7 @@ class _Wordmark extends StatelessWidget {
 /// 圖是伺服器產的實體檔（`/Temp/Captcha/<每個 session 隨機>.png`），
 /// 只能從頁面上抓、不能寫死。
 ///
-/// 這裡原本的註解寫「刻意不做 OCR」，但 `_autoRecognizeCaptcha` 已經在做了
-/// （commit 1f6acb3，專案作者自己加的）。註解跟程式相反比沒有註解更糟，
-/// 所以寫現況：圖抓回來之後會先送 ML Kit 辨識，**認到什麼就填什麼，不送出**。
-///
-/// 為什麼不自動送見 [_LoginPageState._autoRecognizeCaptcha] ——
-/// 一句話版本：驗證碼是一次性的、學校的失敗是靜默的，兩件事加上會認錯的 OCR
-/// 就是一個使用者插不進手的重試迴圈。輸入框任何時候都能手動編輯。
+/// 圖片在裝置端辨識，欄位保留手動修正；自動送出由登入頁統一限制次數。
 class _CaptchaField extends StatelessWidget {
   const _CaptchaField({
     required this.controller,
@@ -526,6 +605,11 @@ class _CaptchaField extends StatelessWidget {
                         gaplessPlayback: true,
                       ),
                     )
+                  : controller.phase != AppPhase.openingLogin &&
+                        controller.phase != AppPhase.loggingIn
+                  ? const Center(
+                      child: Icon(Icons.refresh, color: NtouTheme.seed),
+                    )
                   : const Center(
                       child: SizedBox(
                         height: 18,
@@ -544,7 +628,8 @@ class _CaptchaField extends StatelessWidget {
   ///
   /// 底色固定白色 —— 學校給的圖是白底，深色模式下直接鋪在深色面板上
   /// 會看不出字的邊界。
-  Future<void> _enlarge(BuildContext context, Uint8List image) => showDialog<void>(
+  Future<void> _enlarge(BuildContext context, Uint8List image) =>
+      showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
           contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -606,10 +691,7 @@ class _Explained {
     // 的 failureMarkers）。`拿不到驗證碼圖片` 是抓圖失敗 —— 畫面上根本沒有圖，
     // 叫使用者重打一次是錯的指示。
     if (message.contains('驗證碼錯誤')) {
-      return const _Explained(
-        '驗證碼不對',
-        '圖已經換成新的一張了，重打一次就好。學號和密碼不用重打。',
-      );
+      return const _Explained('驗證碼不對', '圖已經換成新的一張了，重打一次就好。學號和密碼不用重打。');
     }
     if (message.contains('密碼') || message.contains('帳號')) {
       return const _Explained(
@@ -661,15 +743,14 @@ class _ErrorCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (e.title.isEmpty)
-                  Text(
-                    message,
-                    style: TextStyle(color: on, height: 1.4),
-                  )
+                  Text(message, style: TextStyle(color: on, height: 1.4))
                 else ...[
                   Text(
                     e.title,
-                    style: theme.textTheme.titleSmall
-                        ?.copyWith(color: on, fontWeight: FontWeight.w700),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: on,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(e.body, style: TextStyle(color: on, height: 1.5)),
@@ -705,8 +786,11 @@ class _SingleSessionNotice extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.info_outline,
-            size: 18, color: theme.colorScheme.onSurfaceVariant),
+        Icon(
+          Icons.info_outline,
+          size: 18,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(

@@ -13,6 +13,7 @@ import '../storage/plan_store.dart';
 import 'app_controller.dart';
 import 'plan_dialogs.dart';
 import 'selection_tag.dart';
+import 'login_page.dart';
 
 class CourseBrowserPage extends StatefulWidget {
   const CourseBrowserPage({
@@ -146,6 +147,14 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       _busy = true;
       _error = null;
     });
+    if (widget.controller.phase != AppPhase.ready) {
+      setState(() {
+        _busy = false;
+        _error = '登入後可查詢學校課程，也可以直接手動新增。';
+      });
+      await _loadPlan();
+      return;
+    }
     await _guard(() async {
       _view = await widget.controller.repository.openCourseSearch();
     });
@@ -177,7 +186,10 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       _resetProbes();
     });
     await _guard(() async {
-      _view = await widget.controller.repository.searchCourseByName(view, keyword);
+      _view = await widget.controller.repository.searchCourseByName(
+        view,
+        keyword,
+      );
       _parseResults(_view!.page.html);
     });
   }
@@ -238,9 +250,10 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   bool _isPlanned(Course c) {
     final plan = _plan;
     if (plan == null) return false;
-    return plan.courses.any((p) => c.code.isNotEmpty
-        ? p.course.code == c.code
-        : p.course.name == c.name);
+    return plan.courses.any(
+      (p) =>
+          c.code.isNotEmpty ? p.course.code == c.code : p.course.name == c.name,
+    );
   }
 
   void _parseResults(String html) {
@@ -323,8 +336,10 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
           teacher: course.teacher,
         );
         if (target != null) {
-          detail = await widget.controller.repository
-              .fetchCourseDetail(_view!, target);
+          detail = await widget.controller.repository.fetchCourseDetail(
+            _view!,
+            target,
+          );
         }
       } catch (e) {
         // 探測失敗只影響「標不標得出衝堂」，不該讓整頁跳錯誤 ——
@@ -396,7 +411,8 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
   }
 
   Future<void> _addToPlan(Course course) async {
-    final plan = await widget.planStore.read(widget.year, widget.semester) ??
+    final plan =
+        await widget.planStore.read(widget.year, widget.semester) ??
         CoursePlan(year: widget.year, semester: widget.semester);
 
     // 「同一門課」是指**同一班**，不是同課號。真實資料裡 B57011RQ 計算機概論
@@ -407,9 +423,8 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     // 症狀是加得進去但編輯時段會蓋到另一班。
     if (plan.contains(PlannedCourse(course: course).key)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('這門課已經在預排清單中了')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('這門課已經在預排清單中了')));
       return;
     }
 
@@ -433,12 +448,15 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
           teacher: course.teacher,
         );
         if (target != null) {
-          detail = await widget.controller.repository
-              .fetchCourseDetail(_view!, target);
+          detail = await widget.controller.repository.fetchCourseDetail(
+            _view!,
+            target,
+          );
           if (detail != null) {
             _details[key] = detail;
-            await widget.detailCache
-                .merge(widget.year, widget.semester, {key: detail});
+            await widget.detailCache.merge(widget.year, widget.semester, {
+              key: detail,
+            });
           }
         }
       }
@@ -530,9 +548,11 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 3),
-        content: Text(slots.isEmpty
-            ? '已加入 ${course.name}（還沒有上課時段）'
-            : '已加入 ${course.name}，${slots.length} 節課'),
+        content: Text(
+          slots.isEmpty
+              ? '已加入 ${course.name}（還沒有上課時段）'
+              : '已加入 ${course.name}，${slots.length} 節課',
+        ),
       ),
     );
   }
@@ -545,16 +565,17 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     );
     if (added == null || !mounted) return;
 
-    final plan = await widget.planStore.read(widget.year, widget.semester) ??
+    final plan =
+        await widget.planStore.read(widget.year, widget.semester) ??
         CoursePlan(year: widget.year, semester: widget.semester);
 
     // 走 `add()` 而不是自己接在後面 —— 手動輸入沒有課號，同一個課名打兩次
     // 會變成兩筆共用同一個 key 的課，之後編輯時段或刪除會兩筆一起動。
     if (plan.contains(added.key)) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('預排裡已經有「${added.course.name}」了')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('預排裡已經有「${added.course.name}」了')));
       return;
     }
 
@@ -615,20 +636,21 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
       body: _view == null && _busy
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _ErrorView(
-                  error: _error!,
-                  onRetry: _open,
-                  // 學校系統掛掉、或帳號被自己在瀏覽器上佔住的時候，
-                  // 手動輸入是唯一還排得動課的路。
-                  onManual: _manualAdd,
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildNameTab(),
-                    _buildFacultyTab(),
-                  ],
-                ),
+          ? _ErrorView(
+              error: _error!,
+              onRetry: () async {
+                if (await ensureSignedIn(context, widget.controller) && mounted) {
+                  await _open();
+                }
+              },
+              // 學校系統掛掉、或帳號被自己在瀏覽器上佔住的時候，
+              // 手動輸入是唯一還排得動課的路。
+              onManual: _manualAdd,
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [_buildNameTab(), _buildFacultyTab()],
+            ),
     );
   }
 
@@ -671,11 +693,13 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
     final t = widget.controller.repository.config.courseSearch.facultyTab;
 
     Widget buildDropdown(String fieldName, String label) {
-      final field = view.schema.fields.where((f) => f.name == fieldName).firstOrNull;
+      final field = view.schema.fields
+          .where((f) => f.name == fieldName)
+          .firstOrNull;
       if (field == null) return const SizedBox.shrink();
 
       final current = view.values[fieldName] ?? field.value;
-      
+
       // If there are no options, the school system hasn't populated this dropdown yet
       // Or it's genuinely empty. Either way, disable it.
       if (field.options.isEmpty) {
@@ -784,7 +808,8 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
         if (_view?.result?.paging.hasMore ?? false)
           _NoticeBar(
             icon: Icons.more_horiz,
-            label: '只顯示前 ${results.length} 筆，學校那邊還有 ——'
+            label:
+                '只顯示前 ${results.length} 筆，學校那邊還有 ——'
                 '把條件縮小一點比較找得到',
           ),
         if (planned > 0)
@@ -828,7 +853,7 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
                     child: Text(
                       clashing > 0 && !_showClashing
                           ? '這 ${results.length} 筆不是已經在預排裡，'
-                              '就是跟預排撞在一起。'
+                                '就是跟預排撞在一起。'
                           : '這 ${results.length} 筆都已經在預排裡了。',
                       textAlign: TextAlign.center,
                     ),
@@ -867,7 +892,9 @@ class _CourseBrowserPageState extends State<CourseBrowserPage>
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${course.teacher} • ${course.credits}學分 • ${course.classLabel}'),
+              Text(
+                '${course.teacher} • ${course.credits}學分 • ${course.classLabel}',
+              ),
               const SizedBox(height: 2),
               _ClashHint(
                 clash: clash,
@@ -925,10 +952,7 @@ class _FilterBar extends StatelessWidget {
           Expanded(
             child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
-          TextButton(
-            onPressed: onToggle,
-            child: Text(showing ? '隱藏' : '顯示'),
-          ),
+          TextButton(onPressed: onToggle, child: Text(showing ? '隱藏' : '顯示')),
         ],
       ),
     );
@@ -936,11 +960,7 @@ class _FilterBar extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({
-    required this.error,
-    required this.onRetry,
-    this.onManual,
-  });
+  const _ErrorView({required this.error, required this.onRetry, this.onManual});
   final String error;
   final VoidCallback onRetry;
 
@@ -1042,17 +1062,24 @@ class _ClashHint extends StatelessWidget {
     if (failed) {
       return Row(
         children: [
-          Icon(Icons.cloud_off_outlined,
-              size: 14, color: scheme.onSurfaceVariant),
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 14,
+            color: scheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 4),
-          Text('沒問到上課時間',
-              style: small?.copyWith(color: scheme.onSurfaceVariant)),
+          Text(
+            '沒問到上課時間',
+            style: small?.copyWith(color: scheme.onSurfaceVariant),
+          ),
         ],
       );
     }
 
-    return Text('查上課時間中…',
-        style: small?.copyWith(color: scheme.onSurfaceVariant));
+    return Text(
+      '查上課時間中…',
+      style: small?.copyWith(color: scheme.onSurfaceVariant),
+    );
   }
 }
 
@@ -1073,9 +1100,12 @@ class _NoticeBar extends StatelessWidget {
           Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(label,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
         ],
       ),
@@ -1097,13 +1127,19 @@ class _RetryBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
       child: Row(
         children: [
-          Icon(Icons.cloud_off_outlined,
-              size: 16, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 16,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('有 $count 門沒問到上課時間',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            child: Text(
+              '有 $count 門沒問到上課時間',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           TextButton(onPressed: onRetry, child: const Text('再問一次')),
         ],
@@ -1138,9 +1174,12 @@ class _ProbeProgress extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Text('正在查上課時間 $done / $total',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          Text(
+            '正在查上課時間 $done / $total',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );

@@ -8,17 +8,52 @@ class NtouTheme {
   const NtouTheme._();
 
   /// 深海藍。App bar、主要按鈕、選中狀態。
-  static const Color seed = Color(0xFF00506B);
+  static const Color seed = Color(0xFF173B51);
   static const Color teal = Color(0xFF00838F);
   static const Color surf = Color(0xFF26C6DA);
 
   static ThemeData of(Brightness brightness) {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: seed,
-      brightness: brightness,
-      secondary: teal,
-      tertiary: surf,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: seed,
+          brightness: brightness,
+          secondary: teal,
+          tertiary: surf,
+        ).copyWith(
+          primary: brightness == Brightness.light
+              ? seed
+              : const Color(0xFFABC8D2),
+          onPrimary: brightness == Brightness.light
+              ? Colors.white
+              : const Color(0xFF15313C),
+          primaryContainer: brightness == Brightness.light
+              ? const Color(0xFFE7EEEF)
+              : const Color(0xFF293B41),
+          onPrimaryContainer: brightness == Brightness.light
+              ? seed
+              : const Color(0xFFD4E4E8),
+          onSurface: brightness == Brightness.light
+              ? const Color(0xFF242B2E)
+              : const Color(0xFFE1E5E5),
+          onSurfaceVariant: brightness == Brightness.light
+              ? const Color(0xFF616B6E)
+              : const Color(0xFFADB7B9),
+          surfaceContainerHighest: brightness == Brightness.light
+              ? const Color(0xFFE8EBE9)
+              : const Color(0xFF30383B),
+          surface: brightness == Brightness.light
+              ? const Color(0xFFF8F8F5)
+              : const Color(0xFF151A1D),
+          surfaceContainerLowest: brightness == Brightness.light
+              ? Colors.white
+              : const Color(0xFF1C2327),
+          surfaceContainer: brightness == Brightness.light
+              ? const Color(0xFFF0F1EF)
+              : const Color(0xFF222B30),
+          outlineVariant: brightness == Brightness.light
+              ? const Color(0xFFD8DDDC)
+              : const Color(0xFF3C494F),
+        );
 
     return ThemeData(
       useMaterial3: true,
@@ -30,7 +65,7 @@ class NtouTheme {
         foregroundColor: scheme.onSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: scheme.onSurface,
@@ -45,10 +80,11 @@ class NtouTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         color: scheme.surfaceContainerLowest,
+        clipBehavior: Clip.antiAlias,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLg),
-          side: BorderSide(color: scheme.outlineVariant),
+          side: BorderSide(color: scheme.outlineVariant, width: 0.7),
         ),
       ),
 
@@ -69,37 +105,106 @@ class NtouTheme {
           borderRadius: BorderRadius.circular(radiusMd),
           borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: BorderSide(color: scheme.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+          borderSide: BorderSide(color: scheme.error, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
 
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusMd),
+          ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
 
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusMd),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusMd),
+          ),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLg),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+      ),
+
       chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radiusMd)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+        ),
         side: BorderSide.none,
+        backgroundColor: scheme.surfaceContainer,
+        selectedColor: scheme.primaryContainer,
+      ),
+
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          textStyle: const WidgetStatePropertyAll(
+            TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radiusMd),
+            ),
+          ),
+          side: WidgetStatePropertyAll(
+            BorderSide(color: scheme.outlineVariant),
+          ),
+        ),
       ),
 
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surfaceContainer,
-        indicatorColor: scheme.primaryContainer,
+        height: 68,
+        backgroundColor: scheme.surface,
+        indicatorColor: Colors.transparent,
         elevation: 0,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? scheme.primary
+                : scheme.onSurfaceVariant,
+          ),
+        ),
         // 原本對所有 state 都回同一個顏色，選中跟沒選中的字一模一樣 ——
         // 只剩背後那顆藥丸在表示「你在這一頁」。
-        labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: states.contains(WidgetState.selected)
-                  ? scheme.onSurface
-                  : scheme.onSurfaceVariant,
-            )),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: states.contains(WidgetState.selected)
+                ? scheme.onSurface
+                : scheme.onSurfaceVariant,
+          ),
+        ),
       ),
 
       // **中文要自己調行高。** Material 的預設行高是為拉丁字母調的，
@@ -129,7 +234,7 @@ class NtouTheme {
   ///
   /// 只調 height 和幾個級距，不換字體 —— 字體要打包進 App，那是另一件事。
   static TextTheme _textTheme(ColorScheme scheme) {
-    const body = TextStyle(height: 1.6);
+    const body = TextStyle(height: 1.5, letterSpacing: 0);
     const title = TextStyle(height: 1.4);
     const tabular = TextStyle(
       height: 1.4,
@@ -137,30 +242,39 @@ class NtouTheme {
     );
 
     return TextTheme(
-      bodyLarge: body,
-      bodyMedium: body,
-      bodySmall: body,
-      titleLarge: tabular.copyWith(fontWeight: FontWeight.w700),
-      // 課名是清單的主角，原本卻用最小的標題級（14/w500）——
-      // 跟旁邊的老師、學分幾乎一樣重。
-      titleMedium: title.copyWith(fontSize: 16, fontWeight: FontWeight.w600),
-      titleSmall: title.copyWith(fontSize: 16, fontWeight: FontWeight.w600),
-      labelLarge: tabular,
-      labelMedium: tabular,
-      labelSmall: tabular,
-      headlineSmall: tabular.copyWith(fontWeight: FontWeight.w700),
-      headlineMedium: title.copyWith(fontWeight: FontWeight.w700),
-    ).apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+          bodyLarge: body,
+          bodyMedium: body,
+          bodySmall: body.copyWith(color: scheme.onSurfaceVariant),
+          titleLarge: tabular.copyWith(fontWeight: FontWeight.w600),
+          // 課名是清單的主角，原本卻用最小的標題級（14/w500）——
+          // 跟旁邊的老師、學分幾乎一樣重。
+          titleMedium: title.copyWith(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          titleSmall: title.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+          labelLarge: tabular,
+          labelMedium: tabular,
+          labelSmall: tabular,
+          headlineSmall: tabular.copyWith(fontWeight: FontWeight.w700),
+          headlineMedium: title.copyWith(fontWeight: FontWeight.w700),
+        )
+        .apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface)
+        .copyWith(
+          bodySmall: body.copyWith(
+            fontSize: 12,
+            color: scheme.onSurfaceVariant,
+          ),
+        );
   }
 
   /// 圓角。
   ///
-  /// 原本散在各檔案裡有 6/8/10/12/14/15/16/22 八種，其中 10、14、15
-  /// 彼此差不到 2px —— 那不是層次，是沒有統一過。收斂成五階。
-  static const double radiusXs = 6; // 小標籤
-  static const double radiusSm = 8; // 格子、色塊
-  static const double radiusMd = 12; // 按鈕、輸入框、ListTile
-  static const double radiusLg = 16; // 卡片
+  /// 大容器用舒展的圓角，密集資料格保留小圓角，避免裁掉課名。
+  static const double radiusXs = 4; // 小標籤
+  static const double radiusSm = 6; // 格子、色塊
+  static const double radiusMd = 14; // 按鈕、輸入框、ListTile
+  static const double radiusLg = 22; // 卡片
   static const double radiusPill = 22; // 藥丸
 
   /// 每個模組一個顏色。

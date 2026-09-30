@@ -11,7 +11,8 @@ import 'fixtures.dart';
 const _fixture = 'Application_GRD_GRD50_GRD5010_02__QUERY_BTN1_1151.html';
 
 /// 表頭照真實頁面的順序（9 欄）。
-String _page(String rows, {String totals = ''}) => '''
+String _page(String rows, {String totals = ''}) =>
+    '''
 <html><body>
 <div class="row">
   <div class="col-md-3"><span ml="PL_歷年累計學分">歷年累計學分</span></div>
@@ -90,6 +91,17 @@ void main() {
       final m = parseGradeMark('甲');
       expect(m.note, isNull);
       expect(m.raw, '甲');
+      expect(m.isPassed, isFalse);
+      expect(m.isUnconfirmed, isTrue);
+    });
+
+    test('未知文字、破折號與異常數字不能算及格', () {
+      for (final raw in ['待審核', '不通過', '—', '', 'NaN', 'Infinity', '101']) {
+        expect(parseGradeMark(raw).isPassed, isFalse, reason: raw);
+      }
+      for (final raw in ['85', '82.5', '抵', '通過', '及格']) {
+        expect(parseGradeMark(raw).isPassed, isTrue, reason: raw);
+      }
     });
   });
 
@@ -109,18 +121,30 @@ void main() {
 
     test('0 學分跟「解不到學分」分得開', () {
       // 體育就是 0 學分（真實資料裡有 3 筆），那是有意義的值。
-      expect(parseGrades(_page(_row(credits: '0', score: '抵')))
-          .courses.single.credits, 0);
-      expect(parseGrades(_page(_row(credits: '', score: '抵')))
-          .courses.single.credits, isNull);
+      expect(
+        parseGrades(_page(_row(credits: '0', score: '抵')))
+            .courses
+            .single
+            .credits,
+        0,
+      );
+      expect(
+        parseGrades(_page(_row(credits: '', score: '抵')))
+            .courses
+            .single
+            .credits,
+        isNull,
+      );
     });
 
     test('跨學年期分得開，新的在前面', () {
       // 抵免會掛在未來的學期上 —— 真實資料裡 1152 有 4 筆。
-      final r = parseGrades(_page(
-        _row(term: '1151', name: '程式設計', score: '+') +
-            _row(term: '1152', name: '體育', score: '抵'),
-      ));
+      final r = parseGrades(
+        _page(
+          _row(term: '1151', name: '程式設計', score: '+') +
+              _row(term: '1152', name: '體育', score: '抵'),
+        ),
+      );
       expect(r.terms, ['1152', '1151']);
       expect(r.inTerm('1151').single.name, '程式設計');
     });

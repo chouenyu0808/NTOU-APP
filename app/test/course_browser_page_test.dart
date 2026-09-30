@@ -19,13 +19,15 @@ import 'fixtures.dart';
 ///
 /// 照抄真頁面的形狀：引號是 HTML 實體 `&#39;`，外面再包一層反斜線跳脫。
 /// `autoPostBackFields` 刻意走 DOM 而不是對原始 HTML 下正則，就是為了認得它。
-const _cascadeOnChange = r"""onchange="javascript:setTimeout('__doPostBack(\&#39;Q_DEGREE_CODE\&#39;,\&#39;\&#39;)', 0)" """;
+const _cascadeOnChange =
+    r"""onchange="javascript:setTimeout('__doPostBack(\&#39;Q_DEGREE_CODE\&#39;,\&#39;\&#39;)', 0)" """;
 
 /// 這一頁最前面那段表單驗證的 JS。
 ///
 /// **「上課時間」四個字就寫在裡面**（`case "5"` 是「上課時間查詢」那個標籤頁）。
 /// 抓上課時間如果直接對原始 HTML `indexOf('上課時間')`，撞到的永遠是這裡。
-const _validationScript = '<script>switch (t) { case "5": //上課時間\n'
+const _validationScript =
+    '<script>switch (t) { case "5": //上課時間\n'
     'if (_i(0, "Q_WEEK").value == "") { errAppend("上課時間-星期"); }\n'
     'if (_i(0, "Q_CLASS").value == "") { errAppend("上課時間-節次"); } }</script>';
 
@@ -82,7 +84,8 @@ const _facultyOptions =
     '<option value="">請選擇</option><option value="CS">資訊工程學系</option>';
 
 /// 查詢結果。**17 欄裡沒有上課時間那一欄** —— 這就是為什麼要再點進詳細頁。
-String _resultTable() => '<table id="DataGrid">'
+String _resultTable() =>
+    '<table id="DataGrid">'
     '<tr><th>序號</th><th>課號</th><th>課名</th><th>開課單位</th>'
     '<th>年級班別</th><th>授課老師</th><th>學分</th><th>選別</th></tr>'
     '<tr><td>0001</td><td>${_codeLink('ctl02', 'B57011RQ')}</td>'
@@ -126,7 +129,8 @@ const _emptyDetailPage =
 ///
 /// **跟查詢結果頁幾乎一模一樣，只多注入這一行。** 真實資料裡整份 HTML 只差
 /// 3 個 byte（`Message.hideProcess()` 換成 `fn_open(...)`）。
-const _fnOpenResponse = '<html><body>'
+const _fnOpenResponse =
+    '<html><body>'
     "<script>fn_open('137171415','1');</script>"
     '</body></html>';
 
@@ -149,6 +153,7 @@ void main() {
   setUp(() async {
     ais = ScriptedAis();
     controller = await loggedInController(ais);
+    controller.phase = AppPhase.ready;
     // 加入預排要有學年學期才知道要寫哪一份計畫。
     controller.year = '114';
     controller.semester = '1';
@@ -191,16 +196,18 @@ void main() {
     String semester = '1',
     CourseDetailCache? detailCache,
   }) async {
-    await tester.pumpWidget(MaterialApp(
-      theme: NtouTheme.of(Brightness.light),
-      home: CourseBrowserPage(
-        controller: controller,
-        planStore: store,
-        detailCache: detailCache,
-        year: year,
-        semester: semester,
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NtouTheme.of(Brightness.light),
+        home: CourseBrowserPage(
+          controller: controller,
+          planStore: store,
+          detailCache: detailCache,
+          year: year,
+          semester: semester,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
   }
 
@@ -229,9 +236,8 @@ void main() {
   Future<CoursePlan?> readPlan() => store.read('114', '1');
 
   /// 先放幾門課進預排，用來測「加進去就撞堂」。
-  Future<void> seedPlan(List<PlannedCourse> courses) => store.write(
-        CoursePlan(year: '114', semester: '1', courses: courses),
-      );
+  Future<void> seedPlan(List<PlannedCourse> courses) =>
+      store.write(CoursePlan(year: '114', semester: '1', courses: courses));
 
   group('開啟課程查詢頁', () {
     testWidgets('跟完派發器的 JS 導向才拿得到查詢表單', (tester) async {
@@ -239,10 +245,10 @@ void main() {
       await open(tester);
 
       // 直接 GET 派發器只會拿到空殼，要跟著 JS 導向再抓一次。
-      expect(
-        ais.seen.map((r) => r.page).toList(),
-        ['TKE2211_.aspx', 'TKE2211_01.aspx'],
-      );
+      expect(ais.seen.map((r) => r.page).toList(), [
+        'TKE2211_.aspx',
+        'TKE2211_01.aspx',
+      ]);
       expect(find.text('課名搜尋'), findsOneWidget);
       expect(find.text('系所瀏覽'), findsOneWidget);
       await unmount(tester);
@@ -365,7 +371,9 @@ void main() {
       expect(find.text('班別'), findsOneWidget);
 
       // 0 個選項的下拉送出去會踩 event validation，所以直接不讓人碰。
-      final faculty = tester.widget<DropdownButtonFormField<String>>(dropdown(1));
+      final faculty = tester.widget<DropdownButtonFormField<String>>(
+        dropdown(1),
+      );
       expect(faculty.onChanged, isNull);
       await unmount(tester);
     });
@@ -405,7 +413,9 @@ void main() {
       // 這個斷言就是在盯這件事：連動回來之後畫面不能停在舊選項。
       expect(selectedValue(tester, 0), 'B');
 
-      final faculty = tester.widget<DropdownButtonFormField<String>>(dropdown(1));
+      final faculty = tester.widget<DropdownButtonFormField<String>>(
+        dropdown(1),
+      );
       expect(faculty.onChanged, isNotNull);
       await unmount(tester);
     });
@@ -470,8 +480,11 @@ void main() {
       }
 
       expect((await store.read('115', '2'))!.courses, hasLength(1));
-      expect(await store.read('114', '1'), isNull,
-          reason: 'controller 的當學期那一份不該被碰到');
+      expect(
+        await store.read('114', '1'),
+        isNull,
+        reason: 'controller 的當學期那一份不該被碰到',
+      );
       await unmount(tester);
     });
 
@@ -594,8 +607,7 @@ void main() {
       );
       // 搜尋完會把整批都查一遍，所以不只一次 —— 重點是「有真的去 GET
       // 那一頁」，停在 postback 的回應上是抓不到上課時間的。
-      expect(detail, isNotEmpty,
-          reason: '停在 postback 的回應上是抓不到上課時間的');
+      expect(detail, isNotEmpty, reason: '停在 postback 的回應上是抓不到上課時間的');
       expect(detail.first.url.queryParameters['PKNO'], '137171415');
       expect(detail.first.url.queryParameters['LESSON_TYPE'], '1');
       expect(detail.first.method, 'GET');
@@ -644,10 +656,7 @@ void main() {
       // 時段格子當場跳出來
       expect(find.byType(AlertDialog), findsOneWidget);
       expect(
-        find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.text('一'),
-        ),
+        find.descendant(of: find.byType(AlertDialog), matching: find.text('一')),
         findsOneWidget,
       );
       await unmount(tester);
@@ -790,8 +799,13 @@ void main() {
 
     test('「上課時間」寫在 JS 註解裡不算數', () {
       // 這是原本的寫法會踩到的坑：整份 HTML 最前面就有 case "5": //上課時間
-      expect(parseCourseTimeSlots('<html><body>$_validationScript'
-          '<p>這門課沒有排時間</p></body></html>'), isEmpty);
+      expect(
+        parseCourseTimeSlots(
+          '<html><body>$_validationScript'
+          '<p>這門課沒有排時間</p></body></html>',
+        ),
+        isEmpty,
+      );
     });
 
     test('只讀標籤隔壁那一格，不會把教室代碼當成上課時間', () {
@@ -1008,8 +1022,9 @@ void main() {
       expect(find.textContaining('沒問到上課時間'), findsWidgets);
       expect(find.text('再問一次'), findsOneWidget);
 
-      final asked =
-          ais.seen.where((r) => r.page.startsWith('TKE2240_03.aspx')).length;
+      final asked = ais.seen
+          .where((r) => r.page.startsWith('TKE2240_03.aspx'))
+          .length;
       expect(asked, 2);
 
       await tester.tap(find.text('再問一次'));
@@ -1094,7 +1109,8 @@ void main() {
     testWidgets('認不得的代碼原樣顯示，不要猜', (tester) async {
       // 猜錯比不翻譯更糟：使用者看到「選修」會照著排課，
       // 看到「Z」至少知道要自己去查。
-      const table = '<table id="DataGrid">'
+      const table =
+          '<table id="DataGrid">'
           '<tr><th>課號</th><th>課名</th><th>年級班別</th>'
           '<th>授課老師</th><th>學分</th><th>選別</th></tr>'
           '<tr><td>X1</td><td>某課</td><td>1年A班</td>'
@@ -1124,7 +1140,8 @@ void main() {
       // 真實資料就長這樣：B57011RQ 計算機概論同時有 1年A班和 1年B班，
       // 上課時間不一樣。只比課號的話會固定拿第一列 —— 使用者加的是 B 班，
       // 填進去的卻是 A 班的時間，而且畫面上完全看不出來（有時間、看起來正常）。
-      final html = '<table id="DataGrid">'
+      final html =
+          '<table id="DataGrid">'
           '<tr><th>課號</th><th>課名</th><th>年級班別</th><th>授課老師</th></tr>'
           '<tr><td>${_codeLink('ctl02', 'B57011RQ')}</td>'
           '<td>計算機概論</td><td>1年A班</td><td>許為元</td></tr>'
@@ -1133,13 +1150,21 @@ void main() {
           '</table>';
 
       expect(
-        courseDetailTarget(html, 'B57011RQ',
-            classLabel: '1年B班', teacher: '林韓禹'),
+        courseDetailTarget(
+          html,
+          'B57011RQ',
+          classLabel: '1年B班',
+          teacher: '林韓禹',
+        ),
         _target('ctl03'),
       );
       expect(
-        courseDetailTarget(html, 'B57011RQ',
-            classLabel: '1年A班', teacher: '許為元'),
+        courseDetailTarget(
+          html,
+          'B57011RQ',
+          classLabel: '1年A班',
+          teacher: '許為元',
+        ),
         _target('ctl02'),
       );
 
@@ -1164,7 +1189,8 @@ void main() {
     test('M_SEG 是空的時候回「沒有時間」，不要退回掃文字亂猜', () {
       // PKNO 不對時，課程內容頁會回一份 Mode=ADD 的空殼：版面和標籤都在，
       // 每一格都是空的。那時候掃文字等於拿頁面上任何三位數當上課時間。
-      const shell = '<html><body>'
+      const shell =
+          '<html><body>'
           '<div><span ml="PL_上課時間">上課時間</span></div>'
           '<div><span id="M_SEG" cname="時間"></span></div>'
           '<div><span id="M_CLSSRM_ID" cname="教室代號">INS105</span></div>'

@@ -16,7 +16,8 @@ const _dispatcher = r"""<html><body>
 </body></html>""";
 
 /// [rows] 是「共同教育課程」底下的課目列。
-String _page({required String rows, String credits = ''}) => '''
+String _page({required String rows, String credits = ''}) =>
+    '''
 <html><head><title>ENRG010_</title></head><body><form>
 <input type="hidden" name="__VIEWSTATE" value="vs">
 <table id="DataList"><tr><td>
@@ -63,10 +64,12 @@ void main() {
   });
 
   Future<void> open(WidgetTester tester) async {
-    await tester.pumpWidget(MaterialApp(
-      theme: NtouTheme.of(Brightness.light),
-      home: GraduationPage(controller: controller),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NtouTheme.of(Brightness.light),
+        home: GraduationPage(controller: controller),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -120,7 +123,8 @@ void main() {
 
   group('成績那一欄不是數字', () {
     /// 一列「抵免」的課：成績欄寫的是 `抵`。
-    String taken(String grade) => '''
+    String taken(String grade) =>
+        '''
       <tr><td>1151</td><td>作業系統</td><td>必</td><td>3</td>
           <td>資工系</td><td>$grade</td><td>3</td>
           <td>三上</td><td>作業系統</td><td>3</td><td></td></tr>
@@ -147,6 +151,8 @@ void main() {
 
       expect(find.text('成績未到'), findsOneWidget);
       expect(find.text('+'), findsNothing);
+      expect(find.byIcon(Icons.check_circle), findsNothing);
+      expect(find.byIcon(Icons.pending_outlined), findsOneWidget);
     });
 
     testWidgets('真的是分數就照分數顯示', (tester) async {
@@ -173,8 +179,7 @@ void main() {
           : _page(rows: _notTaken, credits: _credits);
       await open(tester);
 
-      expect(find.textContaining('抵免和暑修的學分不一定已經反映在這一頁'),
-          findsOneWidget);
+      expect(find.textContaining('抵免和暑修的學分不一定已經反映在這一頁'), findsOneWidget);
       expect(find.textContaining('「成績」那一頁'), findsOneWidget);
     });
   });
@@ -275,19 +280,25 @@ void main() {
       expect(find.text('沒有對到必修的課'), findsNothing);
     });
 
-    testWidgets('**成績抓不到時，退回學校自己的紀錄就好**', (tester) async {
+    testWidgets('成績抓不到時保留學校資料，提示並可重試比對', (tester) async {
       // 成績要再走一整套查詢。那條路失敗不能拖累這一頁 ——
       // 畢業資格本來就顯示得出來，成績只是加分。
       ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
           ? _dispatcher
           : r.page.startsWith('ENRG010_01.aspx')
-              ? _page(rows: requirements, credits: _credits)
-              : '<html><body>壞掉的成績頁</body></html>';
+          ? _page(rows: requirements, credits: _credits)
+          : '<html><body>壞掉的成績頁</body></html>';
       await open(tester);
 
       expect(find.text('作業系統'), findsOneWidget);
       expect(find.textContaining('學校可能改版'), findsNothing);
       expect(find.text('沒有對到必修的課'), findsNothing);
+      expect(find.textContaining('成績比對未完成'), findsOneWidget);
+      script(row('作業系統', '抵'));
+      await tester.tap(find.text('重試成績比對'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('成績比對未完成'), findsNothing);
+      expect(find.byIcon(Icons.check_circle), findsOneWidget);
     });
   });
 
@@ -305,9 +316,9 @@ void main() {
     ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
         ? _dispatcher
         : "<html><body>"
-            "<script>alert('畢業資格查詢尚未開放!');</script>"
-            "<script>location.href='/Portal.aspx';</script>"
-            "</body></html>";
+              "<script>alert('畢業資格查詢尚未開放!');</script>"
+              "<script>location.href='/Portal.aspx';</script>"
+              "</body></html>";
     await open(tester);
 
     expect(find.text('畢業資格查詢尚未開放'), findsOneWidget);
@@ -331,18 +342,18 @@ void main() {
     ais.reply = (r) => r.page.startsWith('ENRG010_.aspx')
         ? _dispatcher
         : '<html><body><form>'
-            r'<input type="hidden" name="__VIEWSTATE" value="vs">'
-            '一頁沒有表格的東西</form></body></html>';
+              r'<input type="hidden" name="__VIEWSTATE" value="vs">'
+              '一頁沒有表格的東西</form></body></html>';
     await open(tester);
 
     expect(find.textContaining('學校可能改版'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, '重試'), findsOneWidget);
   });
 
-
   group('「不知道」不能講成一個確定的答案', () {
     /// 學分表少了某幾欄（學校改版的樣子）。
-    String creditsMissing({required bool failedCol, required bool earnedCol}) => '''
+    String creditsMissing({required bool failedCol, required bool earnedCol}) =>
+        '''
       <table id="DataGrid_CRD">
         <tr><th>總計學分</th><th>應修學分</th>
             ${earnedCol ? '<th>已得學分(1)</th>' : '<th>某個新欄名</th>'}

@@ -4,6 +4,7 @@ import '../config/period_times.dart';
 import '../parsing/models.dart';
 import '../parsing/timetable.dart';
 import 'theme.dart';
+import 'course_detail_sheet.dart';
 
 /// 課表格子。
 ///
@@ -94,8 +95,10 @@ class TimetableGrid extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final available = constraints.maxWidth - _periodWidth;
-          final dayWidth =
-              (available / days).clamp(_minDayWidth, double.infinity);
+          final dayWidth = (available / days).clamp(
+            _minDayWidth,
+            double.infinity,
+          );
           final total = _periodWidth + dayWidth * days;
 
           final grid = SizedBox(
@@ -118,7 +121,9 @@ class TimetableGrid extends StatelessWidget {
           return total <= constraints.maxWidth
               ? grid
               : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal, child: grid);
+                  scrollDirection: Axis.horizontal,
+                  child: grid,
+                );
         },
       ),
     );
@@ -164,7 +169,8 @@ class _Block {
   final int length;
 
   Color get color => TimetableGrid.colorFor(
-      course.code.isNotEmpty ? course.code : course.name);
+    course.code.isNotEmpty ? course.code : course.name,
+  );
 }
 
 class _Grid extends StatelessWidget {
@@ -235,8 +241,9 @@ class _Grid extends StatelessWidget {
             child: Center(
               child: Text(
                 '${minPeriod + r}',
-                style: theme.textTheme.labelMedium
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
             ),
           ),
@@ -321,40 +328,46 @@ class _CourseBlock extends StatelessWidget {
         c.name,
         if (c.room.isNotEmpty) c.room,
       ].join('，'),
-      child: Container(
-        decoration: BoxDecoration(
-          // 顏色只做底色和左邊那條 —— **文字一律用 onSurface**。
-          // 色盤裡的琥珀 #F9A825、黃綠 #7CB342 在白底上當文字色只有 2:1 上下，
-          // 那是讀不了的。
-          color: color.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
-          border: Border(left: BorderSide(color: color, width: 3)),
-        ),
-        padding: const EdgeInsets.fromLTRB(6, 4, 4, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Flexible(
-              child: Text(
-                c.name,
-                maxLines: block.length > 1 ? 3 : 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: scheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                  height: 1.25,
+      button: true,
+      onTap: () => showCourseDetail(context, c),
+      child: InkWell(
+        onTap: () => showCourseDetail(context, c),
+        child: Container(
+          decoration: BoxDecoration(
+            // 顏色只做底色和左邊那條 —— **文字一律用 onSurface**。
+            // 色盤裡的琥珀 #F9A825、黃綠 #7CB342 在白底上當文字色只有 2:1 上下，
+            // 那是讀不了的。
+            color: color.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
+            border: Border(left: BorderSide(color: color, width: 3)),
+          ),
+          padding: const EdgeInsets.fromLTRB(6, 4, 4, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
+                child: Text(
+                  c.name,
+                  maxLines: block.length > 1 ? 3 : 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                    height: 1.25,
+                  ),
                 ),
               ),
-            ),
-            if (c.room.isNotEmpty)
-              Text(
-                c.room,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-          ],
+              if (c.room.isNotEmpty)
+                Text(
+                  c.room,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

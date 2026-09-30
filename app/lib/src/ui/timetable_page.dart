@@ -10,6 +10,8 @@ import 'class_status.dart';
 import 'login_page.dart';
 import 'timetable_grid.dart';
 import 'theme.dart';
+import 'course_detail_sheet.dart';
+import '../parsing/timetable.dart' show kWeekdays;
 
 class TimetablePage extends StatelessWidget {
   const TimetablePage({
@@ -62,6 +64,7 @@ class TimetablePage extends StatelessWidget {
           floatingActionButton: (c.phase == AppPhase.ready || !showLoginAction)
               ? null
               : FloatingActionButton.extended(
+                  heroTag: null,
                   onPressed: () => _openLogin(context, c),
                   icon: const Icon(Icons.login),
                   label: const Text('登入更新'),
@@ -72,11 +75,10 @@ class TimetablePage extends StatelessWidget {
   }
 
   Future<void> _openLogin(BuildContext context, AppController c) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => LoginPage(controller: c)),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => LoginPage(controller: c)));
   }
-
 }
 
 /// 登出前先講清楚會發生什麼事。
@@ -84,27 +86,25 @@ class TimetablePage extends StatelessWidget {
 /// 學校系統一次只允許一個 session，App 沒登出的話使用者在瀏覽器登入會被
 /// 自己的 App 擋掉 —— 而那個錯誤訊息完全看不出原因。
 Future<void> confirmLogout(BuildContext context, AppController c) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('登出'),
-        // 為什麼特別講：學校系統一次只允許一個 session，App 沒登出的話
-        // 使用者在瀏覽器登入會被自己的 App 擋掉，而那個錯誤訊息完全看不出原因。
-        content: const Text(
-          '會一併結束學校系統上的登入狀態，這樣你在瀏覽器才登得進去。',
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('登出'),
+      // 為什麼特別講：學校系統一次只允許一個 session，App 沒登出的話
+      // 使用者在瀏覽器登入會被自己的 App 擋掉，而那個錯誤訊息完全看不出原因。
+      content: const Text('會一併結束學校系統上的登入狀態，這樣你在瀏覽器才登得進去。'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('取消'),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('登出'),
-          ),
-        ],
-      ),
-    );
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('登出'),
+        ),
+      ],
+    ),
+  );
   if (ok ?? false) await c.logout();
 }
 
@@ -127,7 +127,10 @@ class _SemesterBar extends StatelessWidget {
               decoration: const InputDecoration(
                 labelText: '學年度',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
               items: [
                 for (final y in c.years)
@@ -144,7 +147,10 @@ class _SemesterBar extends StatelessWidget {
               decoration: const InputDecoration(
                 labelText: '學期',
                 border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
               items: [
                 for (final s in c.semesters)
@@ -170,6 +176,8 @@ class _Body extends StatefulWidget {
 
 class _BodyState extends State<_Body> {
   Timer? _ticker;
+  bool? _listMode;
+  int _day = DateTime.now().weekday - 1;
 
   @override
   void initState() {
@@ -228,7 +236,8 @@ class _BodyState extends State<_Body> {
             title: '${result.label}沒有修課紀錄',
             // 「查無符合資料」是學校明確回的答案，不是 App 出錯。
             // 這兩件事在畫面上一定要分得開，不然使用者會一直重試。
-            body: '學校系統回覆「查無符合資料」——\n'
+            body:
+                '學校系統回覆「查無符合資料」——\n'
                 '這個學期你沒有選課，或是還沒到開放查詢的時間。',
           )
         else ...[
@@ -236,10 +245,88 @@ class _BodyState extends State<_Body> {
           // 「還有幾分鐘下課」是胡說，那時候不顯示。
           if (c.isCurrentSemester) NowStatus(courses: result.courses),
           const SizedBox(height: 12),
-          TimetableGrid(courses: result.courses),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('整週'),
+                  selected:
+                      !(_listMode ??
+                          MediaQuery.textScalerOf(context).scale(14) > 19),
+                  onSelected: (_) => setState(() => _listMode = false),
+                ),
+                ChoiceChip(
+                  label: const Text('單日清單'),
+                  selected:
+                      _listMode ??
+                      MediaQuery.textScalerOf(context).scale(14) > 19,
+                  onSelected: (_) => setState(() => _listMode = true),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_listMode ?? MediaQuery.textScalerOf(context).scale(14) > 19) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(
+                spacing: 4,
+                children: [
+                  for (var day = 0; day < 7; day++)
+                    ChoiceChip(
+                      label: Text('週${kWeekdays[day]}'),
+                      selected: _day == day,
+                      onSelected: (_) => setState(() => _day = day),
+                    ),
+                ],
+              ),
+            ),
+            if (!result.courses.any(
+              (course) => course.slots.any((slot) => slot.weekday == _day),
+            ))
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('這一天沒有已排定時段的課程'),
+              ),
+            for (final course
+                in (result.courses
+                    .where((c) => c.slots.any((s) => s.weekday == _day))
+                    .toList()
+                  ..sort(
+                    (a, b) => a.slots
+                        .where((s) => s.weekday == _day)
+                        .map((s) => s.period)
+                        .reduce((a, b) => a < b ? a : b)
+                        .compareTo(
+                          b.slots
+                              .where((s) => s.weekday == _day)
+                              .map((s) => s.period)
+                              .reduce((a, b) => a < b ? a : b),
+                        ),
+                  )))
+              ListTile(
+                title: Text(course.name),
+                subtitle: Text(
+                  '${course.slots.where((s) => s.weekday == _day).map((s) => "第 ${s.period} 節").join("、")}\n${course.room.isEmpty ? "教室尚未提供" : course.room}',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showCourseDetail(context, course),
+              ),
+          ] else
+            TimetableGrid(
+              courses: result.courses,
+              today: c.isCurrentSemester ? null : -1,
+              nowPeriod: c.isCurrentSemester ? -999 : null,
+            ),
           if (!result.hasSlots) const _NoSlotsNotice(),
           const SizedBox(height: 12),
-          for (final course in result.courses) _CourseTile(course: course),
+          for (final course in result.courses)
+            if (!(_listMode ??
+                    MediaQuery.textScalerOf(context).scale(14) > 19) ||
+                course.slots.isEmpty)
+              _CourseTile(course: course),
           _FetchedAt(result.fetchedAt),
         ],
       ],
@@ -289,7 +376,9 @@ class _CourseTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Expanded(child: Text(e.value, style: theme.textTheme.bodySmall)),
+                    Expanded(
+                      child: Text(e.value, style: theme.textTheme.bodySmall),
+                    ),
                   ],
                 ),
               ),
@@ -345,18 +434,18 @@ class _Banner extends StatelessWidget {
   });
 
   factory _Banner.error(String message) => _Banner._(
-        icon: Icons.error_outline,
-        text: message,
-        background: null,
-        foreground: null,
-      );
+    icon: Icons.error_outline,
+    text: message,
+    background: null,
+    foreground: null,
+  );
 
   factory _Banner.cache(DateTime fetchedAt) => _Banner._(
-        icon: Icons.cloud_off_outlined,
-        text: '顯示的是 ${_when(fetchedAt)} 抓到的資料，還沒跟學校核對。',
-        background: null,
-        foreground: null,
-      );
+    icon: Icons.cloud_off_outlined,
+    text: '顯示的是 ${_when(fetchedAt)} 抓到的資料，還沒跟學校核對。',
+    background: null,
+    foreground: null,
+  );
 
   final IconData icon;
   final String text;
@@ -370,20 +459,27 @@ class _Banner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isError = icon == Icons.error_outline;
-    final bg = background ??
+    final bg =
+        background ??
         (isError ? scheme.errorContainer : scheme.surfaceContainerHighest);
-    final fg = foreground ?? (isError ? scheme.onErrorContainer : scheme.onSurface);
+    final fg =
+        foreground ?? (isError ? scheme.onErrorContainer : scheme.onSurface);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(NtouTheme.radiusSm)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(NtouTheme.radiusSm),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: fg),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: TextStyle(color: fg))),
+          Expanded(
+            child: Text(text, style: TextStyle(color: fg)),
+          ),
         ],
       ),
     );
@@ -397,12 +493,12 @@ class _FetchedAt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        child: Text(
-          '更新於 ${intl.DateFormat('yyyy/M/d HH:mm').format(time.toLocal())}',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    child: Text(
+      '更新於 ${intl.DateFormat('yyyy/M/d HH:mm').format(time.toLocal())}',
+      style: Theme.of(context).textTheme.bodySmall,
+    ),
+  );
 }
 
 class _Empty extends StatelessWidget {
@@ -421,12 +517,17 @@ class _Empty extends StatelessWidget {
         children: [
           Icon(icon, size: 48, color: theme.colorScheme.outline),
           const SizedBox(height: 16),
-          Text(title, style: theme.textTheme.titleMedium, textAlign: TextAlign.center),
+          Text(
+            title,
+            style: theme.textTheme.titleMedium,
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 8),
           Text(
             body,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -465,16 +566,16 @@ class NowStatus extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final (IconData icon, String text, bool highlight) = switch (status) {
       InClass(:final course, :final minutesLeft) => (
-          Icons.play_circle_outline,
-          '${course.name}　還有 ${_mins(minutesLeft)}下課',
-          true,
-        ),
+        Icons.play_circle_outline,
+        '${course.name}　還有 ${_mins(minutesLeft)}下課',
+        true,
+      ),
       NextClass(:final course, :final minutesUntil, :final startMinute) => (
-          Icons.schedule,
-          '下一堂 ${course.name}　${_mins(minutesUntil)}後'
-              '（${PeriodTimes.hhmm(startMinute)}）',
-          true,
-        ),
+        Icons.schedule,
+        '下一堂 ${course.name}　${_mins(minutesUntil)}後'
+            '（${PeriodTimes.hhmm(startMinute)}）',
+        true,
+      ),
       DoneForToday() => (Icons.check_circle_outline, '今天的課都上完了', false),
       NoClassToday() => (Icons.weekend_outlined, '今天沒有課', false),
     };
@@ -516,4 +617,3 @@ class NowStatus extends StatelessWidget {
     return r == 0 ? '$h 小時' : '$h 小時 $r 分';
   }
 }
-

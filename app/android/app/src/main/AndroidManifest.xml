@@ -95,6 +95,10 @@
              **套件自己的 manifest 是空的，這一段一定要我們自己宣告** ——
              少了它按鈕按下去完全沒反應，而且兩邊都不會報錯。 -->
         <receiver
+            android:name=".widget.WidgetBackgroundReceiver"
+            android:exported="false" />
+
+        <receiver
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
             android:exported="true">
             <intent-filter>

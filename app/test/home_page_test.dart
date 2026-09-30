@@ -16,14 +16,13 @@ void main() {
   TimetableResult result({
     required List<Course> courses,
     bool isEmpty = false,
-  }) =>
-      TimetableResult(
-        year: '115',
-        semester: '1',
-        courses: courses,
-        isEmpty: isEmpty,
-        fetchedAt: DateTime(2026, 8, 27),
-      );
+  }) => TimetableResult(
+    year: '115',
+    semester: '1',
+    courses: courses,
+    isEmpty: isEmpty,
+    fetchedAt: DateTime(2026, 8, 27),
+  );
 
   /// 今天，但時間固定在 [hour]:[minute]。
   ///
@@ -36,9 +35,9 @@ void main() {
   }
 
   Widget wrap(AppController c, {DateTime? now}) => MaterialApp(
-        theme: NtouTheme.of(Brightness.light),
-        home: HomePage(controller: c, now: now),
-      );
+    theme: NtouTheme.of(Brightness.light),
+    home: HomePage(controller: c, now: now),
+  );
 
   group('今天是星期幾', () {
     test('DateTime 的 1 = 週一，要對齊 TimeSlot 的 0 = 週一', () {
@@ -51,16 +50,15 @@ void main() {
 
   group('挑出今天的課', () {
     test('只留今天有的，並照第一節排序', () {
-      final t = result(courses: const [
-        Course(name: '作業系統', slots: [TimeSlot(0, 5)]),
-        Course(name: '演算法', slots: [TimeSlot(0, 2), TimeSlot(0, 3)]),
-        Course(name: '計算機概論', slots: [TimeSlot(3, 2)]), // 週四，不是今天
-      ]);
-
-      expect(
-        HomePage.coursesOn(t, 0).map((c) => c.name),
-        ['演算法', '作業系統'],
+      final t = result(
+        courses: const [
+          Course(name: '作業系統', slots: [TimeSlot(0, 5)]),
+          Course(name: '演算法', slots: [TimeSlot(0, 2), TimeSlot(0, 3)]),
+          Course(name: '計算機概論', slots: [TimeSlot(3, 2)]), // 週四，不是今天
+        ],
       );
+
+      expect(HomePage.coursesOn(t, 0).map((c) => c.name), ['演算法', '作業系統']);
     });
 
     test('沒有課表就是空的，不要爆掉', () {
@@ -83,7 +81,10 @@ void main() {
         Course(name: name, slots: [for (final p in periods) TimeSlot(0, p)]);
 
     test('上完的歸「已結束」，接下來那堂是 next', () {
-      final today = [at('微積分', [1]), at('演算法', [3, 4])];
+      final today = [
+        at('微積分', [1]),
+        at('演算法', [3, 4]),
+      ];
 
       // 09:30 —— 微積分（8:10–9:00）上完了，演算法還沒開始
       final r = HomePage.split(today, 0, times, 9 * 60 + 30);
@@ -96,7 +97,9 @@ void main() {
       // 10:30 落在演算法（第 3 節 10:10–11:00）之內。
       // 算成「已結束」的話，人還在教室裡，首頁卻說今天沒課了。
       final r = HomePage.split(
-        [at('演算法', [3, 4])],
+        [
+          at('演算法', [3, 4]),
+        ],
         0,
         times,
         10 * 60 + 30,
@@ -108,7 +111,9 @@ void main() {
     test('連堂要整堂上完才算結束', () {
       // 11:30 —— 第 3 節結束了，但第 4 節（11:10–12:00）還在上。
       final r = HomePage.split(
-        [at('演算法', [3, 4])],
+        [
+          at('演算法', [3, 4]),
+        ],
         0,
         times,
         11 * 60 + 30,
@@ -118,7 +123,14 @@ void main() {
     });
 
     test('全部上完就沒有 next', () {
-      final r = HomePage.split([at('微積分', [1])], 0, times, 23 * 60);
+      final r = HomePage.split(
+        [
+          at('微積分', [1]),
+        ],
+        0,
+        times,
+        23 * 60,
+      );
       expect(r.done.map((c) => c.name), ['微積分']);
       expect(r.next, isNull);
     });
@@ -126,7 +138,10 @@ void main() {
     test('沒有節次時間表時全部算成還沒上', () {
       // 分不出來的時候就不要分。猜錯的代價是使用者看到「已結束」
       // 而錯過一堂還沒上的課 —— 而且畫面上完全看不出來是猜的。
-      final today = [at('微積分', [1]), at('演算法', [3])];
+      final today = [
+        at('微積分', [1]),
+        at('演算法', [3]),
+      ];
       final r = HomePage.split(today, 0, PeriodTimes.unknown, 23 * 60);
       expect(r.done, isEmpty);
       expect(r.next!.name, '微積分');
@@ -135,10 +150,8 @@ void main() {
   });
 
   group('節次標籤', () {
-    Course at(List<int> periods) => Course(
-          name: 'x',
-          slots: [for (final p in periods) TimeSlot(0, p)],
-        );
+    Course at(List<int> periods) =>
+        Course(name: 'x', slots: [for (final p in periods) TimeSlot(0, p)]);
 
     test('連續的收成範圍', () {
       expect(HomePage.periodLabel(at([2, 3, 4]), 0), '第 2-4 節');
@@ -190,9 +203,11 @@ void main() {
       final today = HomePage.todayIndex(DateTime.now());
       final other = (today + 1) % 7;
       final c = await newController(
-        cached: result(courses: [
-          Course(name: '演算法', slots: [TimeSlot(other, 2)]),
-        ]),
+        cached: result(
+          courses: [
+            Course(name: '演算法', slots: [TimeSlot(other, 2)]),
+          ],
+        ),
       );
       await tester.pumpWidget(wrap(c));
       await tester.pumpAndSettle();
@@ -211,16 +226,21 @@ void main() {
       // 結果首頁會拿一個咖啡杯圖示對每一個人說「今天沒有課」，
       // 而他其實第二節就要進教室。編一個錯的答案比承認不知道糟得多。
       final c = await newController(
-        cached: result(courses: const [
-          Course(name: '演算法'),
-          Course(name: '計算機組織'),
-        ]),
+        cached: result(
+          courses: const [
+            Course(name: '演算法'),
+            Course(name: '計算機組織'),
+          ],
+        ),
       );
       await tester.pumpWidget(wrap(c));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('今天沒有課'), findsNothing,
-          reason: '我們不知道他今天有沒有課，不能說沒有');
+      expect(
+        find.textContaining('今天沒有課'),
+        findsNothing,
+        reason: '我們不知道他今天有沒有課，不能說沒有',
+      );
       expect(find.textContaining('沒有上課時間'), findsOneWidget);
       // 有幾門課是我們真的知道的，講出來 —— 至少證明資料抓到了。
       expect(find.textContaining('2 門課'), findsOneWidget);
@@ -231,14 +251,20 @@ void main() {
     Future<AppController> withMorningClass() async {
       final today = HomePage.todayIndex(DateTime.now());
       return newController(
-        cached: result(courses: [
-          Course(
-            name: '計算機概論',
-            teacher: '許為元',
-            room: 'INS105',
-            slots: [TimeSlot(today, 2), TimeSlot(today, 3), TimeSlot(today, 4)],
-          ),
-        ]),
+        cached: result(
+          courses: [
+            Course(
+              name: '計算機概論',
+              teacher: '許為元',
+              room: 'INS105',
+              slots: [
+                TimeSlot(today, 2),
+                TimeSlot(today, 3),
+                TimeSlot(today, 4),
+              ],
+            ),
+          ],
+        ),
       );
     }
 
@@ -253,8 +279,8 @@ void main() {
       expect(find.text('計算機概論'), findsOneWidget);
       expect(find.text('第 2-4 節 · INS105 · 許為元'), findsOneWidget);
       expect(find.text('下一堂'), findsOneWidget);
-      // 第 2 節是 09:20–10:10（教務處的節次時間對照表）
-      expect(find.text('09:20–10:10'), findsOneWidget);
+      // 連堂顯示第 2 節開始到第 4 節結束。
+      expect(find.text('09:20–12:05'), findsOneWidget);
       // 07:00 到 09:20 是 140 分鐘
       expect(find.text('還有 2 小時 20 分'), findsOneWidget);
       await unmount(tester);
@@ -424,8 +450,11 @@ void main() {
       final now = DateTime.now();
       c.calendarEvents = [
         ev('開學', now.add(const Duration(days: 3))),
-        ev('加退選', now.add(const Duration(days: 10)),
-            now.add(const Duration(days: 17))),
+        ev(
+          '加退選',
+          now.add(const Duration(days: 10)),
+          now.add(const Duration(days: 17)),
+        ),
       ];
       c.notifyListeners();
       await tester.pumpWidget(wrap(c));
@@ -441,8 +470,11 @@ void main() {
       final now = DateTime.now();
       final c = await newController();
       c.calendarEvents = [
-        ev('選課', now.subtract(const Duration(days: 2)),
-            now.add(const Duration(days: 5))),
+        ev(
+          '選課',
+          now.subtract(const Duration(days: 2)),
+          now.add(const Duration(days: 5)),
+        ),
       ];
       c.notifyListeners();
       await tester.pumpWidget(wrap(c));
@@ -457,9 +489,7 @@ void main() {
 
     testWidgets('結束了的不再顯示', (tester) async {
       final c = await newController();
-      c.calendarEvents = [
-        ev('去年的事', DateTime(2020, 1, 1)),
-      ];
+      c.calendarEvents = [ev('去年的事', DateTime(2020, 1, 1))];
       c.notifyListeners();
       await tester.pumpWidget(wrap(c));
       await tester.pumpAndSettle();
